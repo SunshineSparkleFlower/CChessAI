@@ -65,6 +65,7 @@
 from ChessBoard import ChessBoard
 from ChessAI import ChessAI_random, ChessAI_defense, ChessAI_offense
 from ChessPlayer import ChessPlayer
+from ChessPlayer_remote import ChessPlayer_remote
 from ChessGUI_text import ChessGUI_text
 from ChessGUI_pygame import ChessGUI_pygame
 from ChessRules import ChessRules
@@ -96,7 +97,7 @@ class PythonChessMain:
             player2Color = 'black'        
         else:
             GameParams = TkinterGameSetupParams()
-            (player1Name, player1Color, player1Type, player2Name, player2Color, player2Type) = GameParams.GetGameSetupParams()
+            (player1Name, player1Color, player1Type, player2Name, player2Color, player2Type, remoteHost) = GameParams.GetGameSetupParams()
 
         self.player = [0,0]
         if player1Type == 'human':
@@ -116,6 +117,12 @@ class PythonChessMain:
             self.player[1] = ChessAI_defense(player2Name,player2Color)
         elif player2Type == 'offenseAI':
             self.player[1] = ChessAI_offense(player2Name,player2Color)
+        elif player2Type == 'remote':
+            self.player[1] = ChessPlayer_remote(self.player[0], remoteHost)
+
+            if not self.player[1].s:
+                print "Failed to connect to remote host!"
+                sys.exit(1)
             
         if 'AI' in self.player[0].GetType() and 'AI' in self.player[1].GetType():
             self.AIvsAI = True
@@ -140,7 +147,7 @@ class PythonChessMain:
                 self.Gui = ChessGUI_pygame(1)
             
     def MainLoop(self):
-        currentPlayerIndex = 0
+        currentPlayerIndex = 0 if self.player[0].GetColor() == "white" else 1
         turnCount = 0
         isInCheck = False
         while not self.Rules.IsCheckmate(self.Board.GetState(),self.player[currentPlayerIndex].color):
@@ -163,8 +170,13 @@ class PythonChessMain:
             
             if self.player[currentPlayerIndex].GetType() == 'AI':
                 moveTuple = self.player[currentPlayerIndex].GetMove(self.Board.GetState(), currentColor) 
+            elif self.player[currentPlayerIndex].GetType() == 'remote':
+                moveTuple = self.player[currentPlayerIndex].GetMove()
             else:
                 moveTuple = self.Gui.GetPlayerInput(board,currentColor)
+
+                if self.player[(currentPlayerIndex + 1) % 2].GetType() == 'remote':
+                    self.player[(currentPlayerIndex + 1) % 2].SendMove(moveTuple)
             moveReport0, moveReport1, isInCheck = self.Board.MovePiece(moveTuple) #moveReport = string like "White Bishop moves from A1 to C3" (+) "and captures ___!"
 
             self.Gui.PrintMessage(moveReport0)
