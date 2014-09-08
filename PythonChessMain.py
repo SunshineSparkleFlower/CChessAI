@@ -175,8 +175,8 @@ class PythonChessMain:
             else:
                 moveTuple = self.Gui.GetPlayerInput(board,currentColor)
 
-                if self.player[(currentPlayerIndex + 1) % 2].GetType() == 'remote':
-                    self.player[(currentPlayerIndex + 1) % 2].SendMove(moveTuple)
+            if self.player[(currentPlayerIndex + 1) % 2].GetType() == 'remote':
+                self.player[(currentPlayerIndex + 1) % 2].SendMove(moveTuple)
             moveReport0, moveReport1, isInCheck = self.Board.MovePiece(moveTuple) #moveReport = string like "White Bishop moves from A1 to C3" (+) "and captures ___!"
 
             self.Gui.PrintMessage(moveReport0)
