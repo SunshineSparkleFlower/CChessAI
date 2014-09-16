@@ -25,10 +25,10 @@ static int legal_pos(coord_t *p)
     return p->x < 8 && p->x >= 0 && p->y < 8 && p->y >= 0;
 }
 
-int get_legal_moves(piece_t *board[8], coord_t *from)
+int get_legal_moves(piece_t *board, coord_t *from)
 {
     coord_t tmp, ntmp;
-    piece_t piece = board[from->y][from->x];
+    piece_t piece = BOARD(board, from->y, from->x);
     int move_offset_index = get_moves_index(piece), i, j;
 
     printf("in %s. from: %d, %d\n", __FUNCTION__, from->y, from->x);
@@ -59,9 +59,9 @@ int get_legal_moves(piece_t *board[8], coord_t *from)
 
                 if (!(move_offset[move_offset_index][i][j].x == 0 ||
                             move_offset[move_offset_index][i][j].y == 0)) {
-                    if (enemy(ntmp, board))
+                    if (enemy(board, ntmp.y, ntmp.x))
                         add_to_moves(from, &ntmp);
-                } else if (empty(ntmp, board)) {
+                } else if (empty(board, ntmp.y, ntmp.x)) {
                     add_to_moves(from, &ntmp);
                 }
                 continue;
@@ -73,10 +73,10 @@ int get_legal_moves(piece_t *board[8], coord_t *from)
             if (!legal_pos(&tmp))
                 continue;
 
-            if (empty(tmp, board)) {
+            if (empty(board, tmp.y, tmp.x)) {
                 add_to_moves(from, &tmp);
                 continue;
-            } else if (enemy(tmp, board))
+            } else if (enemy(board, tmp.y, tmp.x))
                 add_to_moves(from, &tmp);
 
             break;
@@ -88,15 +88,15 @@ int get_legal_moves(piece_t *board[8], coord_t *from)
             tmp.x = from->x;
             tmp.y = from->y - 2;
 
-            if (color(board[from->y - 1][from->x]) == EMPTY &&
-                    color(board[from->y - 2][from->x]) == EMPTY)
+            if (empty(board, from->y - 1, from->x) &&
+                    empty(board, from->y - 2, from->x))
                 add_to_moves(from, &tmp);
         } else if (color(piece) == WHITE && from->y == 1) {
             tmp.x = from->x;
             tmp.y = from->y + 2;
 
-            if (color(board[from->y + 1][from->x]) == EMPTY &&
-                    color(board[from->y + 2][from->x]) == EMPTY)
+            if (empty(board, from->y + 1, from->x) &&
+                    empty(board, from->y + 2, from->x))
                 add_to_moves(from, &tmp);
         }
     }
@@ -105,17 +105,17 @@ int get_legal_moves(piece_t *board[8], coord_t *from)
     return count;
 }
 
-legal_moves_t *get_all_legal_moves(piece_t *board[8])
+legal_moves_t *get_all_legal_moves(piece_t *board)
 {
-    int i, j;
+    int row, col;
     coord_t coord;
 
     count = 0;
-    for (i = 0; i < 8; i++) {
-        for (j = 0; j < 8; j++) {
-            if (color(board[i][j]) == turn) {
-                coord.x = j;
-                coord.y = i;
+    for (row = 0; row < 8; row++) {
+        for (col = 0; col < 8; col++) {
+            if (color(BOARD(board, row, col)) == turn) {
+                coord.y = row;
+                coord.x = col;
                 get_legal_moves(board, &coord);
             }
         }
@@ -137,17 +137,18 @@ static int can_attack(move_t *moves, int num_moves, coord_t *e)
 }
 
 // checks if 'player_color' is in check
-int is_check(int player_color, piece_t *board[8])
+int is_check(int player_color, piece_t *board)
 {
+    piece_t *ptr;
+    coord_t allies[16];
     int row, col, c, allies_count = 0;
     coord_t enemy_king = {-1, -1}, curr;
-    coord_t allies[16];
 
     for (row = 0; row < 8; row++) {
         for (col = 0; col < 8; col++) {
-            c = color(board[row][col]);
+            c = color(BOARD(board, row, col));
             // is this the enemy king?
-            if (c == player_color && get_piece_type(board[row][col]) == KING) {
+            if (c == player_color && get_piece_type(BOARD(board, row, col)) == KING) {
                 enemy_king.y = row;
                 enemy_king.x = col;
             } else if (c == -player_color) { // is this an allie?
@@ -209,16 +210,18 @@ const char *piece_to_str(piece_t p)
     return ret;
 }
 
-void print_board(piece_t *board[])
+void print_board(piece_t *board)
 {
     int i, j;
+    piece_t piece;
+
     printf("           0         1         2         3"
             "         4         5         6         7\n");
 
     for (i = 0; i < 8; i++) {
         printf("%d  ", i);
         for (j = 0; j < 8; j++)
-            printf("%10s", piece_to_str(board[i][j]));
+            printf("%10s", piece_to_str(BOARD(board, i, j)));
         printf("\n");
     }
 }
@@ -238,29 +241,29 @@ int main(int argc, char *argv[])
 
     //printf("%d, %d: %s\n", c.y, c.x, piece_to_str(board_2d[c.y][c.x]));
 
-    print_board(board_2d);
-    get_legal_moves(board_2d, &c);
+    print_board(board);
+    get_legal_moves(board, &c);
 
     printf("%d, %d = %d\n", c.y, c.x, color(board_2d[c.y][c.x]));
     printf("count: %d\n", count);
 
     if (count > 0) {
         printf("from: %d, %d (%s)\n", possible_moves[0].from.y, possible_moves[0].from.x,
-            piece_to_str(board_2d[possible_moves[0].from.y][possible_moves[0].from.x]));
+                piece_to_str(board_2d[possible_moves[0].from.y][possible_moves[0].from.x]));
     }
 
     for (i = 0; i < count; i++) {
         printf("(%d, %d) ", possible_moves[i].to.y, possible_moves[i].to.x);
 
-        if (empty(possible_moves[i].to, board_2d))
+        if (empty(board, possible_moves[i].to.y, possible_moves[i].to.x))
             printf("(empty)\n");
-        else if (enemy(possible_moves[i].to, board_2d))
+        else if (enemy(board, possible_moves[i].to.y, possible_moves[i].to.x))
             printf("(enemy)\n");
         else
             printf("(ally)\n");
     }
 
-    printf("is_check: %d\n", is_check(BLACK, board_2d));
+    printf("is_check: %d\n", is_check(BLACK, board));
 
     return 0;
 }

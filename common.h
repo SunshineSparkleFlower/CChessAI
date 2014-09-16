@@ -30,6 +30,10 @@ enum moves_index {
 
 typedef uint16_t piece_t;
 
+#define BOARD(board, row, col) *((board) + (((col) * 8) + row))
+#define for_each_board(board, ptr) \
+    for ((ptr) = board; (ptr) <= ((board) + (((7) * 8) + 7)); ++(ptr))
+
 #define BLACK -1
 #define WHITE 1
 //#define EMPTY           0
@@ -47,13 +51,13 @@ typedef uint16_t piece_t;
 #define BLACK_QUEEN     (1 << 10)
 #define BLACK_KING      (1 << 11)
 
-#define enemy(coord, board) (color((board)[(coord).y][(coord).x]) * -1 == turn)
-#define ally(coord, board) (color((board)[(coord).y][(coord).x]) == turn)
-#define empty(coord, board) (color((board)[(coord).y][(coord).x]) * -1 == EMPTY)
+#define enemy(board, row, col) (color(BOARD(board, row, col)) * -1 == turn)
+#define ally(board, row, col) (color(BOARD(board, row, col)) == turn)
+#define empty(board, row, col) (color(BOARD(board, row, col)) == EMPTY)
 
 extern int get_moves_index(piece_t piece);
 extern enum moves_index get_piece_type(piece_t piece);
-extern int color(uint16_t p);
+extern int color(piece_t p);
 
 extern coord_t move_offset[6][9][20];
 
