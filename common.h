@@ -37,7 +37,7 @@ enum moves_index {
 };
 
 
-#define BOARD(board, row, col) *((board) + (((col) * 8) + row))
+#define BOARD(board, row, col) *((board) + (((row) * 8) + col))
 #define for_each_board(board, ptr) \
     for ((ptr) = board; (ptr) <= ((board) + (((7) * 8) + 7)); ++(ptr))
 
