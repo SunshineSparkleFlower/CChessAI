@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+typedef uint16_t piece_t;
+
 // y == down -> up, x == left -> right
 typedef struct coord {
     int8_t y :4;
@@ -18,6 +20,12 @@ typedef struct legal_moves {
     int num_moves;
 } legal_moves_t;
 
+typedef struct board {
+    piece_t *board;
+    struct move *moves;
+    int moves_count;
+}  board_t;
+
 enum moves_index {
     EMPTY = 0,
     PAWN,
@@ -28,7 +36,6 @@ enum moves_index {
     KING,
 };
 
-typedef uint16_t piece_t;
 
 #define BOARD(board, row, col) *((board) + (((col) * 8) + row))
 #define for_each_board(board, ptr) \
@@ -55,9 +62,11 @@ typedef uint16_t piece_t;
 #define ally(board, row, col) (color(BOARD(board, row, col)) == turn)
 #define empty(board, row, col) (color(BOARD(board, row, col)) == EMPTY)
 
+extern struct board *create_board(char *fen);
+extern void free_board(struct board *b);
 extern int get_moves_index(piece_t piece);
-extern enum moves_index get_piece_type(piece_t piece);
 extern int color(piece_t p);
+extern enum moves_index get_piece_type(piece_t piece);
 
 extern coord_t move_offset[6][9][20];
 

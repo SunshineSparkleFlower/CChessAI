@@ -1,4 +1,22 @@
+#include <stdlib.h>
 #include "common.h"
+
+struct board *create_board(char *fen)
+{
+    struct board *ret = calloc(1, sizeof(struct board));
+
+    ret->board = calloc(1, sizeof(piece_t) * 64);
+    ret->moves = malloc(sizeof(struct move) * (20*16))
+
+    return ret;
+}
+
+void free_board(struct board *b)
+{
+    free(b->board);
+    free(b->moves);
+    free(b);
+}
 
 int get_moves_index(piece_t piece)
 {
@@ -14,16 +32,16 @@ int get_moves_index(piece_t piece)
     return r;
 }
 
-enum moves_index get_piece_type(piece_t piece)
-{
-    register unsigned ret = get_moves_index(piece);
-    return ret + !!piece;
-}
-
 int color(uint16_t p)
 {
     register int ret = !(p & ((1 << 6) - 1));
     return !p ? EMPTY : !ret - ret;
+}
+
+enum moves_index get_piece_type(piece_t piece)
+{
+    register unsigned ret = get_moves_index(piece);
+    return ret + !!piece;
 }
 
 coord_t move_offset[6][9][20] = {
