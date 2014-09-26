@@ -5,22 +5,17 @@ struct board *create_board(char *fen)
 {
     struct board *ret = calloc(1, sizeof(struct board));
 
-    ret->board = calloc(1, sizeof(piece_t) * 64);
-    ret->moves = malloc(sizeof(struct move) * (20*16))
-
     return ret;
 }
 
 void free_board(struct board *b)
 {
-    free(b->board);
-    free(b->moves);
     free(b);
 }
 
 int get_moves_index(piece_t piece)
 {
-    unsigned int v = ((piece >> 6) | piece) & 0x3f; // find the number of trailing zeros in 32-bit v 
+    unsigned int v = (((piece >> 6) | piece) & 0x3f) | (piece & P_EMPTY) ; // find the number of trailing zeros in 32-bit v 
     int r;           // result goes here
     static const int MultiplyDeBruijnBitPosition[32] = 
     {
@@ -34,14 +29,18 @@ int get_moves_index(piece_t piece)
 
 int color(uint16_t p)
 {
+    if (p & P_EMPTY)
+        return EMPTY;
+
     register int ret = !(p & ((1 << 6) - 1));
-    return !p ? EMPTY : !ret - ret;
+
+    return !ret - ret;
 }
 
 enum moves_index get_piece_type(piece_t piece)
 {
     register unsigned ret = get_moves_index(piece);
-    return ret + !!piece;
+    return ret;
 }
 
 coord_t move_offset[6][9][20] = {
@@ -90,24 +89,24 @@ int turn = WHITE;
 piece_t board[8 * 8] = {
     WHITE_ROOK, WHITE_KNIGHT, WHITE_BISHOP, WHITE_QUEEN, WHITE_KING, WHITE_BISHOP, WHITE_KNIGHT, WHITE_ROOK,
     WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN,
-    EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
-    EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
-    EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
-    EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+    P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
+    P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
+    P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
+    P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
     BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN,
     BLACK_ROOK, BLACK_KNIGHT, BLACK_BISHOP, BLACK_QUEEN, BLACK_KING, BLACK_BISHOP, BLACK_KNIGHT, BLACK_ROOK,
 };
 */
 
 piece_t board[8 * 8] = {
-    EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
-    EMPTY, EMPTY, WHITE_QUEEN, WHITE_KING, EMPTY, EMPTY, EMPTY, EMPTY,
-    EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
-    EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
-    EMPTY, EMPTY, BLACK_KING, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
-    EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
-    EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
-    EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+    P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
+    P_EMPTY, BLACK_ROOK, WHITE_QUEEN, WHITE_KING, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
+    P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
+    P_EMPTY, WHITE_PAWN, BLACK_PAWN, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
+    P_EMPTY, P_EMPTY, BLACK_KING, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
+    P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
+    P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
+    P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
 };
 
 piece_t *board_2d[8] = {&board[0], &board[8 * 1], &board[8 * 2], &board[8 * 3],

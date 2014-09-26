@@ -12,7 +12,7 @@ typedef struct coord {
 } coord_t;
 
 typedef struct move {
-    coord_t from, to;
+    coord_t frm, to;
 } move_t;
 
 typedef struct legal_moves {
@@ -21,29 +21,32 @@ typedef struct legal_moves {
 } legal_moves_t;
 
 typedef struct board {
+    //piece_t board[8*8];
     piece_t *board;
-    struct move *moves;
+    struct move moves[20*16];
     int moves_count;
+    int turn;
 }  board_t;
 
 enum moves_index {
-    EMPTY = 0,
-    PAWN,
+    PAWN = 0,
     ROOK,
     KNIGHT,
     BISHOP,
     QUEEN,
     KING,
+    EMPTY = 12,
 };
 
 
-#define BOARD(board, row, col) *((board) + (((row) * 8) + col))
+// returns the piece at board[row][col]
+#define PIECE(board, row, col) *((board) + (((row) * 8) + col))
+#define PIECE_ADDR (board, row, col) ((board) + (((row) * 8) + col))
 #define for_each_board(board, ptr) \
     for ((ptr) = board; (ptr) <= ((board) + (((7) * 8) + 7)); ++(ptr))
 
 #define BLACK -1
 #define WHITE 1
-//#define EMPTY           0
 #define WHITE_PAWN      (1 << 0)
 #define WHITE_ROOK      (1 << 1)
 #define WHITE_KNIGHT    (1 << 2)
@@ -57,10 +60,11 @@ enum moves_index {
 #define BLACK_BISHOP    (1 << 9)
 #define BLACK_QUEEN     (1 << 10)
 #define BLACK_KING      (1 << 11)
+#define P_EMPTY           (1 << 12)
 
-#define enemy(board, row, col) (color(BOARD(board, row, col)) * -1 == turn)
-#define ally(board, row, col) (color(BOARD(board, row, col)) == turn)
-#define empty(board, row, col) (color(BOARD(board, row, col)) == EMPTY)
+#define enemy(board, row, col, turn) (color(PIECE(board, row, col)) * -1 == turn)
+#define ally(board, row, col, turn) (color(PIECE(board, row, col)) == turn)
+#define empty(board, row, col, turn) (color(PIECE(board, row, col)) == EMPTY)
 
 extern struct board *create_board(char *fen);
 extern void free_board(struct board *b);
@@ -70,7 +74,7 @@ extern enum moves_index get_piece_type(piece_t piece);
 
 extern coord_t move_offset[6][9][20];
 
-extern int turn;
+//extern int turn;
 
 extern piece_t board[8 * 8];
 extern piece_t *board_2d[8];
