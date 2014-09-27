@@ -18,7 +18,6 @@ rules: common.o rules.o
 
 cython:
 	cython start.pyx
-	cython unit_test.pyx
 
 clean:
 	-$(RM) *.o start.so

@@ -49,3 +49,23 @@ cdef class Board:
 
     def print_board(self):
         print_board(self.cboard.board)
+
+    def calculate_legal_moves(self, row, col):
+        cdef coord_t coord
+
+        coord.y = row
+        coord.x = col
+        get_legal_moves(&self.cboard, &coord)
+
+    def print_legal_moves(self):
+        print "number of legal moves: ", self.cboard.moves_count
+        print "Legal moves:"
+        for i in xrange(0, self.cboard.moves_count):
+            print self.cboard.moves[i]
+
+    def get_legal_moves(self):
+        ret = []
+        for i in xrange(0, self.cboard.moves_count):
+            ret += [self.cboard.moves[i]]
+
+        return ret
