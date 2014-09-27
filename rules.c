@@ -38,11 +38,11 @@ static int legal_pos(coord_t *p)
     return p->x < 8 && p->x >= 0 && p->y < 8 && p->y >= 0;
 }
 
-static void do_move(piece_t *board, coord_t from, coord_t to, piece_t *backup)
+void do_move(piece_t *board, coord_t frm, coord_t to, piece_t *backup)
 {
     *backup = PIECE(board, to.y, to.x);
-    PIECE(board, to.y, to.x) = PIECE(board, from.y, from.x);
-    PIECE(board, from.y, from.x) = P_EMPTY;
+    PIECE(board, to.y, to.x) = PIECE(board, frm.y, frm.x);
+    PIECE(board, frm.y, frm.x) = P_EMPTY;
 }
 
 static coord_t find_king(board_t *board_struct)

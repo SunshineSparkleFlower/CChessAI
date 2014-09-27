@@ -1,11 +1,11 @@
 # distutils: language = c++
 
 cdef extern from "<map>" namespace "std":
-    cdef cppclass mymap "std::map<int, float>":
+    cdef cppclass mymap "std::map<np.ndarray[np.uint16_t, ndim=2], float>":
         mymap()
         float& operator[] (const int& k)
 
-def shits():
+cpdef shits(int nr_of_shits):
     cdef mymap m = mymap()
     cdef int i
     cdef float value
@@ -14,4 +14,4 @@ def shits():
         value = 3.0 * i**2
         m[i] = value
 
-    print m[10]
+    print m[nr_of_shits]

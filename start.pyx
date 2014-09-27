@@ -16,9 +16,35 @@ def test():
     board.print_board()
     board.calculate_legal_moves(0, 6)
     board.print_legal_moves()
-
-    cppmap.shits()
-
+    cdef int nr_shits = 5
+    cppmap.shits(nr_shits)
+    board.do_move(1,0,0,0)
+    board.print_board()
+ 
+     
+    piecs =[WHITE_PAWN,
+             WHITE_KNIGHT,
+             WHITE_BISHOP,
+             WHITE_ROOK,
+             WHITE_QUEEN,
+             WHITE_KING,
+             BLACK_PAWN,
+             BLACK_KNIGHT,
+             BLACK_BISHOP,
+             BLACK_ROOK,
+             BLACK_QUEEN,
+             BLACK_KING,
+             P_EMPTY]
+    cdef int nr_features = 10     
+    cdef np.ndarray[np.uint16_t, ndim=1, mode="c"] piecess =np.array(piecs, dtype=np.uint16)
+    
+            
+    cdef np.ndarray[np.uint16_t, ndim=3, mode="c"] features = np.random.choice(piecess, (nr_features,8,8))    
+        
+    print features
+        
+    
+    #print board.multiply(tes[2])
 
 #    cdef np.ndarray[np.uint16_t, ndim=2, mode="c"] board = np.zeros((8,8), dtype=np.uint16)
 #    cdef coord_t coords

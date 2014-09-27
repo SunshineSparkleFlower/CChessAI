@@ -17,25 +17,26 @@ cdef extern from "common.h":
         int turn
     ctypedef board board_t
 
-    cdef int BLACK = -1
-    cdef int WHITE = 1
-    cdef int WHITE_PAWN = (1 << 0)
-    cdef int WHITE_ROOK = (1 << 1)
-    cdef int WHITE_KNIGHT = (1 << 2)
-    cdef int WHITE_BISHOP = (1 << 3)
-    cdef int WHITE_QUEEN = (1 << 4)
-    cdef int WHITE_KING = (1 << 5)
+    cdef short BLACK = -1
+    cdef short WHITE = 1
+    cdef short WHITE_PAWN = (1 << 0)
+    cdef short WHITE_ROOK = (1 << 1)
+    cdef short WHITE_KNIGHT = (1 << 2)
+    cdef short WHITE_BISHOP = (1 << 3)
+    cdef short WHITE_QUEEN = (1 << 4)
+    cdef short WHITE_KING = (1 << 5)
 
-    cdef int BLACK_PAWN = (1 << 6)
-    cdef int BLACK_ROOK = (1 << 7)
-    cdef int BLACK_KNIGHT = (1 << 8)
-    cdef int BLACK_BISHOP = (1 << 9)
-    cdef int BLACK_QUEEN = (1 << 10)
-    cdef int BLACK_KING = (1 << 11)
-    cdef int P_EMPTY = (1 << 12)
+    cdef short BLACK_PAWN = (1 << 6)
+    cdef short BLACK_ROOK = (1 << 7)
+    cdef short BLACK_KNIGHT = (1 << 8)
+    cdef short BLACK_BISHOP = (1 << 9)
+    cdef short BLACK_QUEEN = (1 << 10)
+    cdef short BLACK_KING = (1 << 11)
+    cdef short P_EMPTY = (1 << 12)
 
 cdef extern from "rules.h":
     extern int get_legal_moves(board_t *, coord_t *)
     extern void print_board(piece_t *board)
     extern void print_legal_moves(board_t *board)
+    extern void do_move(piece_t *board, coord_t frm, coord_t to, piece_t *backup)
 

@@ -29,7 +29,11 @@ cdef class Board:
         self.cboard.board = <piece_t *>board.data
         self.cboard.moves_count = 0
         self.cboard.turn = WHITE if fen_parts[1] == 'w' else BLACK
-
+    
+    cpdef multiply(self, np.ndarray[np.uint16_t, ndim=2] f):
+        print  self.npboard
+        return  np.array_equal(np.bitwise_and(self.npboard,f), f)
+        
     def _fen_to_chesspiece(self, c):
         to_piece = {
             'P': WHITE_PAWN,
@@ -47,6 +51,19 @@ cdef class Board:
         }
         return to_piece[c]
 
+    def do_move(self, fromy, fromx, toy, tox):
+        cdef piece_t backup
+
+        cdef coord_t frm
+        frm.y = fromy
+        frm.x = fromx
+        
+        cdef coord_t to
+        to.y = toy
+        to.x = tox
+        
+        do_move(self.cboard.board, frm, to, &backup)
+        
     def print_board(self):
         print_board(self.cboard.board)
 
