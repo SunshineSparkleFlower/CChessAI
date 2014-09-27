@@ -66,6 +66,13 @@ enum moves_index {
 #define ally(board, row, col, turn) (color(PIECE(board, row, col)) == turn)
 #define empty(board, row, col, turn) (color(PIECE(board, row, col)) == EMPTY)
 
+#ifdef DEBUG
+void _debug_print(const char *function, char *fmt, ...);
+#define debug_print(fmt, ...) _debug_print(__FUNCTION__, fmt, ##__VA_ARGS__)
+#else
+#define debug_print(fmt, ...) 
+#endif
+
 extern struct board *create_board(char *fen);
 extern void free_board(struct board *b);
 extern int get_moves_index(piece_t piece);
@@ -73,8 +80,6 @@ extern int color(piece_t p);
 extern enum moves_index get_piece_type(piece_t piece);
 
 extern coord_t move_offset[6][9][20];
-
-//extern int turn;
 
 extern piece_t board[8 * 8];
 extern piece_t *board_2d[8];

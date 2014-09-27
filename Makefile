@@ -1,11 +1,14 @@
 CC=gcc
-CFLAGS=-Wall -shared -fPIC -I/usr/include/python2.7/ -O2 -g
+CFLAGS=-Wall -shared -fPIC -I/usr/include/python2.7/ -O2
 LDFLAGS=
 
 %.o: %.c
 	$(CC) $< $(CFLAGS) -c -o $@
 
 all: cython start
+
+debug: CFLAGS += -DDEBUG -g
+debug: all
 
 start: start.o rules.o common.o
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@.so 

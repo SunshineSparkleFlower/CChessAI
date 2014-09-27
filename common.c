@@ -1,5 +1,20 @@
+#include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
+
 #include "common.h"
+
+void _debug_print(const char *function, char *fmt, ...)
+{
+    va_list ap;
+    
+    va_start(ap, fmt);
+
+    fprintf(stderr, "[DEBUG] %s: ", function);
+    vfprintf(stderr, fmt, ap);
+
+    va_end(ap);
+}
 
 struct board *create_board(char *fen)
 {
