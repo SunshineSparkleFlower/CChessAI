@@ -1,7 +1,7 @@
 # distutils: language = c++
 
 cdef extern from "<map>" namespace "std":
-    cdef cppclass mymap "std::map<np.ndarray[np.uint16_t, ndim=2], float>":
+    cdef cppclass mymap "std::map<int, float>":
         mymap()
         float& operator[] (const int& k)
 
