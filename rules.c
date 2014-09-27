@@ -29,6 +29,17 @@ static void add_to_moves(board_t *board, coord_t *from, coord_t *to)
     board->moves_count++;
 }
 
+static void remove_from_moves(board_t *board, int index)
+{
+     board->moves[index].frm =
+            board->moves[board->moves_count - 1].frm;
+
+        board->moves[index].to =
+            board->moves[board->moves_count - 1].to;
+
+        board->moves_count--;
+
+}
 static int legal_pos(coord_t *p)
 {
     return p->x < 8 && p->x >= 0 && p->y < 8 && p->y >= 0;
@@ -38,8 +49,34 @@ static void do_move(piece_t *board, coord_t from, coord_t to, piece_t *backup)
 {
     *backup = PIECE(board, to.y, to.x);
     PIECE(board, to.y, to.x) = PIECE(board, from.y, from.x);
+    PIECE(board, from.y, from.x) = P_EMPTY;
 }
+static coord_t find_king(board_t *board_struct)
+{  
+    int row, col;
+    coord_t coord;
+    piece_t *board = board_struct->board;
+    for (row = 0; row < 8; row++) {
+    
+        for (col = 0; col < 8; col++) {
+            if (color(PIECE(board, row, col)) == board_struct->turn && get_piece_type(PIECE(board, row, col)) == KING ) {
+                coord.y = row;
+                coord.x = col;
+                return coord;
+            }
+        }
+    }
 
+}
+int move_exist(coord_t coord, board_t *board_struct)
+{
+    int i;
+    for (i = 0; i < board_struct->moves_count; i++)
+        if (coord.x == board_struct->moves[i].to.x && coord.y == board_struct->moves[i].to.y)
+            return 1;
+    
+    return 0;
+}
 static void rm_checkmoves(board_t *board_struct)
 {
     int i;
@@ -48,64 +85,46 @@ static void rm_checkmoves(board_t *board_struct)
 
     for (i = 0; i < board_struct->moves_count; i++) {
         do_move(board, board_struct->moves[i].frm, board_struct->moves[i].to, &backup);
-        is_check(board_struct->turn, board_struct);
+
+        board_t tmp_bs = {.board = board, .turn = board_struct->turn * -1, .moves_count = 0};
+
+        coord_t king_coord = find_king(board_struct);
+        get_all_possible_moves(&tmp_bs);
+        
+        int in_chess = move_exist(king_coord, &tmp_bs);
+            
+        
 
         PIECE(board, board_struct->moves[i].frm.y, board_struct->moves[i].frm.x) = 
             PIECE(board, board_struct->moves[i].to.y, board_struct->moves[i].to.x);
         PIECE(board, board_struct->moves[i].to.y, board_struct->moves[i].to.x) = backup;
 
-        if (!is_check(board_struct->turn, board_struct)) {
-            continue;
-        }
+        if (in_chess) {
+           printf("removing a move");
 
-        board_struct->moves[i].frm =
-            board_struct->moves[board_struct->moves_count - 1].frm;
-        board_struct->moves[i].to =
-            board_struct->moves[board_struct->moves_count - 1].to;
-        board_struct->moves_count--;
-        i--;
+           remove_from_moves(board_struct, i);
+           i--;
+        }
+        
     }
 
-    char buffer[8192] = {0};
-    int fd;
-
-    fd = open("/proc/self/maps", O_RDONLY);
-    read(fd, buffer, sizeof(buffer));
-    printf("%s\n", buffer);
-
-    memset(buffer, 0, sizeof(buffer));
-    read(fd, buffer, sizeof(buffer));
-    printf("%s\n", buffer);
-
-    memset(buffer, 0, sizeof(buffer));
-    read(fd, buffer, sizeof(buffer));
-    printf("%s\n", buffer);
-
-    memset(buffer, 0, sizeof(buffer));
-    read(fd, buffer, sizeof(buffer));
-    printf("%s\n", buffer);
-
-    memset(buffer, 0, sizeof(buffer));
-    read(fd, buffer, sizeof(buffer));
-    printf("%s\n", buffer);
-
-    memset(buffer, 0, sizeof(buffer));
-    read(fd, buffer, sizeof(buffer));
-    printf("%s\n", buffer);
-    close(fd);
-
-    printf("\nboard_struct @ %p\n", board_struct);
-    printf("count = %d\n", board_struct->moves_count);
-    board_struct->moves[0].frm.y = 15;
-    board_struct->moves_count = 1;
+   
+    //printf("\nboard_struct @ %p\n", board_struct);
+    //printf("count = %d\n", board_struct->moves_count);
+    //board_struct->moves[0].frm.y = 15;
+    //board_struct->moves_count = 1;
 }
 
 int _get_legal_moves(board_t *board_struct, coord_t *from)
 {
+    piece_t *board = board_struct->board;
+
     coord_t tmp, ntmp;
     piece_t piece = PIECE(board, from->y, from->x);
+ //   printf("\in from->y:%d, from->x:%d \n", from->y, from->x);
+ //   printf("\piece = %d \n", piece);
+    
     int move_offset_index = get_moves_index(piece), i, j;
-    piece_t *board = board_struct->board;
 
     //printf("in %s. from: %d, %d\n", __FUNCTION__, from->y, from->x);
 
@@ -140,6 +159,7 @@ int _get_legal_moves(board_t *board_struct, coord_t *from)
                         add_to_moves(board_struct, from, &ntmp);
                 } else if (empty(board, ntmp.y, ntmp.x, board_struct->turn)) {
                     add_to_moves(board_struct, from, &ntmp);
+
                 }
                 continue;
             }
@@ -182,12 +202,49 @@ int _get_legal_moves(board_t *board_struct, coord_t *from)
     return board_struct->moves_count;
 }
 
+
+int get_possible_moves(board_t *board, coord_t *from)
+{
+    int ret;
+
+    ret = _get_legal_moves(board, from);
+
+    return ret;
+}
+
+
+board_t *get_all_possible_moves(board_t *board_struct)
+{
+    int row, col;
+    coord_t coord;
+    piece_t *board = board_struct->board;
+
+    board_struct->moves_count = 0;
+    for (row = 0; row < 8; row++) {
+        for (col = 0; col < 8; col++) {
+            if (color(PIECE(board, row, col)) == board_struct->turn) {
+                coord.y = row;
+                coord.x = col;
+                get_possible_moves(board_struct, &coord);
+            }
+        }
+    }
+
+    return board_struct;
+}
+
+
+
+
 int get_legal_moves(board_t *board, coord_t *from)
 {
     int ret;
 
     ret = _get_legal_moves(board, from);
+    printf("\n number of legeal moves in get_legal_moves %d\n", board->moves_count);
+
     rm_checkmoves(board);
+    printf("\n number of legeal moves iafter rm_checkmoves %d\n", board->moves_count);
 
     return ret;
 }
@@ -212,6 +269,7 @@ board_t *get_all_legal_moves(board_t *board_struct)
 
     return board_struct;
 }
+
 
 static int can_attack(move_t *moves, int num_moves, coord_t *e)
 {
