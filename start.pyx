@@ -2,6 +2,7 @@ import numpy as np
 cimport numpy as np
 from libc.stdlib cimport malloc, free
 
+import cppmap
 include "board.pxi"
 
 cdef print_shit(board_t *boardc):
@@ -15,6 +16,9 @@ def test():
     board.print_board()
     board.calculate_legal_moves(0, 6)
     board.print_legal_moves()
+
+    cppmap.shits()
+
 
 #    cdef np.ndarray[np.uint16_t, ndim=2, mode="c"] board = np.zeros((8,8), dtype=np.uint16)
 #    cdef coord_t coords
