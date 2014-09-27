@@ -7,11 +7,6 @@ LDFLAGS=
 
 all: cython start
 
-test: cython start unit_test
-
-unit_test: unit_test.o rules.o common.o
-	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@.so 
-
 debug: CFLAGS += -DDEBUG -g
 debug: all
 

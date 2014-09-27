@@ -9,7 +9,6 @@ cdef print_shit(board_t *boardc):
     print "Legal moves:"
     for i in xrange(0, boardc.moves_count):
         print boardc.moves[i]
-        #print "(%d, %d) -> (%d, %d)" % (boardc[i].moves.frm.y, boardc[i].moves.frm.x, boardc[i].moves.to.y, boardc[i].moves.to.x)
 
 def test():
 
