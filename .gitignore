@@ -3,3 +3,4 @@
 *.o
 *.so
 start.c
+unit_test.c

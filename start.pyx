@@ -2,7 +2,6 @@ import numpy as np
 cimport numpy as np
 from libc.stdlib cimport malloc, free
 
-cimport start
 include "board.pxi"
 
 cdef print_shit(board_t *boardc):
@@ -49,5 +48,3 @@ def test():
     #print_shit(&cboard)
     #print_legal_moves(&cboard)
     print_shit(&cboard)
-
-test()

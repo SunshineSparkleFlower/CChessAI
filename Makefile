@@ -7,6 +7,11 @@ LDFLAGS=
 
 all: cython start
 
+test: cython start unit_test
+
+unit_test: unit_test.o rules.o common.o
+	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@.so 
+
 debug: CFLAGS += -DDEBUG -g
 debug: all
 
@@ -18,6 +23,7 @@ rules: common.o rules.o
 
 cython:
 	cython start.pyx
+	cython unit_test.pyx
 
 clean:
 	-$(RM) *.o start.so
