@@ -25,19 +25,21 @@ cdef class Memory:
         
 
     cdef float reward_func(self, float prew):
-        return min(prew * (1 - self.lr_reward) +  prew * (self.lr_reward), 1)
+        return min(prew * (1 - self.lr_reward) +  1 * (self.lr_reward), 1)
     
     cdef float punish_func(self, float prew):
-        return max(prew * (1 - self.lr_punish) -  prew * (self.lr_punish), -1)
+        return max(prew * (1 - self.lr_punish) -  1 * (self.lr_punish), -1)
         
     cpdef string strengthen_axons(self):
         while self.shortmemory.empty() == False:    
             mem = self.shortmemory.back()    
             self.shortmemory.pop_back()
             self.mymap[mem] = self.reward_func(self.mymap[mem])
+            print self.mymap[mem]
     
     cpdef string weaken_axons(self):
         while self.shortmemory.empty() == False:    
             mem = self.shortmemory.back()    
             self.shortmemory.pop_back()
             self.mymap[mem] = self.punish_func(self.mymap[mem])
+           # print self.mymap[mem]

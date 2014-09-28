@@ -18,7 +18,7 @@ cdef class AI:
     cdef int move_nr
     def __init__(self):
         
-        cdef int nr_features= 10000
+        cdef int nr_features= 100
         cdef np.ndarray[np.uint16_t, ndim=1, mode="c"] piecess =np.array(range(1,8191), dtype=np.uint16)
         cdef np.ndarray[np.int8_t, ndim=1, mode="c"] m = np.zeros((nr_features), dtype=np.int8)
         cdef np.ndarray[np.uint16_t, ndim=3, mode="c"] features = np.random.choice(piecess, (nr_features,8,8)).view('uint16') 
@@ -48,7 +48,7 @@ cdef class AI:
         for i in range(self.nr_features):        
                 self.m[i] = board.multiply(self.features[i])
         self.memory.rememberaction(self.m.data)
-        
+        board.swapturn()
         return legal_moves[best_move] 
 
     # EVERYTHING YOU DO IS WRONG    

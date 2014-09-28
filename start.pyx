@@ -20,18 +20,40 @@ def get_best_move(Board board):
     
 
 def test():
-    board = Board("r6P/p7/7/4k3/8/8/P7/3qqKRr w - 0 1")
+    board = Board("r6P/p7/8/4k3/8/8/P7/3qqKRr w - 0 1")
     board.print_board()
     board.calculate_legal_moves(0, 6)
     board.print_legal_moves()
     cdef int nr_shits = 5
-    board.do_move(1,0,0,0)
+  #  board.do_move(1,0,0,0)
     board.print_board()
-    print board.get_all_legal_moves()
-    ai = AI()
-    print ai.do_best_move(board)
-    print board.have_lost()
-#    memory.shits(nr_shits, m.data)  
+    
+    aiw = AI()
+    aib = AI()
+    ite = 0
+    while ite < 100:
+        turn = 0
+        while turn < 100:
+            if board.have_lost():
+                print "aiw lost"
+                aiw.punish()
+                aib.reward()
+                break
+            
+            aiw.do_best_move(board)
+            if board.have_lost():
+                print "aib lost"
+                aib.punish()
+                aiw.reward()            
+                break    
+            aib.do_best_move(board)
+            turn += 1
+        if turn == 100:
+            print "punish both"
+            aib.punish()
+            aiw.punish()
+        
+    # memory.shits(nr_shits, m.data)  
 #    board.calculate_legal_moves(0,7)
 #    print board.get_legal_moves()    
 #    board.print_legal_moves()

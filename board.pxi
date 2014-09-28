@@ -110,3 +110,5 @@ cdef class Board:
             ret += [self.cboard.moves[i]]
 
         return ret
+    def swapturn(self):
+        self.cboard.turn *= -1
