@@ -57,8 +57,10 @@ cdef class Board:
             'k': BLACK_KING,
         }
         return to_piece[c]
+         
     def reverse_move(self):
         reverse_move(self.cboard.board, self.prev_from, self.prev_to, self.backup_p)
+
     def do_move(self, fromy, fromx, toy, tox):
         cdef piece_t backup
 
@@ -101,6 +103,7 @@ cdef class Board:
     
     def have_lost(self):
         return self.get_all_legal_moves() == []
+
     def get_legal_moves(self):
         ret = []
         for i in xrange(0, self.cboard.moves_count):

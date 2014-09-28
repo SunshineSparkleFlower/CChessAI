@@ -310,7 +310,7 @@ void print_board(piece_t *board)
     printf("           0         1         2         3"
             "         4         5         6         7\n");
 
-    for (i = 0; i < 8; i++) {
+    for (i = 7; i >= 0; i--) {
         printf("%d  ", i);
         for (j = 0; j < 8; j++)
             printf("%10s", piece_to_str(PIECE(board, i, j)));
