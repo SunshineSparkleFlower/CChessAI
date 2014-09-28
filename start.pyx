@@ -3,7 +3,9 @@ cimport numpy as np
 from libc.stdlib cimport malloc, free
 
 import cppmap
+from cppmap import Memory
 include "board.pxi"
+include "AI.pxi"
 
 cdef print_shit(board_t *boardc):
     print "number of legal moves: ", boardc.moves_count
@@ -11,38 +13,36 @@ cdef print_shit(board_t *boardc):
     for i in xrange(0, boardc.moves_count):
         print boardc.moves[i]
 
+
+
+def get_best_move(Board board):
+    pass
+    
+
 def test():
-    board = Board("r6P/p7/7/4k3/8/8/P7/5KRr w - 0 1")
+    board = Board("r6P/p7/7/4k3/8/8/P7/3qqKRr w - 0 1")
     board.print_board()
     board.calculate_legal_moves(0, 6)
     board.print_legal_moves()
     cdef int nr_shits = 5
-    cppmap.shits(nr_shits)
     board.do_move(1,0,0,0)
     board.print_board()
- 
-     
-    piecs =[WHITE_PAWN,
-             WHITE_KNIGHT,
-             WHITE_BISHOP,
-             WHITE_ROOK,
-             WHITE_QUEEN,
-             WHITE_KING,
-             BLACK_PAWN,
-             BLACK_KNIGHT,
-             BLACK_BISHOP,
-             BLACK_ROOK,
-             BLACK_QUEEN,
-             BLACK_KING,
-             P_EMPTY]
-    cdef int nr_features = 10     
-    cdef np.ndarray[np.uint16_t, ndim=1, mode="c"] piecess =np.array(piecs, dtype=np.uint16)
     
-            
-    cdef np.ndarray[np.uint16_t, ndim=3, mode="c"] features = np.random.choice(piecess, (nr_features,8,8))    
-        
-    print features
-        
+    ai = AI()
+    print ai.do_best_move(board)
+
+#    memory.shits(nr_shits, m.data)  
+#    board.calculate_legal_moves(0,7)
+#    print board.get_legal_moves()    
+#    board.print_legal_moves()
+#    print "finding all legal moves"
+#    legalmoves = board.get_all_legal_moves()
+#    print legalmoves
+#    board.print_board()
+#    board.move(legalmoves[0])
+#    board.print_board()
+#    board.reverse_move()
+#    board.print_board()
     
     #print board.multiply(tes[2])
 

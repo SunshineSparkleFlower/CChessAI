@@ -9,7 +9,8 @@ cdef extern from "common.h":
     cdef struct move:
         coord_t frm
         coord_t to
-
+    ctypedef move move_t
+    
     cdef struct board:
         piece_t *board
         move moves[20*16];    
@@ -17,6 +18,7 @@ cdef extern from "common.h":
         int turn
     ctypedef board board_t
 
+    
     cdef short BLACK = -1
     cdef short WHITE = 1
     cdef short WHITE_PAWN = (1 << 0)
@@ -39,4 +41,5 @@ cdef extern from "rules.h":
     extern void print_board(piece_t *board)
     extern void print_legal_moves(board_t *board)
     extern void do_move(piece_t *board, coord_t frm, coord_t to, piece_t *backup)
-
+    extern board_t *get_all_legal_moves(board_t *board_struct)
+    extern void reverse_move(piece_t *board, coord_t frm, coord_t to, piece_t backup)

@@ -1,17 +1,43 @@
 # distutils: language = c++
+from libcpp.string cimport string
+from libcpp.map cimport map
+from libcpp.vector cimport vector
 
-cdef extern from "<map>" namespace "std":
-    cdef cppclass mymap "std::map<int, float>":
-        mymap()
-        float& operator[] (const int& k)
 
-cpdef shits(int nr_of_shits):
-    cdef mymap m = mymap()
-    cdef int i
-    cdef float value
+cdef class Memory:
+    cdef map[string, float] mymap
+    cdef vector[string] shortmemory
+    cdef float lr_punish
+    cdef float lr_reward
+    def __init__(self):     
+         cdef map[string, float] mymap
+         self.mymap = mymap
+         cdef vector[string] shortmemory
+         self.shortmemory = shortmemory
+         self.lr_punish = 0.1
+         self.lr_reward = 0.1
+         
+    cpdef float lookup(self, string key):
+        return self.mymap[key]
+    
+    cpdef float rememberaction(self, string key):
+        self.shortmemory.push_back(key)
+        
 
-    for i in range(100):
-        value = 3.0 * i**2
-        m[i] = value
-
-    print m[nr_of_shits]
+    cdef float reward_func(self, float prew):
+        return min(prew * (1 - self.lr_reward) +  prew * (self.lr_reward), 1)
+    
+    cdef float punish_func(self, float prew):
+        return max(prew * (1 - self.lr_punish) -  prew * (self.lr_punish), -1)
+        
+    cpdef string strengthen_axons(self):
+        while self.shortmemory.empty() == False:    
+            mem = self.shortmemory.back()    
+            self.shortmemory.pop_back()
+            self.mymap[mem] = self.reward_func(self.mymap[mem])
+    
+    cpdef string weaken_axons(self):
+        while self.shortmemory.empty() == False:    
+            mem = self.shortmemory.back()    
+            self.shortmemory.pop_back()
+            self.mymap[mem] = self.punish_func(self.mymap[mem])

@@ -199,6 +199,13 @@ int is_check(int turn, board_t *board_struct)
     return move_exist(king_coord, &tmp_bs);
 }
 
+ // move the pieces back to their original position
+void reverse_move(piece_t *board, coord_t frm, coord_t to, piece_t backup)
+{
+    PIECE(board,frm.y, frm.x) = PIECE(board, to.y, to.x);
+    PIECE(board, to.y, to.x) = backup;
+}
+
 static void rm_checkmoves(board_t *board_struct)
 {
     int i, in_chess;
@@ -209,11 +216,9 @@ static void rm_checkmoves(board_t *board_struct)
         do_move(board, board_struct->moves[i].frm, board_struct->moves[i].to, &backup);
 
         in_chess = is_check(board_struct->turn, board_struct);
-
+ 
         // move the pieces back to their original position
-        PIECE(board, board_struct->moves[i].frm.y, board_struct->moves[i].frm.x) = 
-            PIECE(board, board_struct->moves[i].to.y, board_struct->moves[i].to.x);
-        PIECE(board, board_struct->moves[i].to.y, board_struct->moves[i].to.x) = backup;
+        reverse_move(board, board_struct->moves[i].frm, board_struct->moves[i].to, backup);
 
         if (in_chess) {
             debug_print("removing a move\n");
@@ -229,7 +234,7 @@ static void rm_checkmoves(board_t *board_struct)
 int get_legal_moves(board_t *board, coord_t *from)
 {
     int ret;
-
+    
     ret = _get_legal_moves(board, from);
     debug_print("number of legeal moves in get_legal_moves %d\n", board->moves_count);
 
