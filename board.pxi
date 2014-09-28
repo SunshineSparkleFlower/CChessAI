@@ -99,6 +99,8 @@ cdef class Board:
         get_all_legal_moves(&self.cboard)
         return self.get_legal_moves()
     
+    def have_lost(self):
+        return self.get_all_legal_moves() == []
     def get_legal_moves(self):
         ret = []
         for i in xrange(0, self.cboard.moves_count):

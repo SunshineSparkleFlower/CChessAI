@@ -27,10 +27,10 @@ def test():
     cdef int nr_shits = 5
     board.do_move(1,0,0,0)
     board.print_board()
-    
+    print board.get_all_legal_moves()
     ai = AI()
     print ai.do_best_move(board)
-
+    print board.have_lost()
 #    memory.shits(nr_shits, m.data)  
 #    board.calculate_legal_moves(0,7)
 #    print board.get_legal_moves()    
