@@ -1,6 +1,7 @@
 #ifndef __COMMON_H /* start of include guard */
 #define __COMMON_H
 
+#include <stdlib.h>
 #include <stdint.h>
 
 typedef uint16_t piece_t;
@@ -21,8 +22,10 @@ typedef struct legal_moves {
 } legal_moves_t;
 
 typedef struct board {
-    //piece_t board[8*8];
-    piece_t *board;
+    piece_t _board[8*8];
+    piece_t *board_2d[8];
+    piece_t *board; // only for backwards compatability. points to _board
+    //piece_t *board;
     struct move moves[20*16];
     int moves_count;
     int turn;
@@ -37,6 +40,14 @@ enum moves_index {
     KING,
     EMPTY = 12,
 };
+
+#define MAX(a,b) (((a) > (b)) ? (a) : (b))
+#define MIN(a,b) (((a) < (b)) ? (a) : (b))
+
+#define PREFETCH(addr) __builtin_prefetch(addr)
+#define aligned(n) __attribute__((aligned(n)))
+#define likely(x)	__builtin_expect(!!(x), 1)
+#define unlikely(x)	__builtin_expect(!!(x), 0)
 
 
 // returns the piece at board[row][col]
@@ -60,7 +71,7 @@ enum moves_index {
 #define BLACK_BISHOP    (1 << 9)
 #define BLACK_QUEEN     (1 << 10)
 #define BLACK_KING      (1 << 11)
-#define P_EMPTY           (1 << 12)
+#define P_EMPTY         (1 << 12)
 
 #define enemy(board, row, col, turn) (color(PIECE(board, row, col)) * -1 == turn)
 #define ally(board, row, col, turn) (color(PIECE(board, row, col)) == turn)
@@ -79,9 +90,24 @@ extern int get_moves_index(piece_t piece);
 extern int color(piece_t p);
 extern enum moves_index get_piece_type(piece_t piece);
 
-extern coord_t move_offset[6][9][20];
+extern void ***malloc_3d(size_t x, size_t y, size_t z, size_t type_size);
+extern void ***memdup_3d(void ***mem);
+extern int mem_3d_get_dims(void ***mem, int *x, int *y, int *z, int *type_size);
+extern int random_int(void);
+extern unsigned random_uint(void);
+extern int random_int_r(int min, int max);
+extern float random_float(void);
+extern int bisect(float *arr, float x, int n);
+extern int *bitwise_and_sse2(int *a, int *b, int n, int *ret);
+extern int bitwise_and_3d(void ***a, void ***b, void ***res);
+extern int *bitwise_or_sse2(int *a, int *b, int n, int *ret);
+extern int bitwise_or_3d(void ***a, void ***b, void ***res);
+// works like numpy.random.choice 
+// samples are the samples to fill ***out with
+// n are the length of *samples
+// ***out must be an array allocated with malloc_3d or memdup_3d
+extern int choice_3d(uint16_t *samples, int n, uint16_t ***out);
 
-extern piece_t board[8 * 8];
-extern piece_t *board_2d[8];
+extern coord_t move_offset[6][9][20];
 
 #endif /* end of include guard: __COMMON_H */

@@ -318,14 +318,14 @@ void print_board(piece_t *board)
     }
 }
 
-static void print_legal_moves(board_t *board)
+void print_legal_moves(board_t *board)
 {
     int i;
 
     printf("count: %d\n", board->moves_count);
     if (board->moves_count > 0) {
         printf("from: %d, %d (%s)\n", board->moves[0].frm.y, board->moves[0].frm.x,
-                piece_to_str(board_2d[board->moves[0].frm.y][board->moves[0].frm.x]));
+                piece_to_str(board->board_2d[board->moves[0].frm.y][board->moves[0].frm.x]));
         piece_to_str(PIECE(board->board, board->moves[0].frm.y, board->moves[0].frm.x));
     }
 
@@ -342,6 +342,7 @@ static void print_legal_moves(board_t *board)
 
 }
 
+/*
 int main(int argc, char *argv[])
 {
     int i;
@@ -389,15 +390,14 @@ int main(int argc, char *argv[])
 
     printf("is_check: %d\n", is_check(BLACK, &testboard));
 
-    /*
-       printf("legal moves from (%d, %d)\n", 3, 1);
-       for (i = 0; i < count; i++) {
-       printf("(%d, %d) -> (%d, %d)\n", possible_moves[i].from.y, possible_moves[i].from.x,
-       possible_moves[i].to.y, possible_moves[i].to.x);
-       }
-       */
+   //printf("legal moves from (%d, %d)\n", 3, 1);
+   //for (i = 0; i < count; i++) {
+   //    printf("(%d, %d) -> (%d, %d)\n", possible_moves[i].from.y, possible_moves[i].from.x,
+   //    possible_moves[i].to.y, possible_moves[i].to.x);
+   //}
 
 
 
     return 0;
 }
+*/
