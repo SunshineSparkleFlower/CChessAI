@@ -1,6 +1,9 @@
 #ifndef __BOARD_H
 #define __BOARD_H
 
+#include "common.h"
+#include <stdint.h>
+
 extern board_t *new_board(char *_fen);
 extern void free_board(board_t *b);
 extern int have_lost(board_t *b);
