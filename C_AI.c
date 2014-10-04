@@ -28,7 +28,6 @@ int main(int argc, char *argv[])
     int i, tmp;
     int ite, turn, aiwon, randomwon;
 
-
     for (i = 0; i < 2; i++)
         aiw[i] = ai_new(10, 4); // 10 features, 4 feature density
 
@@ -38,6 +37,11 @@ int main(int argc, char *argv[])
     while (ite < 10000000) {
         turn = 0;
         board = new_board(NULL); // default board
+        if (board == NULL) {
+            printf("failed to allocate new board\n");
+            continue;
+        }
+
         if (ite % 100 == 0) {
             printf("iteration %d\n", ite);
             printf("aiw[0] nr wins: %d\n", aiw[0]->nr_wins);
@@ -101,10 +105,11 @@ int main(int argc, char *argv[])
         }
         if (turn == 70) {
             punish(aiw[ite % 2]);
-            //print_board(board->board);
-            //printf("couldn't finish in < 50 turns\n");
+            //debug_print("couldn't finish in < 70 turns\n");
+            debug_print("giggles n shits (%d)\n", ite);
         }
 
+        debug_print("more giggles n shits (%d)\n", ite);
         ite++;
         free_board(board);
     }

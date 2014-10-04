@@ -52,7 +52,8 @@ static coord_t find_king(board_t *board_struct)
     piece_t *board = board_struct->board;
     for (row = 0; row < 8; row++) {
         for (col = 0; col < 8; col++) {
-            if (color(PIECE(board, row, col)) == board_struct->turn && get_piece_type(PIECE(board, row, col)) == KING ) {
+            if (color(PIECE(board, row, col)) == board_struct->turn
+                    && get_piece_type(PIECE(board, row, col)) == KING ) {
                 coord.y = row;
                 coord.x = col;
                 return coord;
@@ -199,7 +200,7 @@ int is_check(int turn, board_t *board_struct)
     return move_exist(king_coord, &tmp_bs);
 }
 
- // move the pieces back to their original position
+// move the pieces back to their original position
 void reverse_move(piece_t *board, coord_t frm, coord_t to, piece_t backup)
 {
     PIECE(board,frm.y, frm.x) = PIECE(board, to.y, to.x);
@@ -216,13 +217,11 @@ static void rm_checkmoves(board_t *board_struct)
         do_move(board, board_struct->moves[i].frm, board_struct->moves[i].to, &backup);
 
         in_chess = is_check(board_struct->turn, board_struct);
- 
+
         // move the pieces back to their original position
         reverse_move(board, board_struct->moves[i].frm, board_struct->moves[i].to, backup);
 
         if (in_chess) {
-            debug_print("removing a move\n");
-
             remove_from_moves(board_struct, i);
             i--;
         }
@@ -234,12 +233,9 @@ static void rm_checkmoves(board_t *board_struct)
 int get_legal_moves(board_t *board, coord_t *from)
 {
     int ret;
-    
-    ret = _get_legal_moves(board, from);
-    debug_print("number of legeal moves in get_legal_moves %d\n", board->moves_count);
 
+    ret = _get_legal_moves(board, from);
     rm_checkmoves(board);
-    debug_print("number of legeal moves iafter rm_checkmoves %d\n", board->moves_count);
 
     return ret;
 }
@@ -343,61 +339,61 @@ void print_legal_moves(board_t *board)
 }
 
 /*
-int main(int argc, char *argv[])
-{
-    int i;
-    coord_t c;
-    board_t testboard;
+   int main(int argc, char *argv[])
+   {
+   int i;
+   coord_t c;
+   board_t testboard;
 
-    if (argc != 3) {
-        printf("USAGE: %s <y> <x>\n", argv[0]);
-        exit(1);
-    }
+   if (argc != 3) {
+   printf("USAGE: %s <y> <x>\n", argv[0]);
+   exit(1);
+   }
 
-    //printf("%d, %d: %s\n", c.y, c.x, piece_to_str(board_2d[c.y][c.x]));
+//printf("%d, %d: %s\n", c.y, c.x, piece_to_str(board_2d[c.y][c.x]));
 
-    //memcpy(testboard.board, board, sizeof(board));
-    testboard.board = board;
-    testboard.moves_count = 0;
-    testboard.turn = WHITE;
+//memcpy(testboard.board, board, sizeof(board));
+testboard.board = board;
+testboard.moves_count = 0;
+testboard.turn = WHITE;
 
-    print_board(testboard.board);
+print_board(testboard.board);
 
-    c.y = atoi(argv[1]);
-    c.x = atoi(argv[2]);
-    get_legal_moves(&testboard, &c);
+c.y = atoi(argv[1]);
+c.x = atoi(argv[2]);
+get_legal_moves(&testboard, &c);
 
-    printf("\n");
-    printf("%d, %d = %d\n", c.y, c.x, color(board_2d[c.y][c.x]));
-    printf("count: %d\n", testboard.moves_count);
+printf("\n");
+printf("%d, %d = %d\n", c.y, c.x, color(board_2d[c.y][c.x]));
+printf("count: %d\n", testboard.moves_count);
 
-    if (testboard.moves_count > 0) {
-        printf("from: %d, %d (%s)\n", testboard.moves[0].frm.y, testboard.moves[0].frm.x,
-                piece_to_str(board_2d[testboard.moves[0].frm.y][testboard.moves[0].frm.x]));
-        piece_to_str(PIECE(testboard.board, testboard.moves[0].frm.y, testboard.moves[0].frm.x));
-    }
+if (testboard.moves_count > 0) {
+printf("from: %d, %d (%s)\n", testboard.moves[0].frm.y, testboard.moves[0].frm.x,
+piece_to_str(board_2d[testboard.moves[0].frm.y][testboard.moves[0].frm.x]));
+piece_to_str(PIECE(testboard.board, testboard.moves[0].frm.y, testboard.moves[0].frm.x));
+}
 
-    for (i = 0; i < testboard.moves_count; i++) {
-        printf("(%d, %d) ", testboard.moves[i].to.y, testboard.moves[i].to.x);
+for (i = 0; i < testboard.moves_count; i++) {
+printf("(%d, %d) ", testboard.moves[i].to.y, testboard.moves[i].to.x);
 
-        if (empty(testboard.board, testboard.moves[i].to.y, testboard.moves[i].to.x, testboard.turn))
-            printf("(empty)\n");
-        else if (enemy(testboard.board, testboard.moves[i].to.y, testboard.moves[i].to.x, testboard.turn))
-            printf("(enemy)\n");
-        else
-            printf("(ally)\n");
-    }
+if (empty(testboard.board, testboard.moves[i].to.y, testboard.moves[i].to.x, testboard.turn))
+printf("(empty)\n");
+else if (enemy(testboard.board, testboard.moves[i].to.y, testboard.moves[i].to.x, testboard.turn))
+printf("(enemy)\n");
+else
+printf("(ally)\n");
+}
 
-    printf("is_check: %d\n", is_check(BLACK, &testboard));
+printf("is_check: %d\n", is_check(BLACK, &testboard));
 
-   //printf("legal moves from (%d, %d)\n", 3, 1);
-   //for (i = 0; i < count; i++) {
-   //    printf("(%d, %d) -> (%d, %d)\n", possible_moves[i].from.y, possible_moves[i].from.x,
-   //    possible_moves[i].to.y, possible_moves[i].to.x);
-   //}
+//printf("legal moves from (%d, %d)\n", 3, 1);
+//for (i = 0; i < count; i++) {
+//    printf("(%d, %d) -> (%d, %d)\n", possible_moves[i].from.y, possible_moves[i].from.x,
+//    possible_moves[i].to.y, possible_moves[i].to.x);
+//}
 
 
 
-    return 0;
+return 0;
 }
 */

@@ -24,6 +24,7 @@ struct hmap *new_map(int nr_features)
 
     ret->lr_punish = 0.1;
     ret->lr_reward = 1.0;
+    ret->nr_features = nr_features;
 
     return ret;
 }
@@ -49,7 +50,7 @@ float map_lookup(struct hmap *map, char *key)
 {
     float *ret = cfuhash_get_n(map->map, key, map->nr_features);
     if (ret == NULL) {
-        //printf("FAILED TO LOOK UP VALUE IN MAP!\n");
+        //debug_print("FAILED TO LOOK UP VALUE IN MAP!\n");
         return 0.0;
     }
 
@@ -91,11 +92,16 @@ void map_strengthen_axons(struct hmap *map)
             tmp = &deflt;
 
         prew = malloc(sizeof(float));
+        if (prew == NULL) {
+            printf("%s failed to allocate memory\n", __FUNCTION__);
+            return;
+        }
         *prew = reward_func(map, *tmp);
         cfuhash_put_n(map->map, pos->data, map->nr_features, prew);
         list_del(&pos->list);
         free(pos);
     }
+    debug_print("map size: %d\n", get_len_memory(map));
 }
 
 void map_weaken_axons(struct hmap *map)
@@ -103,13 +109,16 @@ void map_weaken_axons(struct hmap *map)
     float *prew, *tmp, deflt = 0.0;
     struct list_node *pos, *n;
 
-
     list_for_each_entry_safe_reverse(pos, n, &map->shortmemory.list, list) {
         tmp = cfuhash_get_n(map->map, pos->data, map->nr_features);
         if (tmp == NULL)
             tmp = &deflt;
 
         prew = malloc(sizeof(float));
+        if (prew == NULL) {
+            printf("%s failed to allocate memory\n", __FUNCTION__);
+            return;
+        }
         *prew = punish_func(map, *tmp);
         cfuhash_put_n(map->map, pos->data, map->nr_features, prew);
         list_del(&pos->list);

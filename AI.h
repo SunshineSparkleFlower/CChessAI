@@ -7,7 +7,6 @@
 
 typedef struct AI_instance {
     int8_t *m;
-    piece_t pieces[8192];
     piece_t ***features;
     int nr_features, move_nr;
     struct hmap *map, *shortmemory;

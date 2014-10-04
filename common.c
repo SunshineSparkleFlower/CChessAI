@@ -92,6 +92,26 @@ void ***malloc_3d(size_t x, size_t y, size_t z, size_t type_size)
     info[2] = x;
     info[3] = type_size;
 
+#ifdef DEBUG
+    char ***tmp = (char ***)ret;
+    char *tmpptr = (char *)ret;
+    if (tmpptr + alloc + _MALLOC_3D_BUFFER_SPACE < &tmp[x - 1][y - 1][z - 1])
+        printf("ERROR %s: something is wrong!\n", __FUNCTION__);
+    int nx, ny, nz, nts;
+    mem_3d_get_dims(ret, &nx, &ny, &nz, &nts);
+    if (nx != x)
+        printf("ERROR %s: something is wrong! nx != x\n", __FUNCTION__);
+    if (ny != y)
+        printf("ERROR %s: something is wrong! ny != y\n", __FUNCTION__);
+    if (nz != z)
+        printf("ERROR %s: something is wrong! nz != z\n", __FUNCTION__);
+    if (nts != type_size)
+        printf("ERROR %s: something is wrong! nts != type_size\n", __FUNCTION__);
+
+    debug_print("allocating %d bytes @ %p\n", alloc + _MALLOC_3D_BUFFER_SPACE, ret);
+#endif
+
+
     return ret;
 }
 
@@ -182,38 +202,50 @@ int bisect(float *arr, float x, int n)
 
 int *bitwise_and_sse2(int *a, int *b, int n, int *ret)
 {
+    char *aptr, *bptr, *retptr;
     unsigned int i;
     __m128i ad, bd, res;
 
-    for (i = 0; likely((i + ((128 / 8) / 4)) < n); i += (128 / 8) / 4) {
-        ad = _mm_loadu_si128((__m128i *)(a + i));
-        bd = _mm_loadu_si128((__m128i *)(b + i));
+    aptr = (char *)a;
+    bptr = (char *)b;
+    retptr = (char *)ret;
+
+    for (i = 0; likely((i + ((128 / 8))) < n); i += (128 / 8)) {
+        ad = _mm_loadu_si128((__m128i *)((char *)aptr + i));
+        bd = _mm_loadu_si128((__m128i *)((char *)bptr + i));
 
         res = _mm_and_si128(ad, bd);
-        _mm_storeu_si128((__m128i *)(ret + i), res);
+        _mm_storeu_si128((__m128i *)((char *)retptr + i), res);
     }
 
-    for (; likely(i < n); ++i)
-        ret[i] = a[i] & b[i];
+    for (; i < n; i++)
+        retptr[i] = aptr[i] & bptr[i];
 
     return ret;
 }
 
 int *bitwise_or_sse2(int *a, int *b, int n, int *ret)
 {
+    char *aptr, *bptr, *retptr;
     unsigned int i;
     __m128i ad, bd, res;
 
-    for (i = 0; likely((i + ((128 / 8) / 4)) < n); i += (128 / 8) / 4) {
-        ad = _mm_loadu_si128((__m128i *)(a + i));
-        bd = _mm_loadu_si128((__m128i *)(b + i));
+    aptr = (char *)a;
+    bptr = (char *)b;
+    retptr = (char *)ret;
+
+    for (i = 0; likely(i + (128 / 8) < n); i += (128 / 8)) {
+        ad = _mm_loadu_si128((__m128i *)((char *)aptr + i));
+        bd = _mm_loadu_si128((__m128i *)((char *)bptr + i));
 
         res = _mm_or_si128(ad, bd);
-        _mm_storeu_si128((__m128i *)(ret + i), res);
+        _mm_storeu_si128((__m128i *)((char *)retptr + i), res);
     }
 
-    for (; likely(i < n); ++i)
-        ret[i] = a[i] | b[i];
+    for (; i < n; i++)
+        retptr[i] = aptr[i] | bptr[i];
+
+    debug_print("nice\n");
 
     return ret;
 }
@@ -236,17 +268,25 @@ int bitwise_or_3d(void ***a, void ***b, void ***res)
     mem_3d_get_dims(b, &x[1], &y[1], &z[1], &ts[1]);
     mem_3d_get_dims(res, &x[2], &y[2], &z[2], &ts[2]);
 
-    if ((x[0] ^ x[1] ^ x[2]))
+    if ((x[0] & x[1] & x[2]) != x[0]) {
+        debug_print("a x = %d, b x = %d, res x = %d\n", x[0], x[1], x[2]);
         return 0; // x dimenstions are not of the same dimensions
+    }
 
-    if ((y[0] ^ y[1] ^ y[2]))
+    if ((y[0] & y[1] & y[2]) != y[0]) {
+        debug_print("a y = %d, b y = %d, res y = %d\n", y[0], y[1], y[2]);
         return 0; // y dimenstions are not of the same dimensions
+    }
 
-    if ((z[0] ^ z[1] ^ z[2]))
+    if ((z[0] & z[1] & z[2]) != z[0]) {
+        debug_print("a z = %d, b z = %d, res z = %d\n", z[0], z[1], z[2]);
         return 0; // y dimenstions are not of the same dimensions
+    }
 
-    if ((ts[0] ^ ts[1] ^ ts[2]))
+    if ((ts[0] & ts[1] & ts[2]) != ts[0]) {
+        debug_print("a ts = %d, b ts = %d, res ts = %d\n", ts[0], ts[1], ts[2]);
         return 0; // types are not of same size
+    }
 
     bitwise_or_sse2((int *)&ptra[0][0][0], (int *)&ptrb[0][0][0],
             x[0] * y[0] * ts[0] * z[0], (int *)&ptrres[0][0][0]);
@@ -272,16 +312,16 @@ int bitwise_and_3d(void ***a, void ***b, void ***res)
     mem_3d_get_dims(b, &x[1], &y[1], &z[1], &ts[1]);
     mem_3d_get_dims(res, &x[2], &y[2], &z[2], &ts[2]);
 
-    if ((x[0] ^ x[1] ^ x[2]))
+    if ((x[0] & x[1] & x[2]) != x[0])
         return 0; // x dimenstions are not of the same dimensions
 
-    if ((y[0] ^ y[1] ^ y[2]))
+    if ((y[0] & y[1] & y[2]) != y[0])
         return 0; // y dimenstions are not of the same dimensions
 
-    if ((z[0] ^ z[1] ^ z[2]))
+    if ((z[0] & z[1] & z[2]) != z[0])
         return 0; // y dimenstions are not of the same dimensions
 
-    if ((ts[0] ^ ts[1] ^ ts[2]))
+    if ((ts[0] & ts[1] & ts[2]) != ts[0])
         return 0; // types are not of same size
 
     bitwise_and_sse2((int *)&ptra[0][0][0], (int *)&ptrb[0][0][0],

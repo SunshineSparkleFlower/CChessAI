@@ -109,6 +109,8 @@ board_t *new_board(char *_fen)
     strcpy(fen, _fen);
 
     board = malloc(sizeof(board_t));
+    if (board == NULL)
+        return NULL;
 
     for (i = 0; i < 8; i++)
         board->board_2d[i] = &board->_board[i * 8];
@@ -116,14 +118,12 @@ board_t *new_board(char *_fen)
 
 
     fen_ptr = strchr(fen, ' ');
-    *fen_ptr = 0;
-    fen_ptr++;
+    *fen_ptr++ = 0;
 
     // initialize board
     rank = fen;
     tmp = strchr(fen, '/');
-    *tmp = 0;
-    tmp++;
+    *tmp++ = 0;
     row = 7;
     for (i = 0; i < 8; i++) {
         col = 0;
@@ -143,8 +143,7 @@ board_t *new_board(char *_fen)
         if (tmp) {
             tmp = strchr(tmp, '/');
             if (tmp) {
-                *tmp = 0;
-                tmp++;
+                *tmp++ = 0;
             }
         }
     }
@@ -191,26 +190,21 @@ char *get_fen(board_t *board)
                 ++cnt;
             } else {
                 if (cnt) {
-                    *ptr = cnt + '0';
-                    ptr++;
+                    *ptr++ = cnt + '0';
                     cnt = 0;
                 }
-                *ptr = chesspiece_to_fen(board->board_2d[row][col]);
-                ptr++;
+                *ptr++ = chesspiece_to_fen(board->board_2d[row][col]);
             }
         }
         if (cnt) {
-            *ptr = cnt + '0';
-            ptr++;
+            *ptr++ = cnt + '0';
             cnt = 0;
         }
-        *ptr = '/';
-        ptr++;
+        *ptr++ = '/';
     }
 
     *(ptr - 1) = ' ';
-    *ptr = board->turn == WHITE ? 'w' : 'b';
-    ptr++;
+    *ptr++ = board->turn == WHITE ? 'w' : 'b';
     *ptr = 0;
     strcat(ptr, " - -");
 

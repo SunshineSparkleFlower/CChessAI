@@ -84,8 +84,6 @@ void _debug_print(const char *function, char *fmt, ...);
 #define debug_print(fmt, ...) 
 #endif
 
-extern struct board *create_board(char *fen);
-extern void free_board(struct board *b);
 extern int get_moves_index(piece_t piece);
 extern int color(piece_t p);
 extern enum moves_index get_piece_type(piece_t piece);

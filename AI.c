@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <stdint.h>
 #include "common.h"
 #include "rules.h"
@@ -32,7 +33,7 @@ AI_instance_t *ai_new(int nr_features, int feature_density)
     uint16_t ***random_feature2;
     uint16_t ***result_a, ***result_b;
 
-    ret = malloc(sizeof(AI_instance_t));
+    ret = malloc(sizeof(struct AI_instance));
     if (ret == NULL) {
         perror("malloc");
         return NULL;
@@ -89,13 +90,20 @@ AI_instance_t *ai_new(int nr_features, int feature_density)
     choice_3d(piecess, sizeof(piecess) / sizeof(uint16_t), random_feature1);
     choice_3d(piecess, sizeof(piecess) / sizeof(uint16_t), random_feature2);
 
-    bitwise_or_3d((void ***)random_feature1, (void ***)random_feature2, (void ***)result_a);
+    int tmp;
+    tmp = bitwise_or_3d((void ***)random_feature1, (void ***)random_feature2, (void ***)result_a);
+    if (!tmp)
+        debug_print("failed to bitwize or 1\n");
 
     choice_3d(piecess, sizeof(piecess) / sizeof(uint16_t), random_feature1);
     choice_3d(piecess, sizeof(piecess) / sizeof(uint16_t), random_feature2);
 
-    bitwise_or_3d((void ***)random_feature1, (void ***)random_feature2, (void ***)result_b);
-    bitwise_or_3d((void ***)result_a, (void ***)result_b, (void ***)ret->features);
+    tmp = bitwise_or_3d((void ***)random_feature1, (void ***)random_feature2, (void ***)result_b);
+    if (!tmp)
+        debug_print("failed to bitwize or 2\n");
+    tmp = bitwise_or_3d((void ***)result_a, (void ***)result_b, (void ***)ret->features);
+    if (!tmp)
+        debug_print("failed to bitwize or 3\n");
 
     free(random_feature1);
     free(random_feature2);
@@ -110,6 +118,7 @@ void ai_free(AI_instance_t *ai)
     map_free(ai->map);
     map_free(ai->shortmemory);
 
+    free(ai->m);
     free(ai->features);
     free(ai);
 }
