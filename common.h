@@ -94,6 +94,7 @@ extern int mem_3d_get_dims(void ***mem, int *x, int *y, int *z, int *type_size);
 extern int random_int(void);
 extern unsigned random_uint(void);
 extern int random_int_r(int min, int max);
+extern unsigned random_uint(void);
 extern float random_float(void);
 extern int bisect(float *arr, float x, int n);
 extern int *bitwise_and_sse2(int *a, int *b, int n, int *ret);

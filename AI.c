@@ -84,6 +84,7 @@ AI_instance_t *ai_new(int nr_features, int feature_density)
 
     random_feature1 = (uint16_t ***)malloc_3d(8, 8, nr_features, sizeof(uint16_t));
     random_feature2 = (uint16_t ***)malloc_3d(8, 8, nr_features, sizeof(uint16_t));
+
     result_a = (uint16_t ***)malloc_3d(8, 8, nr_features, sizeof(uint16_t));
     result_b = (uint16_t ***)malloc_3d(8, 8, nr_features, sizeof(uint16_t));
 

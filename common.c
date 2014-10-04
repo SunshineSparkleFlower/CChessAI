@@ -179,7 +179,7 @@ int random_int_r(int min, int max)
     int ret;
     int nm = max - min;
 
-    ret = random_int() % (nm + 1);;
+    ret = random_uint() % (nm + 1);;
 
     if (min < 0 && max < 0)
         return -(ret - max) - 1;
@@ -362,8 +362,7 @@ int color(uint16_t p)
 
 enum moves_index get_piece_type(piece_t piece)
 {
-    register unsigned ret = get_moves_index(piece);
-    return ret;
+    return get_moves_index(piece);
 }
 
 coord_t move_offset[6][9][20] = {
