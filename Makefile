@@ -1,6 +1,6 @@
 CC=gcc
-CFLAGS=-Wall -O2 -msse4.1
-LDFLAGS=-lcfu
+CFLAGS=-Wall -O2 -msse4.1 -g
+LDFLAGS=-lcfu -lpthread
 
 %.o: %.c
 	$(CC) $< $(CFLAGS) -c -o $@

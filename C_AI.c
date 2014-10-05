@@ -1,27 +1,123 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include "rules.h"
 #include "common.h"
 #include "board.h"
 #include "AI.h"
 
-void print_mem_att(AI_instance_t *ai)
+struct game_struct {
+    AI_instance_t *ai;
+    int nr_games, thread_id;
+};
+
+void print_ai_stats(int tid, AI_instance_t *ai, int ite, int rndwins)
 {
-    printf("memory attributes:\n");
-    printf("%d\n", get_len_memory(ai->map));
-    printf("P and R\n");
-    printf("%f\n", ai->map->lr_punish);
-    printf("%f\n", ai->map->lr_reward);
+    printf("thread %d: iteration %d\n", tid, ite);
+    printf("thread %d: aiw nr wins: %d\n", tid, ai->nr_wins);
+    printf("thread %d: random wins: %d\n", tid, rndwins);
+    printf("thread %d: memory attributes:\n", tid);
+    printf("    length %d\n", get_len_memory(ai->map));
+    printf("    P and R\n");
+    printf("    %f\n", ai->map->lr_punish);
+    printf("    %f\n", ai->map->lr_reward);
+    printf("thread %d: generation: %d\n", tid, ai->generation);
+    printf("density : %d\n", ai->feature_density);
 }
 
-void print_AI_att(AI_instance_t *ai)
+void *play(void *arg)
 {
-    printf("mem att :\n");
-    printf("density :\n");
-    printf("%d\n", ai->feature_density);
+    board_t *board;
+    AI_instance_t *ai;
+    int i, rounds, turn, rnd, rndwins;
+    struct game_struct *game = (struct game_struct *)arg;
+
+    rounds = game->nr_games;
+    ai = game->ai;
+
+    rndwins = 0;
+
+    for (i = 1; i < rounds + 1; i++) {
+        board = new_board(NULL);
+        turn = 0;
+
+        if (i % 100 == 0)
+            print_ai_stats(game->thread_id, ai, i, rndwins);
+
+        while (1) {
+            if (have_lost(board)) {
+                print_board(board->board);
+                printf("thread %d: ai lost\n", game->thread_id);
+                punish(ai);
+                ++rndwins;
+                break;
+            } else
+                do_best_move(ai, board);
+
+            swapturn(board);
+
+            if (have_lost(board)) {
+                print_board(board->board);
+                printf("thread %d: ai won\n", game->thread_id);
+                reward(ai);
+                break;
+            } else {
+                get_all_legal_moves(board);
+                rnd = random_int_r(0, board->moves_count - 1);
+                move(board, rnd);
+            }
+
+            swapturn(board);
+            ++turn;
+            if (turn > 80)
+                break;
+        }
+
+        free_board(board);
+    }
+
+    return NULL;
+}
+
+
+void spawn_n_games(int n, int rounds)
+{
+    int i;
+    struct game_struct games[n];
+    pthread_t threads[n - 1];
+
+    for (i = 0; i < n; i++) {
+        games[i].ai = ai_new(10, 4);
+        games[i].nr_games = rounds;
+        games[i].thread_id = i + 1;
+
+        if (i == n - 1)
+            break;
+        pthread_create(&threads[i], NULL, play, &games[i]);
+    }
+
+    play(&games[i]);
+    ai_free(games[i].ai);
+
+    for (i = 0; i < n - 1; i++) {
+        pthread_join(threads[i], NULL);
+        ai_free(games[i].ai);
+    }
 }
 
 int main(int argc, char *argv[])
+{
+    if (argc != 3) {
+        printf("USAGE: %s <nr. concurrent games> <nr. rounds>\n", argv[0]);
+        return 0;
+    }
+
+    spawn_n_games(atoi(argv[1]), atoi(argv[2]));
+    return 0;
+}
+
+
+int oldmain(int argc, char *argv[])
 {
     board_t *board = NULL;
     AI_instance_t *aiw[2];
@@ -43,16 +139,8 @@ int main(int argc, char *argv[])
         }
 
         if (ite % 100 == 0) {
-            printf("iteration %d\n", ite);
-            printf("aiw[0] nr wins: %d\n", aiw[0]->nr_wins);
-            printf("aiw[1] nr wins: %d\n", aiw[1]->nr_wins);
-            printf("randomwon: %d\n", randomwon);
-            print_mem_att(aiw[0]);
-            print_mem_att(aiw[1]);
-            printf("generation: %d\n", aiw[0]->generation);
-            printf("generation: %d\n", aiw[1]->generation);
-            print_AI_att(aiw[0]);
-            print_AI_att(aiw[1]);
+            print_ai_stats(1, aiw[0], ite, randomwon);
+            print_ai_stats(1, aiw[1], ite, randomwon);
 
             if (get_score(aiw[0]) > get_score(aiw[1])) {
                 printf("0 won\n");

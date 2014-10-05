@@ -221,7 +221,7 @@ void ai_mutate(AI_instance_t *a, AI_instance_t *b)
     a->features[random_uint() % b->nr_features][random_uint() % 8][random_uint() % 8]
         = feature;
 
-    a->generation = a->generation + 1;
+    a->generation++;
     set_lr(a->map, b->map->lr_punish, b->map->lr_reward);
     mem_mutate(a->map);
     a->feature_density = b->feature_density;
