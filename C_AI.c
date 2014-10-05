@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include "rules.h"
 #include "common.h"
 #include "board.h"
 #include "AI.h"
+
+#include "fastrules.h"
+#include "rules.h"
 
 struct game_struct {
     AI_instance_t *ai;
@@ -39,6 +41,10 @@ void *play(void *arg)
 
     for (i = 1; i < rounds + 1; i++) {
         board = new_board(NULL);
+        if (i == 1) {
+            get_all_legal_moves(board);
+            print_legal_moves(board);
+        }
         turn = 0;
 
         if (i % 100 == 0)
@@ -115,7 +121,6 @@ int main(int argc, char *argv[])
     spawn_n_games(atoi(argv[1]), atoi(argv[2]));
     return 0;
 }
-
 
 int oldmain(int argc, char *argv[])
 {

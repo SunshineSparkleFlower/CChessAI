@@ -1,9 +1,10 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "common.h"
-#include "rules.h"
 #include "AI.h"
 #include "map.h"
+#include "rules.h"
+#include "fastrules.h"
 
 #include "emmintrin.h"
 #include "smmintrin.h"

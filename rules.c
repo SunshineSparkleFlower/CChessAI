@@ -240,6 +240,9 @@ int get_legal_moves(board_t *board, coord_t *from)
     return ret;
 }
 
+#ifdef FASTRULES
+static
+#endif
 board_t *get_all_legal_moves(board_t *board_struct)
 {
     int row, col;
@@ -268,74 +271,6 @@ static int can_attack(move_t *moves, int num_moves, coord_t *e)
             return 1;
 
     return 0;
-}
-
-const char *piece_to_str(piece_t p)
-{
-    const char *ret = NULL;
-    static const char *strings[] = {
-        "pawn(w)",
-        "rook(w)",
-        "knight(w)",
-        "bishop(w)",
-        "queen(w)",
-        "king(w)",
-
-        "pawn(b)",
-        "rook(b)",
-        "knight(b)",
-        "bishop(b)",
-        "queen(b)",
-        "king(b)",
-        "empty",
-    };
-
-    if (p & (1 << 12))
-        ret = strings[12];
-    else if (p > 1 << 5) {
-        ret = strings[get_moves_index(p) + 6];
-    } else  if (p > 0)
-        ret = strings[get_moves_index(p) + 0];
-    return ret;
-}
-
-void print_board(piece_t *board)
-{
-    int i, j;
-
-    printf("           0         1         2         3"
-            "         4         5         6         7\n");
-
-    for (i = 7; i >= 0; i--) {
-        printf("%d  ", i);
-        for (j = 0; j < 8; j++)
-            printf("%10s", piece_to_str(PIECE(board, i, j)));
-        printf("\n");
-    }
-}
-
-void print_legal_moves(board_t *board)
-{
-    int i;
-
-    printf("count: %d\n", board->moves_count);
-    if (board->moves_count > 0) {
-        printf("from: %d, %d (%s)\n", board->moves[0].frm.y, board->moves[0].frm.x,
-                piece_to_str(board->board_2d[board->moves[0].frm.y][board->moves[0].frm.x]));
-        piece_to_str(PIECE(board->board, board->moves[0].frm.y, board->moves[0].frm.x));
-    }
-
-    for (i = 0; i < board->moves_count; i++) {
-        printf("(%d, %d) ", board->moves[i].to.y, board->moves[i].to.x);
-
-        if (empty(board->board, board->moves[i].to.y, board->moves[i].to.x, board->turn))
-            printf("(empty)\n");
-        else if (enemy(board->board, board->moves[i].to.y, board->moves[i].to.x, board->turn))
-            printf("(enemy)\n");
-        else
-            printf("(ally)\n");
-    }
-
 }
 
 /*

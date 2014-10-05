@@ -51,6 +51,17 @@ const piece_flag_t piece_flags[] = {
      piece_flags[(piece)]) != 0)
 
 typedef enum {
+    A1=0x00, B1=0x01, C1=0x02, D1=0x03, E1=0x04, F1=0x05, G1=0x06, H1=0x07,
+    A2=0x10, B2=0x11, C2=0x12, D2=0x13, E2=0x14, F2=0x15, G2=0x16, H2=0x17,
+    A3=0x20, B3=0x21, C3=0x22, D3=0x23, E3=0x24, F3=0x25, G3=0x26, H3=0x27,
+    A4=0x30, B4=0x31, C4=0x32, D4=0x33, E4=0x34, F4=0x35, G4=0x36, H4=0x37,
+    A5=0x40, B5=0x41, C5=0x42, D5=0x43, E5=0x44, F5=0x45, G5=0x46, H5=0x47,
+    A6=0x50, B6=0x51, C6=0x52, D6=0x53, E6=0x54, F6=0x55, G6=0x56, H6=0x57,
+    A7=0x60, B7=0x61, C7=0x62, D7=0x63, E7=0x64, F7=0x65, G7=0x66, H7=0x67,
+    A8=0x70, B8=0x71, C8=0x72, D8=0x73, E8=0x74, F8=0x75, G8=0x76, H8=0x77,
+    INVALID_SQUARE=0x4b // just some square from the middle of the invalid part
+} square_tag_t;
+typedef enum {
     WHITE=0, BLACK=1, INVALID_COLOR=2
 } color_t;
 
@@ -69,22 +80,14 @@ typedef struct {
     int endgame;
 } score_t;
 
-typedef enum {
-    A1=0x00, B1=0x01, C1=0x02, D1=0x03, E1=0x04, F1=0x05, G1=0x06, H1=0x07,
-    A2=0x10, B2=0x11, C2=0x12, D2=0x13, E2=0x14, F2=0x15, G2=0x16, H2=0x17,
-    A3=0x20, B3=0x21, C3=0x22, D3=0x23, E3=0x24, F3=0x25, G3=0x26, H3=0x27,
-    A4=0x30, B4=0x31, C4=0x32, D4=0x33, E4=0x34, F4=0x35, G4=0x36, H4=0x37,
-    A5=0x40, B5=0x41, C5=0x42, D5=0x43, E5=0x44, F5=0x45, G5=0x46, H5=0x47,
-    A6=0x50, B6=0x51, C6=0x52, D6=0x53, E6=0x54, F6=0x55, G6=0x56, H6=0x57,
-    A7=0x60, B7=0x61, C7=0x62, D7=0x63, E7=0x64, F7=0x65, G7=0x66, H7=0x67,
-    A8=0x70, B8=0x71, C8=0x72, D8=0x73, E8=0x74, F8=0x75, G8=0x76, H8=0x77,
-    INVALID_SQUARE=0x4b // just some square from the middle of the invalid part
-} square_tag_t;
-typedef int square_t;
 typedef int32_t move_t;
 typedef uint8_t castle_rights_t;
 typedef uint64_t hashkey_t;
 
+#define HASH_HISTORY_LENGTH  2048
+
+
+typedef int square_t;
 typedef struct {
     piece_t _board_storage[256];        // 16x16 padded board
     piece_t* board;                     // 0x88 board in middle 128 slots
@@ -107,7 +110,6 @@ typedef struct {
     hashkey_t hash;
     hashkey_t pawn_hash;
     hashkey_t material_hash;
-#define HASH_HISTORY_LENGTH  2048
     hashkey_t hash_history[HASH_HISTORY_LENGTH];
 } position_t;
 
@@ -670,7 +672,7 @@ uint8_t find_checks(position_t* pos)
     }
     return attackers;
 }
-void do_move(position_t* pos, move_t move, undo_info_t* undo)
+static void do_move(position_t* pos, move_t move, undo_info_t* undo)
 {
 #define check_move_validity(x,y)                ((void)0,(void)0)
     check_move_validity(pos, move);
@@ -1054,7 +1056,7 @@ int generate_evasions(const position_t* pos, move_t* moves)
 /*
  * In |pos|, is the side to move in check?
  */
-bool is_check(const position_t* pos)
+static bool is_check(const position_t* pos)
 {
     return pos->is_check;
 }
@@ -2821,7 +2823,7 @@ void position_to_fen_str(const position_t* pos, char* fen)
 /*
  * Print an ascii representation of the current board.
  */
-void print_board(const position_t* pos, bool uci_prefix)
+static void print_board(const position_t* pos, bool uci_prefix)
 {
 # if __WORDSIZE == 64
 #  define __PRI64_PREFIX	"l"
@@ -3152,6 +3154,25 @@ typedef struct {
     bool running;
 } milli_timer_t;
 
+/*
+ * Create a copy of |src| in |dst|.
+ */
+void copy_position(position_t* dst, const position_t* src)
+{
+    check_board_validity(src);
+    memcpy(dst, src, sizeof(position_t));
+    dst->board = dst->_board_storage+64;
+    check_board_validity(src);
+    check_board_validity(dst);
+}
+/*
+ * Initialize a timer.
+ */
+void init_timer(milli_timer_t* timer)
+{
+    timer->elapsed_millis = 0;
+    timer->running = false;
+}
 typedef struct {
     position_t root_pos;
     search_stats_t stats;
@@ -3184,26 +3205,6 @@ typedef struct {
     int mate_search; // TODO: implement me
     bool infinite;
 } search_data_t;
-
-/*
- * Create a copy of |src| in |dst|.
- */
-void copy_position(position_t* dst, const position_t* src)
-{
-    check_board_validity(src);
-    memcpy(dst, src, sizeof(position_t));
-    dst->board = dst->_board_storage+64;
-    check_board_validity(src);
-    check_board_validity(dst);
-}
-/*
- * Initialize a timer.
- */
-void init_timer(milli_timer_t* timer)
-{
-    timer->elapsed_millis = 0;
-    timer->running = false;
-}
 /*
  * Zero out all search variables prior to starting a search. Leaves the
  * position and search options untouched.
@@ -4680,6 +4681,21 @@ void init_daydreamer(void)
     //init_uci_options();
     set_position(&root_data.root_pos, FEN_STARTPOS);
 }
+
+int32_t *please_give_me_all_legal_moves_remember_to_free_this_structure_after(char *fen)
+{
+    search_data_t root_shits;
+    int32_t *ret = malloc(256 * sizeof(int32_t));
+
+    init_search_data(&root_shits);
+    set_position(&root_shits.root_pos, fen);
+    generate_legal_moves(&root_shits.root_pos, ret);
+
+
+    return ret;
+}
+
+/*
 int main(int argc, char *argv[])
 {
     int i, j, count;
@@ -4703,3 +4719,4 @@ int main(int argc, char *argv[])
 
     return 0;
 }
+*/
