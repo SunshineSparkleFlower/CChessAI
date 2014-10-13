@@ -7,15 +7,16 @@
 
 typedef struct AI_instance {
     int8_t *m;
-    piece_t ***features;
-    int nr_features, move_nr;
+    piece_t ***layers;
+    int nr_layers, move_nr;
     struct hmap *map, *shortmemory;
     int nr_wins, nr_losses;
     int generation;
     int feature_density;
+    piece_t *nextboard;
 } AI_instance_t;
 
-extern AI_instance_t *ai_new(int nr_features, int feature_density);
+extern AI_instance_t *ai_new(int nr_layers, int *nr_features, int feature_density);
 extern void ai_free(AI_instance_t *ai);
 extern struct move *do_best_move(AI_instance_t *ai, board_t *board);
 extern void punish(AI_instance_t *ai);

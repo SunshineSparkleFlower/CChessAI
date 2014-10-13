@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -O2 -msse4.1 -g
+CFLAGS=-O2 -msse4.1 -g
 LDFLAGS=-lcfu -lpthread
 
 %.o: %.c
@@ -18,7 +18,11 @@ fast: C_AI.o board.o AI.o map.o fastrules.o rules.o common.o shits.o
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
 
 debug: CFLAGS += -DDEBUG -g
-debug: all
+debug: test
+
+test: CFLAGS += -DFASTRULES -g
+test: unit_test_ai.o board.o AI.o map.o fastrules.o rules.o common.o shits.o
+	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
 
 clean:
-	-$(RM) *.o C_AI fast
+	-$(RM) *.o C_AI fast test

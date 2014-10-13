@@ -98,7 +98,6 @@ static char chesspiece_to_fen(piece_t c)
     }
 }
 
-
 board_t *new_board(char *_fen)
 {
     int i, j;
@@ -112,7 +111,7 @@ board_t *new_board(char *_fen)
 
     strcpy(fen, _fen);
 
-    board = malloc(sizeof(board_t));
+    board = calloc(1, sizeof(board_t));
     if (board == NULL)
         return NULL;
 

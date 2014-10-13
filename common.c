@@ -9,6 +9,18 @@
 
 #include "common.h"
 
+void dump(char *arr, int n)
+{
+    int i;
+    unsigned char *ptr = (unsigned char *)arr;
+
+    for (i = 0; i < n; i++) {
+        printf("%02x ", ptr[i]);
+        if ((i + 1) % 16 == 0)
+            printf("\n");
+    }
+    printf("\n");
+}
 
 void _debug_print(const char *function, char *fmt, ...)
 {
@@ -36,26 +48,80 @@ int get_moves_index(piece_t piece)
     return r;
 }
 
+#define _MALLOC_2D_BUFFER_SPACE (3*sizeof(int))
 #define _MALLOC_3D_BUFFER_SPACE (4*sizeof(int))
-int mem_3d_get_dims(void ***mem, int *x, int *y, int *z, int *type_size)
+void **malloc_2d(size_t x, size_t y, size_t type_size)
 {
-    char ***ret = (char ***)mem;
+    int i;
+    void **ret;
+    int  **_2d;
+    char *data_start;
+    int *info;
+    int alloc = ((x * y) * type_size) + y * sizeof(void *);
+
+    if (x < 1 || y < 1)
+        return NULL;
+
+    ret = malloc(alloc + _MALLOC_2D_BUFFER_SPACE);
+    _2d = (int **)ret;
+
+    printf("mallocating %d bytes\n", alloc + _MALLOC_2D_BUFFER_SPACE);
+
+    for (i = 0; i < y; i++) {
+        data_start = (char *)((int **)_2d + y);
+        data_start += _MALLOC_2D_BUFFER_SPACE;
+        data_start += (i * x * type_size);
+
+        printf("i: %d, ret: %p, data start: %p\n", i, ret, data_start);
+
+        _2d[i] = (int *)data_start;
+    }
+
+    info = (int *)((char *)&_2d[0][0] - _MALLOC_2D_BUFFER_SPACE);
+
+    info[0] = y;
+    info[1] = x;
+    info[2] = type_size;
+
+
+    return ret;
+}
+
+int mem_2d_get_dims(void **mem, int *x, int *y, int *type_size)
+{
+    char **ret = (char **)mem;
     int *info;
 
     if (!mem)
         return 0;
-
-    info = (int *)((char *)&ret[0][0][0] - _MALLOC_3D_BUFFER_SPACE);
+    
+    info = (int *)((char *)&ret[0][0] - _MALLOC_2D_BUFFER_SPACE);
     if (x)
-        *x = info[2];
+        *x = info[1];
     if (y)
-        *y = info[1];
-    if (z)
-        *z = info[0];
+        *y = info[0];
     if (type_size)
-        *type_size = info[3];
+        *type_size = info[2];
 
     return 1;
+}
+
+void **memdup_2d(void **mem)
+{
+    char *ptr;
+    char **ret = (char **)mem;
+    int *info = (int *)((char *)&ret[0][0] - _MALLOC_2D_BUFFER_SPACE);
+
+    ptr = &ret[0][0];
+
+    ret = (char **)malloc_2d(info[1], info[0], info[2]);
+    if (ret == NULL)
+        return NULL;
+
+    // x * y * type_size * z
+    memcpy(&ret[0][0], ptr, info[1] * info[0] * info[2]);
+
+    return (void **)ret;
 }
 
 void ***malloc_3d(size_t x, size_t y, size_t z, size_t type_size)
@@ -115,6 +181,27 @@ void ***malloc_3d(size_t x, size_t y, size_t z, size_t type_size)
     return ret;
 }
 
+int mem_3d_get_dims(void ***mem, int *x, int *y, int *z, int *type_size)
+{
+    char ***ret = (char ***)mem;
+    int *info;
+
+    if (!mem)
+        return 0;
+
+    info = (int *)((char *)&ret[0][0][0] - _MALLOC_3D_BUFFER_SPACE);
+    if (x)
+        *x = info[2];
+    if (y)
+        *y = info[1];
+    if (z)
+        *z = info[0];
+    if (type_size)
+        *type_size = info[3];
+
+    return 1;
+}
+
 void ***memdup_3d(void ***mem)
 {
     char *ptr;
@@ -133,6 +220,7 @@ void ***memdup_3d(void ***mem)
     return (void ***)ret;
 }
 #undef _MALLOC_3D_BUFFER_SPACE
+#undef _MALLOC_2D_BUFFER_SPACE
 
 int random_int(void)
 {
@@ -160,7 +248,7 @@ unsigned random_uint(void)
     return ret;
 }
 
-float random_float(void)
+float random_float_nr(void)
 {
     float ret;
     static int urandom = -1;
@@ -171,6 +259,11 @@ float random_float(void)
     read(urandom, &ret, sizeof(ret));
 
     return ret;
+}
+
+float random_float(void)
+{
+    return ((float)(unsigned)random_uint())/(float)0xffffffff;
 }
 
 // return a number r. min <= r <= max
@@ -187,15 +280,25 @@ int random_int_r(int min, int max)
     return ret + min;
 }
 
+int random_fill(void *arr, int n)
+{
+    static int urandom = -1;
+
+    if (urandom == -1)
+        urandom = open("/dev/urandom", O_RDONLY);
+
+    return read(urandom, arr, n);
+}
+
 /* assumes arr is sorted */
 int bisect(float *arr, float x, int n)
 {
     int i = 0;
 
-    while (i < n && x <= arr[i++]);
+    while (i < n && x >= arr[i]) i++;
 
     if (i >= n)
-        i = n - 1;
+        return n - 1;
 
     return i;
 }

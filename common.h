@@ -22,7 +22,7 @@ typedef struct legal_moves {
 } legal_moves_t;
 
 typedef struct board {
-    piece_t _board[8*8];
+    piece_t _board[8 * 8 * 2];
     piece_t *board_2d[8];
     piece_t *board; // only for backwards compatability. points to _board
     //piece_t *board;
@@ -88,6 +88,9 @@ extern int get_moves_index(piece_t piece);
 extern int color(piece_t p);
 extern enum moves_index get_piece_type(piece_t piece);
 
+extern void **malloc_2d(size_t x, size_t y, size_t type_size);
+extern int mem_2d_get_dims(void **mem, int *x, int *y, int *type_size);
+extern void **memdup_2d(void **mem);
 extern void ***malloc_3d(size_t x, size_t y, size_t z, size_t type_size);
 extern void ***memdup_3d(void ***mem);
 extern int mem_3d_get_dims(void ***mem, int *x, int *y, int *z, int *type_size);
@@ -96,11 +99,13 @@ extern unsigned random_uint(void);
 extern int random_int_r(int min, int max);
 extern unsigned random_uint(void);
 extern float random_float(void);
+extern int random_fill(void *arr, int n);
 extern int bisect(float *arr, float x, int n);
 extern int *bitwise_and_sse2(int *a, int *b, int n, int *ret);
 extern int bitwise_and_3d(void ***a, void ***b, void ***res);
 extern int *bitwise_or_sse2(int *a, int *b, int n, int *ret);
 extern int bitwise_or_3d(void ***a, void ***b, void ***res);
+extern void dump(char *arr, int n);
 // works like numpy.random.choice 
 // samples are the samples to fill ***out with
 // n are the length of *samples
