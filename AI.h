@@ -18,7 +18,7 @@ typedef struct AI_instance {
 
 extern AI_instance_t *ai_new(int nr_layers, int *nr_features, int feature_density);
 extern void ai_free(AI_instance_t *ai);
-extern struct move *do_best_move(AI_instance_t *ai, board_t *board);
+extern int do_best_move(AI_instance_t *ai, board_t *board);
 extern void punish(AI_instance_t *ai);
 extern void reward(AI_instance_t *ai);
 extern int get_score(AI_instance_t *ai);

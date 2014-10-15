@@ -4690,10 +4690,14 @@ int32_t *please_give_me_all_legal_moves_remember_to_free_this_structure_after(ch
     init_search_data(&root_shits);
     set_position(&root_shits.root_pos, fen);
     generate_legal_moves(&root_shits.root_pos, ret);
-
+    //printf("ret: %d\n",ret[0]);
+    if(ret[0] == 0 && is_check(&root_shits.root_pos)){
+            ret[0] = 0xffffffff;
+    }
 
     return ret;
 }
+
 
 /*
 int main(int argc, char *argv[])

@@ -28,7 +28,7 @@ static piece_t piecesl[] = {
 
 AI_instance_t *ai_new(int nr_layers, int *nr_features, int feature_density)
 {
-    int i;
+    int i,j;
     AI_instance_t *ret;
     uint16_t piecess[4096];
     uint16_t ***result_a, ***result_b;
@@ -69,9 +69,13 @@ AI_instance_t *ai_new(int nr_layers, int *nr_features, int feature_density)
         // every consecutive layer has twice the length of the previous one
         ret->layers[i] = (piece_t **)malloc_2d(i > 0 ? nr_features[i - 1] : 128,
                nr_features[i], sizeof(piece_t));
+        
+              ret->layers[i] = (piece_t **)malloc_2d(i > 0 ? nr_features[i - 1] : 128,
+               nr_features[i], sizeof(piece_t));
+        for (j = 0; j < nr_features[i]; j++)
+            random_fill(&ret->layers[i][j][0],
+                    i > 0 ? nr_features[i - 1] * sizeof(piece_t): 128 * sizeof(piece_t));
 
-        //random_fill(&ret->layers[i][0],
-                //i > 0 ? nr_features[i - 1] : 128 * sizeof(piece_t));
     }
 
 /*
@@ -136,51 +140,82 @@ int8_t multiply(piece_t *features, piece_t *board, int n)
     return 1;
 }
 */
-
-int8_t multiply(piece_t *features, piece_t *board, int n)
+int multiply8(piece_t *features, piece_t *board, int n, int op, int mask)
 {
     unsigned int i, s;
+    
+   
+        for (i = 0; likely(i < n); i++)
+        { 
 
-    for (i = 0; likely(i < n); i++)
-        if ((features[i] & board[i]) != board[i])
+            if ((features[i] & board[i] & mask) == (board[i]) & mask){
+                return 1;
+            }    
+        }
             return 0;
-
+  
+    
+   
+}
+int multiply(piece_t *features, int *board, int n, int op, int mask)
+{
+    unsigned int i, s;
+    
+    int score = 0;
+    if(op == 0){
+        for (i = 0; likely(i < n); i++)
+        { 
+            if ((features[i] & board[i] & mask) == (board[i]) & mask){
+                score++;
+            }
+            else{
+                score--;
+            }
+        }
+        return score+n;
+    }
+    else if(op == 1)
+        for (i = 0; likely(i < n); i++){            
+            if ((features[i] & board[i] & mask) != (features[i] & mask))
+                return 0;
+        }
     return 1;
 }
 
-int8_t score(AI_instance_t *ai, piece_t *board)
+int score(AI_instance_t *ai, piece_t *board)
 {
     int i, j;
     int x, nr_features, ts;
     piece_t ***layers = ai->layers;
-    piece_t out[2][2000];
+    int out[2][2000];
 
     for (i = 0; i < ai->nr_layers; i++) {
-        mem_2d_get_dims((void **)layers[0], &x, &nr_features, &ts);
+        mem_2d_get_dims((void **)layers[i], &x, &nr_features, &ts);
         if (i == 0) {
             for (j = 0; j < nr_features; j++)
-                out[i % 2][j] = multiply(layers[0][i], board, x) + 1;
+                out[i % 2][j] = multiply8(layers[0][j], board, x, i % 2, 0x7FF) + 1;
             continue;
         }
-        for (j = 0; j < nr_features; j++)
-            out[i % 2][j] = multiply(layers[i][j], out[(i + 1) % 2], x) + 1;
+        for (j = 0; j < nr_features; j++){
+            out[i % 2][j] = multiply(layers[i][j], out[(i + 1) % 2], x, i % 2, 0x3) + 1;
+        }
     }
-
     return out[(i - 1) % 2][0] - 1;
 }
 
-static int _get_best_move(AI_instance_t *ai, board_t *board)
+int _get_best_move(AI_instance_t *ai, board_t *board)
 {
     int i, j, count;
     piece_t backup;
     float cumdist[board->moves_count], fcount, x;
-    int8_t scores[board->moves_count];
+    int scores[board->moves_count];
 
     for (i = count = 0; i < board->moves_count; i = count++) {
+        memcpy(&board->board[64],&board->board[0], 64*sizeof(piece_t));
+
         do_move(board->board, board->moves[i].frm, board->moves[i].to, &backup);
 
         scores[i] = score(ai, board->board);
-
         reverse_move(board->board, board->moves[i].frm, board->moves[i].to, backup);
     }
 
@@ -189,27 +224,48 @@ static int _get_best_move(AI_instance_t *ai, board_t *board)
         fcount += scores[i];
         cumdist[i] = fcount;
     }
-
     x = random_float() * cumdist[board->moves_count - 1];
+ 
 
     return bisect(cumdist, x, board->moves_count);
 }
 
-struct move *do_best_move(AI_instance_t *ai, board_t *board)
+//perform a best move return 0 if stalemate, -1 if check mate 1 of success
+int do_best_move(AI_instance_t *ai, board_t *board)
 {
     int best_move, i;
     piece_t backup;
 
     get_all_legal_moves(board);
+    if(board->moves_count == 0)
+        return 0;
+    if(board->moves_count == -1)
+        return -1;
+    
     best_move = _get_best_move(ai, board);
-
     do_move(board->board, board->moves[best_move].frm, board->moves[best_move].to, &backup);
+ 
+     swapturn(board);
+    return 1; 
+}
 
-    for (i = 0; i < ai->nr_layers; i++)
-        ai->m[i] = multiply(ai->layers[i][0], board->board, 128);
-    map_remember_action(ai->map, ai->m);
+//perform a random move return 0 if stalemate, -1 if check mate 1 of success
+int do_random_move(board_t *board){
+    piece_t backup;
+    get_all_legal_moves(board);
+     if(board->moves_count == 0)
+        return 0;
+    if(board->moves_count == -1)
+        return -1;
+     srand(time(NULL));
+    int move = rand()%board->moves_count;
+    do_move(board->board, board->moves[move].frm, board->moves[move].to, &backup);
 
-    return &board->moves[best_move];
+   
+     swapturn(board);
+
+    return 1;
+
 }
 
 void punish(AI_instance_t *ai)
@@ -252,6 +308,25 @@ void reward(AI_instance_t *ai)
    }
    */
 
+//layers in a a1 is replaced with layers from a2 pluss a mutation
+int mutate(AI_instance_t *a1, AI_instance_t *a2){
+    int x, nr_features, ts, i;
+
+    for (i = 0; i < a1->nr_layers; i++) {
+            mem_2d_get_dims((void **)a1->layers[i], &x, &nr_features, &ts);
+            memcpy(&a1->layers[i][0][0], &a2->layers[i][0][0], x*nr_features*ts);
+    }
+    srand(time(NULL));
+    int l = rand()%a1->nr_layers;
+    mem_2d_get_dims((void **)a1->layers[l], &x, &nr_features, &ts);
+    int f = rand()%nr_features;
+    int v = rand()%x;
+    
+    a1->layers[l][f][v] = rand();
+
+
+
+}
 int get_score(AI_instance_t *ai)
 {
     return ai->nr_wins - ai->nr_losses;

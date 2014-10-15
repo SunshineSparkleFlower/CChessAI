@@ -93,7 +93,7 @@ void spawn_n_games(int n, int rounds)
     pthread_t threads[n - 1];
 
     for (i = 0; i < n; i++) {
-        games[i].ai = ai_new(10, 4);
+        games[i].ai = ai_new(100, 4);
         games[i].nr_games = rounds;
         games[i].thread_id = i + 1;
 
