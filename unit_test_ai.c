@@ -430,8 +430,8 @@ int main(int argc, char *argv[])
     diff = end - start;
 
     count = rounds * threads;
-    printf("%d games played in %.0f ms (%.1f games pr. second)\n",
-            count, diff, (double)count / (diff / 1000));
+    printf("%d games played in %.0f ms (%.1f games pr. second, w/ %d threads)\n",
+            count, diff, (double)count / (diff / 1000), threads);
 
     return 0;
 }
