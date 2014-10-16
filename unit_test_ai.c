@@ -404,7 +404,7 @@ void spawn_n_games(int n, int rounds)
 
     printf("%d checkmates\n", checkmate);
     printf("%d stalemates\n", stalemate);
-    printf("%d timeouts\n", timeout - checkmate - stalemate);
+    printf("%d timeouts\n", timeout);
 }
 
 int main(int argc, char *argv[])
