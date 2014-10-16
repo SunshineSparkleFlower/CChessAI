@@ -225,12 +225,12 @@ void ***memdup_3d(void ***mem)
 int random_int(void)
 {
     int ret;
-    static int urandom = -1;
+    static FILE *urandom = NULL;
 
-    if (urandom == -1)
-        urandom = open("/dev/urandom", O_RDONLY);
+    if (urandom == NULL)
+        urandom = fopen("/dev/urandom", "r");
 
-    read(urandom, &ret, sizeof(ret));
+    fread(&ret, 1, sizeof(ret), urandom);
 
     return ret;
 }
@@ -238,12 +238,12 @@ int random_int(void)
 unsigned random_uint(void)
 {
     unsigned ret;
-    static int urandom = -1;
+    static FILE *urandom = NULL;
 
-    if (urandom == -1)
-        urandom = open("/dev/urandom", O_RDONLY);
+    if (urandom == NULL)
+        urandom = fopen("/dev/urandom", "r");
 
-    read(urandom, &ret, sizeof(ret));
+    fread(&ret, 1, sizeof(ret), urandom);
 
     return ret;
 }
@@ -251,12 +251,12 @@ unsigned random_uint(void)
 float random_float_nr(void)
 {
     float ret;
-    static int urandom = -1;
+    static FILE *urandom = NULL;
 
-    if (urandom == -1)
-        urandom = open("/dev/urandom", O_RDONLY);
+    if (urandom == NULL)
+        urandom = fopen("/dev/urandom", "r");
 
-    read(urandom, &ret, sizeof(ret));
+    fread(&ret, 1, sizeof(ret), urandom);
 
     return ret;
 }
@@ -282,12 +282,12 @@ int random_int_r(int min, int max)
 
 int random_fill(void *arr, int n)
 {
-    static int urandom = -1;
+    static FILE *urandom = NULL;
 
-    if (urandom == -1)
-        urandom = open("/dev/urandom", O_RDONLY);
+    if (urandom == NULL)
+        urandom = fopen("/dev/urandom", "r");
 
-    return read(urandom, arr, n);
+    return fread(arr, 1, n, urandom);
 }
 
 
