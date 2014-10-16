@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include "common.h"
 #include "map.h"
+#define SetBit(A,k)     ( A[(k/32)] |= (1 << (k%32)) )
+#define ClearBit(A,k)   ( A[(k/32)] &= ~(1 << (k%32)) )            
+#define TestBit(A,k)    ( A[(k/32)] & (1 << (k%32)) )
 
 typedef struct AI_instance {
     int8_t *m;
@@ -14,6 +17,10 @@ typedef struct AI_instance {
     int generation;
     int feature_density;
     piece_t *nextboard;
+    int **brain;
+    int nr_ports;
+    int nr_synapsis;
+    int board_size;
 } AI_instance_t;
 
 extern AI_instance_t *ai_new(int nr_layers, int *nr_features, int feature_density);

@@ -75,9 +75,19 @@ AI_instance_t *ai_new(int nr_layers, int *nr_features, int feature_density)
         for (j = 0; j < nr_features[i]; j++)
             random_fill(&ret->layers[i][j][0],
                     i > 0 ? nr_features[i - 1] * sizeof(piece_t): 128 * sizeof(piece_t));
-
     }
 
+    ret->nr_ports = 64;
+    ret->board_size = 64*2*2*8;
+    ret->nr_synapsis = ret->nr_ports + ret->board_size;
+
+    //int *V = (int *)malloc((( nr_ports)/32)*sizeof(int)); 
+    ret->brain = malloc_2d(ret->nr_synapsis/32, ret->nr_synapsis,  4);
+    
+
+    //int **board = (int *)malloc(64*2*2); 
+    for (i = 0; i < ret->nr_synapsis; i++)
+            random_fill(&ret->brain[i][0], ret->nr_synapsis/8);
 /*
    ret->m = malloc(nr_features);
    if (ret->features == NULL) {
@@ -182,26 +192,48 @@ int multiply(piece_t *features, int *board, int n, int op, int mask)
     return 1;
 }
 
+int nand(int *a, int *b, int size, int *board, int board_size){
+
+    int i;
+    for(i = 0; i < size; i++){
+        if(TestBit(a,i) == 1 && TestBit(b,i) == 1)
+            return 0;
+    }
+
+    for(i = size; i < board_size+size; i++){
+        if(TestBit(board,i) == 1 && TestBit(b,i) == 1)
+            return 0;
+    }
+    return 1;
+}
+
+
+
+
+
+int eval_curcuit(int *V, int **M,  int nr_ports, int *board, int board_size){
+    int i;
+    for(i = 0; i < nr_ports; i++){
+        if(nand(V, M[i], nr_ports, board, board_size))
+            SetBit(V,i);
+        else
+            ClearBit(V,i);
+    }
+    return TestBit(V,(nr_ports-1))?1:0;
+}
+
+
 int score(AI_instance_t *ai, piece_t *board)
 {
-    int i, j;
-    int x, nr_features, ts;
-    piece_t ***layers = ai->layers;
-    int out[2][2000];
-
-    for (i = 0; i < ai->nr_layers; i++) {
-        mem_2d_get_dims((void **)layers[i], &x, &nr_features, &ts);
-        if (i == 0) {
-            for (j = 0; j < nr_features; j++)
-                out[i % 2][j] = multiply8(layers[0][j], board, x, i % 2, 0x7FF) + 1;
-            continue;
-        }
-        for (j = 0; j < nr_features; j++){
-            out[i % 2][j] = multiply(layers[i][j], out[(i + 1) % 2], x, i % 2, 0x3) + 1;
-        }
-    }
-    return out[(i - 1) % 2][0] - 1;
+    int *V = (int *)malloc((( ai->nr_ports)/32)*sizeof(int)); 
+    return eval_curcuit(V, ai->brain, ai->nr_ports, board, ai->board_size);
 }
+
+
+
+
+
+
 
 int _get_best_move(AI_instance_t *ai, board_t *board)
 {
@@ -310,20 +342,17 @@ void reward(AI_instance_t *ai)
 
 //layers in a a1 is replaced with layers from a2 pluss a mutation
 int mutate(AI_instance_t *a1, AI_instance_t *a2){
-    int x, nr_features, ts, i;
 
-    for (i = 0; i < a1->nr_layers; i++) {
-            mem_2d_get_dims((void **)a1->layers[i], &x, &nr_features, &ts);
-            memcpy(&a1->layers[i][0][0], &a2->layers[i][0][0], x*nr_features*ts);
-    }
-    srand(time(NULL));
-    int l = rand()%a1->nr_layers;
-    mem_2d_get_dims((void **)a1->layers[l], &x, &nr_features, &ts);
-    int f = rand()%nr_features;
-    int v = rand()%x;
+      
+    memcpy(&a1->brain[0][0], &a2->brain[0][0], a1->nr_synapsis* a1->nr_synapsis/32);
     
-    a1->layers[l][f][v] = rand();
+    unsigned r1 = random_uint()%a1->nr_synapsis;
+    unsigned r2 = random_uint()%a1->nr_synapsis;
+    SetBit(a1->brain[r1],r2);
 
+     r1 = random_uint()%a1->nr_synapsis;
+     r2 = random_uint()%a1->nr_synapsis;
+    ClearBit(a1->brain[r1],r2);
 
 
 }
