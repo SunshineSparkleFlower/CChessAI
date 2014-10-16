@@ -4,32 +4,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-typedef uint16_t piece_t;
-
-// y == down -> up, x == left -> right
-typedef struct coord {
-    int8_t y :4;
-    int8_t x :4;
-} coord_t;
-
-typedef struct move {
-    coord_t frm, to;
-} move_t;
-
-typedef struct legal_moves {
-    move_t *moves;
-    int num_moves;
-} legal_moves_t;
-
-typedef struct board {
-    piece_t _board[8 * 8 * 2];
-    piece_t *board_2d[8];
-    piece_t *board; // only for backwards compatability. points to _board
-    //piece_t *board;
-    struct move moves[20*16];
-    int moves_count;
-    int turn;
-}  board_t;
+typedef uint64_t u64;
 
 enum moves_index {
     PAWN = 0,
@@ -48,6 +23,12 @@ enum moves_index {
 #define aligned(n) __attribute__((aligned(n)))
 #define likely(x)	__builtin_expect(!!(x), 1)
 #define unlikely(x)	__builtin_expect(!!(x), 0)
+
+#define __inline __attribute__((always_inline))
+#define is_set(b, n) ((b) & (1lu << (n)))
+#define set_bit(b, n) ((b) |= (1lu << (n)))
+#define isolate_bit(b, n) ((b) & (1lu << (n)))
+#define clear_bit(b, n) ((b) &= ~isolate_bit(b, n))
 
 
 // returns the piece at board[row][col]
@@ -84,6 +65,7 @@ void _debug_print(const char *function, char *fmt, ...);
 #define debug_print(fmt, ...) 
 #endif
 
+#include "board.h"
 extern int get_moves_index(piece_t piece);
 extern int color(piece_t p);
 extern enum moves_index get_piece_type(piece_t piece);
@@ -105,13 +87,8 @@ extern int *bitwise_and_sse2(int *a, int *b, int n, int *ret);
 extern int bitwise_and_3d(void ***a, void ***b, void ***res);
 extern int *bitwise_or_sse2(int *a, int *b, int n, int *ret);
 extern int bitwise_or_3d(void ***a, void ***b, void ***res);
-extern void dump(char *arr, int n);
-// works like numpy.random.choice 
-// samples are the samples to fill ***out with
-// n are the length of *samples
-// ***out must be an array allocated with malloc_3d or memdup_3d
+#define dump(arr, n) _dump((char *)(arr), (n))
+extern void _dump(char *arr, int n);
 extern int choice_3d(uint16_t *samples, int n, uint16_t ***out);
-
-extern coord_t move_offset[6][9][20];
 
 #endif /* end of include guard: __COMMON_H */

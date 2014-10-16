@@ -2,3 +2,4 @@
 *.o
 cscope.out
 callgrind*
+.gdb_history

@@ -9,7 +9,7 @@
 
 #include "common.h"
 
-void dump(char *arr, int n)
+void _dump(char *arr, int n)
 {
     int i;
     unsigned char *ptr = (unsigned char *)arr;
@@ -468,72 +468,3 @@ enum moves_index get_piece_type(piece_t piece)
 {
     return get_moves_index(piece);
 }
-
-coord_t move_offset[6][9][20] = {
-    // pawn
-    {{{1, 0}, {1, 1}, {1, -1}, {0, 0}}, {{0, 0}}},
-
-    // rook
-    {{{1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0}, {7, 0}, {0, 0}},
-        {{-1, 0}, {-2, 0}, {-3, 0}, {-4, 0}, {-5, 0}, {-6, 0}, {-7, 0}, {0, 0}},
-        {{0, 1}, {0, 2}, {0, 3}, {0, 4}, {0, 5}, {0, 6}, {0, 7}, {0, 0}},
-        {{0, -1}, {0, -2}, {0, -3}, {0, -4}, {0, -5}, {0, -6}, {0, -7}, {0, 0}},
-        {{0, 0}}},
-
-    // knight
-    {{{2, -1}, {2, 1}, {1, 2}, {-1, 2}, {0, 0}},
-        {{-2, 1}, {-2, -1}, {-1, -2}, {1, -2}, {0, 0}},
-        {{0, 0}}},
-
-    // bishop
-    {{{1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}, {7, 7}, {0, 0}},
-        {{1, -1}, {2, -2}, {3, -3}, {4, -4}, {5, -5}, {6, -6}, {7, -7}, {0, 0}},
-        {{-1, 1}, {-2, 2}, {-3, 3}, {-4, 4}, {-5, 5}, {-6, 6}, {-7, 7}, {0, 0}},
-        {{-1, -1}, {-2, -2}, {-3, -3}, {-4, -4}, {-5, -5}, {-6, -6}, {-7, -7}, {0, 0}},
-        {{0, 0}}},
-
-    // queen
-    {{{1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}, {7, 7}, {0, 0}},
-        {{1, -1}, {2, -2}, {3, -3}, {4, -4}, {5, -5}, {6, -6}, {7, -7}, {0, 0}},
-        {{-1, 1}, {-2, 2}, {-3, 3}, {-4, 4}, {-5, 5}, {-6, 6}, {-7, 7}, {0, 0}},
-        {{-1, -1}, {-2, -2}, {-3, -3}, {-4, -4}, {-5, -5}, {-6, -6}, {-7, -7}, {0, 0}},
-        {{1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0}, {7, 0}, {0, 0}},
-        {{-1, 0}, {-2, 0}, {-3, 0}, {-4, 0}, {-5, 0}, {-6, 0}, {-7, 0}, {0, 0}},
-        {{0, 1}, {0, 2}, {0, 3}, {0, 4}, {0, 5}, {0, 6}, {0, 7}, {0, 0}},
-        {{0, -1}, {0, -2}, {0, -3}, {0, -4}, {0, -5}, {0, -6}, {0, -7}, {0, 0}},
-        {{0, 0}}},
-
-    // king
-    {{{1, 0}, {0, 0}}, {{-1, 0}, {0, 0}}, {{0, 1}, {0, 0}}, {{0, -1}, {0, 0}},
-        {{1, -1}, {0, 0}}, {{1, 1}, {0, 0}}, {{-1, -1}, {0, 0}}, {{-1, 1}, {0, 0}},
-        {{0, 0}}},
-};
-
-int turn = WHITE;
-
-/*
-   piece_t board[8 * 8] = {
-   WHITE_ROOK, WHITE_KNIGHT, WHITE_BISHOP, WHITE_QUEEN, WHITE_KING, WHITE_BISHOP, WHITE_KNIGHT, WHITE_ROOK,
-   WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN,
-   P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-   P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-   P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-   P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-   BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN,
-   BLACK_ROOK, BLACK_KNIGHT, BLACK_BISHOP, BLACK_QUEEN, BLACK_KING, BLACK_BISHOP, BLACK_KNIGHT, BLACK_ROOK,
-   };
-   */
-
-piece_t board[8 * 8] = {
-    P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-    P_EMPTY, BLACK_ROOK, WHITE_QUEEN, WHITE_KING, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-    P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-    P_EMPTY, WHITE_PAWN, BLACK_PAWN, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-    P_EMPTY, P_EMPTY, BLACK_KING, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-    P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-    P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-    P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-};
-
-piece_t *board_2d[8] = {&board[0], &board[8 * 1], &board[8 * 2], &board[8 * 3],
-    &board[8 * 4], &board[8 * 5], &board[8 * 6], &board[8 * 7]};

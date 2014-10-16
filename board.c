@@ -4,9 +4,8 @@
 #include <ctype.h>
 
 #include "common.h"
-
-#include "fastrules.h"
-#include "rules.h"
+#include "board.h"
+#include "bitboard.h"
 
 static piece_t fen_to_chesspiece(char c)
 {
@@ -151,8 +150,11 @@ board_t *new_board(char *_fen)
         }
     }
     
-    board->moves_count = 0;
+    board->is_check = -1;
+    board->moves_count = -1;
     board->turn = *fen_ptr == 'w' ? WHITE : BLACK;
+
+    init_bitboards(_fen, board);
 
     return board;
 }
@@ -162,21 +164,93 @@ void free_board(board_t *b)
     free(b);
 }
 
-int have_lost(board_t *b)
+int is_check(board_t *board)
 {
-    get_all_legal_moves(b);
+    if (board->is_check == -1)
+        bb_calculate_check(board);
+
+    return board->is_check;
+}
+
+int is_stalemate(board_t *b)
+{
+    if (b->moves_count == -1)
+        bb_generate_all_legal_moves(b);
+
     return b->moves_count == 0;
+}
+
+int is_checkmate(board_t *b)
+{
+    return is_stalemate(b) && is_check(b);
 }
 
 void swapturn(board_t *b)
 {
     b->turn = -b->turn;
+    b->is_check = -1;
+    b->moves_count = -1;
 }
 
-void move(board_t *b, int n)
+void generate_all_moves(board_t *b)
+{
+    // already calculated moves for this round
+    if (b->moves_count != -1)
+        return;
+
+    b->moves_count = 0;
+    bb_generate_all_legal_moves(b);
+}
+
+static inline void del_move(board_t *b, int n)
+{
+    if (--b->moves_count != -1)
+        b->moves[n] = b->moves[b->moves_count];
+}
+
+int undo_move(board_t *b, int n)
+{
+    struct move *m;
+    int tx, fx;
+
+    bb_undo_move(b, n);
+    del_move(b, n);
+
+    m = &b->moves[n];
+    tx = ~m->to.x & 0x7;
+    fx = ~m->frm.x & 0x7;
+    PIECE(b->board, m->frm.y, fx) = PIECE(b->board, m->to.y, tx);
+    PIECE(b->board, m->to.y, tx) = b->backup.piece;
+}
+
+int move(board_t *b, int n)
 {
     piece_t backup;
-    do_move(b->board, b->moves[n].frm, b->moves[n].to, &backup);
+    struct move *m;
+    int tx, fx;
+
+    if (n >= b->moves_count)
+        return 0;
+
+    if (bb_do_move(b, n) != 1)
+        printf("something went wrong\n");
+
+    if (is_check(b)) {
+        debug_print("%d is an illegal move.. undoing\n", n);
+        bb_undo_move(b, n);
+        del_move(b, n);
+        b->is_check = -1;
+        return 0;
+    }
+
+    m = &b->moves[n];
+    tx = ~m->to.x & 0x7;
+    fx = ~m->frm.x & 0x7;
+    b->backup.piece = PIECE(b->board, m->to.y, tx);
+    PIECE(b->board, m->to.y, tx) = PIECE(b->board, m->frm.y, fx);
+    PIECE(b->board, m->frm.y, fx) = P_EMPTY;
+
+    return 1;
 }
 
 char *get_fen(board_t *board)
@@ -256,6 +330,13 @@ void print_board(piece_t *board)
             printf("%10s", piece_to_str(PIECE(board, i, j)));
         printf("\n");
     }
+    printf("\n");
+}
+
+void print_move(board_t *board, int n)
+{
+    printf("%02d: (%d, %d) -> (%d, %d)\n", n, board->moves[n].frm.y, ~board->moves[n].frm.x & 0x7,
+            board->moves[n].to.y, ~board->moves[n].to.x & 0x7);
 }
 
 void print_legal_moves(board_t *board)
@@ -265,8 +346,8 @@ void print_legal_moves(board_t *board)
     printf("count: %d\n", board->moves_count);
 
     for (i = 0; i < board->moves_count; i++) {
-        printf("(%d, %d) -> (%d, %d)\n", board->moves[i].frm.y, board->moves[i].frm.x,
-                board->moves[i].to.y, board->moves[i].to.x);
+        printf("%02d: (%d, %d) -> (%d, %d)\n", i, board->moves[i].frm.y, ~board->moves[i].frm.x & 0x7,
+                board->moves[i].to.y, ~board->moves[i].to.x & 0x7);
 
         /*
            if (empty(board->board, board->moves[i].to.y, board->moves[i].to.x, board->turn))
