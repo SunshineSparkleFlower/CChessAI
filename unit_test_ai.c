@@ -13,7 +13,6 @@
 #include "AI.h"
 #include "board.h"
 
-
 extern int8_t multiply(piece_t *features, piece_t *board, int n);
 extern int8_t score(AI_instance_t *ai, piece_t *board);
 extern  _get_best_move(AI_instance_t *ai, board_t *board);
@@ -324,48 +323,95 @@ void malloc_2d_test(void)
     printf("%s suceeded\n", __FUNCTION__);
 }
 
-int checkmate = 0, stalemate = 0, timeout = 0;
-void moves_test(void)
+struct game_struct {
+    int nr_games, thread_id;
+    long checkmates, stalemates, timeouts;
+};
+
+void *moves_test(void *arg)
 {
-    int i, ret;
+    int i, j, ret;
     board_t *board;
+    long checkmate = 0, stalemate = 0, timeout = 0;
+    struct game_struct *game = (struct game_struct *)arg;
 
-    board = new_board(NULL);
-    //board = new_board("Q6k/5K2/8/8/8/8/8/8 b - - 0 1");
-    //board = new_board("Q6k/8/8/8/8/8/K7/6R1 b - - 0 1");
+    for (j = 0; j < game->nr_games; j++) {
+        board = new_board(NULL);
+        //board = new_board("Q6k/5K2/8/8/8/8/8/8 b - - 0 1");
+        //board = new_board("Q6k/8/8/8/8/8/K7/6R1 b - - 0 1");
 
-    for (i = 0; i < 100; i++) {
-        generate_all_moves(board);
-        ret = do_random_move(board);
+        for (i = 0; i < 100; i++) {
+            generate_all_moves(board);
+            ret = do_random_move(board);
 
 #ifdef DEBUG
-        print_board(board->board);
-        bb_print(board->white_pieces.apieces);
-        printf("--- %d %s ---\n", i, board->turn == WHITE ? "white" : "black");
-        getchar();
+            print_board(board->board);
+            bb_print(board->white_pieces.apieces);
+            printf("thread %d: --- %d %s ---\n", game->thread_id, i, board->turn == WHITE ? "white" : "black");
+            getchar();
 #endif
 
-        if (ret == 0) {
-            debug_print("stalemate\n");
-            ++stalemate;
-            break;
-        } else if (ret == -1) {
-            debug_print("checkmate\n");
-            ++checkmate;
-            break;
+            if (ret == 0) {
+                debug_print("(%d) stalemate\n", game->thread_id);
+                ++stalemate;
+                break;
+            } else if (ret == -1) {
+                debug_print("(%d) checkmate\n", game->thread_id);
+                ++checkmate;
+                break;
+            }
         }
+
+        if (ret > 0)
+            ++timeout;
+
+        free(board);
     }
 
-    ++timeout;
+    game->checkmates = checkmate;
+    game->stalemates = stalemate;
+    game->timeouts = timeout;
+}
 
-    free(board);
+void spawn_n_games(int n, int rounds)
+{
+    pthread_t threads[n - 1];
+    int i, num_layers = 3, ret;
+    int checkmate, stalemate, timeout;
+    struct game_struct games[n];
+
+    for (i = 0; i < n; i++) {
+        games[i].nr_games = rounds;
+        games[i].thread_id = i + 1;
+
+        if (i == n - 1)
+            break;
+        pthread_create(&threads[i], NULL, moves_test, &games[i]);
+    }
+
+    moves_test(&games[i]);
+    checkmate = games[i].checkmates;
+    stalemate = games[i].stalemates;
+    timeout = games[i].timeouts;
+
+    for (i = 0; i < n - 1; i++) {
+        pthread_join(threads[i], NULL);
+
+        checkmate += games[i].checkmates;
+        stalemate += games[i].stalemates;
+        timeout += games[i].timeouts;
+    }
+
+    printf("%d checkmates\n", checkmate);
+    printf("%d stalemates\n", stalemate);
+    printf("%d timeouts\n", timeout - checkmate - stalemate);
 }
 
 int main(int argc, char *argv[])
 {
     unsigned long start, end;
     double diff;
-    int i, count;
+    int i, rounds, threads, count;
     //multiply_test();
     //score_test();
     //malloc_2d_test();
@@ -376,18 +422,16 @@ int main(int argc, char *argv[])
     init_magicmoves();
 
     start = now();
-    count = argc > 1 ? atoi(argv[1]) : 2000;
-    for (i = 0; i < count; i++)
-        moves_test();
+    rounds = argc > 1 ? atoi(argv[1]) : 2000;
+    threads = argc > 2 ? atoi(argv[2]) : 1;
+    spawn_n_games(threads, rounds);
     end = now();
 
     diff = end - start;
 
+    count = rounds * threads;
     printf("%d games played in %.0f ms (%.1f games pr. second)\n",
             count, diff, (double)count / (diff / 1000));
-    printf("%d checkmates\n", checkmate);
-    printf("%d stalemates\n", stalemate);
-    printf("%d timeouts\n", timeout - checkmate - stalemate);
 
     return 0;
 }
