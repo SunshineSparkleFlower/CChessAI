@@ -1,54 +1,28 @@
+#ifndef __BITBOARD_H
+#define __BITBOARD_H
 
-#ifndef BITBOARD_H
-#define BITBOARD_H
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <stdint.h>
 
-typedef uint64_t bitboard_t;
+enum coords {
+    H1, G1, F1, E1, D1, C1, B1, A1,
+    H2, G2, F2, E2, D2, C2, B2, A2,
+    H3, G3, F3, E3, D3, C3, B3, A3,
+    H4, G4, F4, E4, D4, C4, B4, A4,
+    H5, G5, F5, E5, D5, C5, B5, A5,
+    H6, G6, F6, E6, D6, C6, B6, A6,
+    H7, G7, F7, E7, D7, C7, B7, A7,
+    H8, G8, F8, E8, D8, C8, B8, A8,
+};
 
-#define BIT             0x1ull
-#define EMPTY_BB        0x0000000000000000ull
-#define FULL_BB         0xFFFFFFFFFFFFFFFFull
+#define coord_to_index(row, col) ((row) * 8 + (col))
 
-#define FILE_A_BB       0x0101010101010101ull
-#define FILE_B_BB       0x0202020202020202ull
-#define FILE_C_BB       0x0404040404040404ull
-#define FILE_D_BB       0x0808080808080808ull
-#define FILE_E_BB       0x1010101010101010ull
-#define FILE_F_BB       0x2020202020202020ull
-#define FILE_G_BB       0x4040404040404040ull
-#define FILE_H_BB       0x8080808080808080ull
+#include "board.h"
+extern void init_bitboards(char *_fen, board_t *board);
+extern void bb_print(u64 b);
+extern int bb_can_attack(u64 moves, int pos);
+extern int bb_calculate_check(board_t *board);
+extern void bb_generate_all_legal_moves(board_t *board);
+extern int bb_do_move(board_t *b, int index);
+extern int bb_undo_move(board_t *b, int index);
 
-#define RANK_1_BB       0x00000000000000FFull
-#define RANK_2_BB       0x000000000000FF00ull
-#define RANK_3_BB       0x0000000000FF0000ull
-#define RANK_4_BB       0x00000000FF000000ull
-#define RANK_5_BB       0x000000FF00000000ull
-#define RANK_6_BB       0x0000FF0000000000ull
-#define RANK_7_BB       0x00FF000000000000ull
-#define RANK_8_BB       0xFF00000000000000ull
-
-extern bitboard_t set_mask[64];
-extern bitboard_t clear_mask[64];
-extern bitboard_t rank_mask[8];
-extern bitboard_t file_mask[8];
-extern bitboard_t neighbor_file_mask[8];
-extern bitboard_t in_front_mask[2][64];
-extern bitboard_t outpost_mask[2][64];
-extern bitboard_t passed_mask[2][64];
-extern const int bit_table[64];
-
-#define set_bit(bb, ind)        ((bb) |= set_mask[ind])
-#define set_sq_bit(bb, sq)      ((bb) |= set_mask[square_to_index(sq)])
-#define clear_bit(bb, ind)      ((bb) &= clear_mask[ind])
-#define clear_sq_bit(bb, sq)    ((bb) &= clear_mask[square_to_index(sq)])
-#define bit_is_set(bb, ind)     ((bb) & set_mask[ind])
-#define sq_bit_is_set(bb, sq)   ((bb) & set_mask[square_to_index(sq)])
-#define first_bit(bb)           \
-    (bit_table[(((bb) & (~(bb)+1)) * 0x0218A392CD3D5DBFull) >> 58])
-
-#ifdef __cplusplus
-}
-#endif
 #endif

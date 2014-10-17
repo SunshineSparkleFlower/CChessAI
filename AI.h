@@ -3,16 +3,15 @@
 
 #include <stdint.h>
 #include "common.h"
-#include "map.h"
-#define SetBit(A,k)     ( A[(k/32)] |= (1 << (k%32)) )
-#define ClearBit(A,k)   ( A[(k/32)] &= ~(1 << (k%32)) )            
-#define TestBit(A,k)    ( A[(k/32)] & (1 << (k%32)) )
+#include "board.h"
+
+#define SetBit(A,k)     ((A)[((k)/32)] |= (1 << ((k)%32)))
+#define ClearBit(A,k)   ((A)[((k)/32)] &= ~(1 << ((k)%32)))
+#define TestBit(A,k)    ((A)[((k)/32)] & (1 << ((k)%32)))
 
 typedef struct AI_instance {
-    int8_t *m;
     piece_t ***layers;
     int nr_layers, move_nr;
-    struct hmap *map, *shortmemory;
     int nr_wins, nr_losses;
     int generation;
     int feature_density;

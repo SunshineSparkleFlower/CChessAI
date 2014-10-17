@@ -9,7 +9,9 @@
 
 #include "common.h"
 
-void dump(char *arr, int n)
+static FILE *urandom = NULL;
+
+void _dump(char *arr, int n)
 {
     int i;
     unsigned char *ptr = (unsigned char *)arr;
@@ -25,10 +27,10 @@ void dump(char *arr, int n)
 void _debug_print(const char *function, char *fmt, ...)
 {
     va_list ap;
-    
+
     va_start(ap, fmt);
 
-    fprintf(stderr, "[DEBUG] %s: ", function);
+    fprintf(stderr, "%s: ", function);
     vfprintf(stderr, fmt, ap);
 
     va_end(ap);
@@ -65,14 +67,10 @@ void **malloc_2d(size_t x, size_t y, size_t type_size)
     ret = malloc(alloc + _MALLOC_2D_BUFFER_SPACE);
     _2d = (int **)ret;
 
-    printf("mallocating %d bytes\n", alloc + _MALLOC_2D_BUFFER_SPACE);
-
     for (i = 0; i < y; i++) {
         data_start = (char *)((int **)_2d + y);
         data_start += _MALLOC_2D_BUFFER_SPACE;
         data_start += (i * x * type_size);
-
-        printf("i: %d, ret: %p, data start: %p\n", i, ret, data_start);
 
         _2d[i] = (int *)data_start;
     }
@@ -225,12 +223,11 @@ void ***memdup_3d(void ***mem)
 int random_int(void)
 {
     int ret;
-    static int urandom = -1;
 
-    if (urandom == -1)
-        urandom = open("/dev/urandom", O_RDONLY);
+    if (urandom == NULL)
+        urandom = fopen("/dev/urandom", "r");
 
-    read(urandom, &ret, sizeof(ret));
+    fread(&ret, 1, sizeof(ret), urandom);
 
     return ret;
 }
@@ -238,12 +235,11 @@ int random_int(void)
 unsigned random_uint(void)
 {
     unsigned ret;
-    static int urandom = -1;
 
-    if (urandom == -1)
-        urandom = open("/dev/urandom", O_RDONLY);
+    if (urandom == NULL)
+        urandom = fopen("/dev/urandom", "r");
 
-    read(urandom, &ret, sizeof(ret));
+    fread(&ret, 1, sizeof(ret), urandom);
 
     return ret;
 }
@@ -251,12 +247,11 @@ unsigned random_uint(void)
 float random_float_nr(void)
 {
     float ret;
-    static int urandom = -1;
 
-    if (urandom == -1)
-        urandom = open("/dev/urandom", O_RDONLY);
+    if (urandom == NULL)
+        urandom = fopen("/dev/urandom", "r");
 
-    read(urandom, &ret, sizeof(ret));
+    fread(&ret, 1, sizeof(ret), urandom);
 
     return ret;
 }
@@ -282,14 +277,11 @@ int random_int_r(int min, int max)
 
 int random_fill(void *arr, int n)
 {
-    static int urandom = -1;
+    if (urandom == NULL)
+        urandom = fopen("/dev/urandom", "r");
 
-    if (urandom == -1)
-        urandom = open("/dev/urandom", O_RDONLY);
-
-    return read(urandom, arr, n);
+    return fread(arr, 1, n, urandom);
 }
-
 
 /* assumes arr is sorted */
 int bisect(float *arr, float x, int n)
@@ -469,71 +461,7 @@ enum moves_index get_piece_type(piece_t piece)
     return get_moves_index(piece);
 }
 
-coord_t move_offset[6][9][20] = {
-    // pawn
-    {{{1, 0}, {1, 1}, {1, -1}, {0, 0}}, {{0, 0}}},
-
-    // rook
-    {{{1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0}, {7, 0}, {0, 0}},
-        {{-1, 0}, {-2, 0}, {-3, 0}, {-4, 0}, {-5, 0}, {-6, 0}, {-7, 0}, {0, 0}},
-        {{0, 1}, {0, 2}, {0, 3}, {0, 4}, {0, 5}, {0, 6}, {0, 7}, {0, 0}},
-        {{0, -1}, {0, -2}, {0, -3}, {0, -4}, {0, -5}, {0, -6}, {0, -7}, {0, 0}},
-        {{0, 0}}},
-
-    // knight
-    {{{2, -1}, {2, 1}, {1, 2}, {-1, 2}, {0, 0}},
-        {{-2, 1}, {-2, -1}, {-1, -2}, {1, -2}, {0, 0}},
-        {{0, 0}}},
-
-    // bishop
-    {{{1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}, {7, 7}, {0, 0}},
-        {{1, -1}, {2, -2}, {3, -3}, {4, -4}, {5, -5}, {6, -6}, {7, -7}, {0, 0}},
-        {{-1, 1}, {-2, 2}, {-3, 3}, {-4, 4}, {-5, 5}, {-6, 6}, {-7, 7}, {0, 0}},
-        {{-1, -1}, {-2, -2}, {-3, -3}, {-4, -4}, {-5, -5}, {-6, -6}, {-7, -7}, {0, 0}},
-        {{0, 0}}},
-
-    // queen
-    {{{1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}, {7, 7}, {0, 0}},
-        {{1, -1}, {2, -2}, {3, -3}, {4, -4}, {5, -5}, {6, -6}, {7, -7}, {0, 0}},
-        {{-1, 1}, {-2, 2}, {-3, 3}, {-4, 4}, {-5, 5}, {-6, 6}, {-7, 7}, {0, 0}},
-        {{-1, -1}, {-2, -2}, {-3, -3}, {-4, -4}, {-5, -5}, {-6, -6}, {-7, -7}, {0, 0}},
-        {{1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0}, {7, 0}, {0, 0}},
-        {{-1, 0}, {-2, 0}, {-3, 0}, {-4, 0}, {-5, 0}, {-6, 0}, {-7, 0}, {0, 0}},
-        {{0, 1}, {0, 2}, {0, 3}, {0, 4}, {0, 5}, {0, 6}, {0, 7}, {0, 0}},
-        {{0, -1}, {0, -2}, {0, -3}, {0, -4}, {0, -5}, {0, -6}, {0, -7}, {0, 0}},
-        {{0, 0}}},
-
-    // king
-    {{{1, 0}, {0, 0}}, {{-1, 0}, {0, 0}}, {{0, 1}, {0, 0}}, {{0, -1}, {0, 0}},
-        {{1, -1}, {0, 0}}, {{1, 1}, {0, 0}}, {{-1, -1}, {0, 0}}, {{-1, 1}, {0, 0}},
-        {{0, 0}}},
-};
-
-int turn = WHITE;
-
-/*
-   piece_t board[8 * 8] = {
-   WHITE_ROOK, WHITE_KNIGHT, WHITE_BISHOP, WHITE_QUEEN, WHITE_KING, WHITE_BISHOP, WHITE_KNIGHT, WHITE_ROOK,
-   WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN,
-   P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-   P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-   P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-   P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-   BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN,
-   BLACK_ROOK, BLACK_KNIGHT, BLACK_BISHOP, BLACK_QUEEN, BLACK_KING, BLACK_BISHOP, BLACK_KNIGHT, BLACK_ROOK,
-   };
-   */
-
-piece_t board[8 * 8] = {
-    P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-    P_EMPTY, BLACK_ROOK, WHITE_QUEEN, WHITE_KING, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-    P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-    P_EMPTY, WHITE_PAWN, BLACK_PAWN, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-    P_EMPTY, P_EMPTY, BLACK_KING, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-    P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-    P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-    P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY, P_EMPTY,
-};
-
-piece_t *board_2d[8] = {&board[0], &board[8 * 1], &board[8 * 2], &board[8 * 3],
-    &board[8 * 4], &board[8 * 5], &board[8 * 6], &board[8 * 7]};
+void shutdown(void)
+{
+    fclose(urandom);
+}
