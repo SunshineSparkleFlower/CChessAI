@@ -9,6 +9,8 @@
 
 #include "common.h"
 
+static FILE *urandom = NULL;
+
 void _dump(char *arr, int n)
 {
     int i;
@@ -225,7 +227,6 @@ void ***memdup_3d(void ***mem)
 int random_int(void)
 {
     int ret;
-    static FILE *urandom = NULL;
 
     if (urandom == NULL)
         urandom = fopen("/dev/urandom", "r");
@@ -238,7 +239,6 @@ int random_int(void)
 unsigned random_uint(void)
 {
     unsigned ret;
-    static FILE *urandom = NULL;
 
     if (urandom == NULL)
         urandom = fopen("/dev/urandom", "r");
@@ -251,7 +251,6 @@ unsigned random_uint(void)
 float random_float_nr(void)
 {
     float ret;
-    static FILE *urandom = NULL;
 
     if (urandom == NULL)
         urandom = fopen("/dev/urandom", "r");
@@ -282,14 +281,11 @@ int random_int_r(int min, int max)
 
 int random_fill(void *arr, int n)
 {
-    static FILE *urandom = NULL;
-
     if (urandom == NULL)
         urandom = fopen("/dev/urandom", "r");
 
     return fread(arr, 1, n, urandom);
 }
-
 
 /* assumes arr is sorted */
 int bisect(float *arr, float x, int n)
@@ -467,4 +463,9 @@ int color(uint16_t p)
 enum moves_index get_piece_type(piece_t piece)
 {
     return get_moves_index(piece);
+}
+
+void shutdown(void)
+{
+    fclose(urandom);
 }

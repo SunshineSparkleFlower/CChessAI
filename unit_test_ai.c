@@ -433,5 +433,6 @@ int main(int argc, char *argv[])
     printf("%d games played in %.0f ms (%.1f games pr. second, w/ %d threads)\n",
             count, diff, (double)count / (diff / 1000), threads);
 
+    shutdown();
     return 0;
 }
