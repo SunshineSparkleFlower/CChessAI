@@ -10,11 +10,9 @@
 #define TestBit(A,k)    ((A)[((k)/32)] & (1 << ((k)%32)))
 
 typedef struct AI_instance {
-    piece_t ***layers;
-    int nr_layers, move_nr;
+    int move_nr;
     int nr_wins, nr_losses;
     int generation;
-    int feature_density;
     piece_t *nextboard;
     int **brain;
     int nr_ports;
@@ -22,7 +20,7 @@ typedef struct AI_instance {
     int board_size;
 } AI_instance_t;
 
-extern AI_instance_t *ai_new(int nr_layers, int *nr_features, int feature_density);
+extern AI_instance_t *ai_new(void);
 extern void ai_free(AI_instance_t *ai);
 extern int do_best_move(AI_instance_t *ai, board_t *board);
 extern void punish(AI_instance_t *ai);
