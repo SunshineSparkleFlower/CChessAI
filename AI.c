@@ -1,3 +1,4 @@
+#include "smmintrin.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -5,7 +6,6 @@
 #include "common.h"
 #include "AI.h"
 
-//#include "emmintrin.h"
 //#include "smmintrin.h"
 
 static piece_t piecesl[] = {
@@ -56,7 +56,7 @@ AI_instance_t *ai_new(int nr_layers, int *nr_features, int feature_density)
                     i > 0 ? nr_features[i - 1] * sizeof(piece_t): 128 * sizeof(piece_t));
     }
 
-    ret->nr_ports = 64;
+    ret->nr_ports = 128;
     ret->board_size = 64*2*2*8;
     ret->nr_synapsis = ret->nr_ports + ret->board_size;
 
@@ -147,18 +147,25 @@ int multiply(piece_t *features, int *board, int n, int op, int mask)
 
 int nand(int *a, int *b, int size, piece_t *board, int board_size)
 {
+     __m128i ad, bd, tmp;
 
+
+        ad = _mm_loadu_si128((__m128i *)a);
+        bd = _mm_loadu_si128((__m128i *)b);
+        if(!_mm_test_all_zeros(ad, bd))
+            return 0;
+        
     int i;
-    for (i = 0; i < size; i++) {
-        if(TestBit(a,i) == 1 && TestBit(b,i) == 1)
-            return 0;
-    }
-
-    for (i = size; i < board_size+size; i++) {
-        if(TestBit(board,i) == 1 && TestBit(b,i) == 1)
-            return 0;
+    for (i = 0; i < (board_size)/32; i+=4) {
+            ad = _mm_loadu_si128((__m128i *)(int*)board+i);
+            bd = _mm_loadu_si128((__m128i *)(int*)b+i+(size/32));
+            //printf("i: %d\n", i);
+            
+           if(!_mm_test_all_zeros(ad, bd))
+                return 0;
     }
     return 1;
+
 }
 
 int eval_curcuit(int *V, int **M,  int nr_ports, piece_t *board, int board_size)
