@@ -63,6 +63,14 @@ AI_instance_t *ai_new(int nr_layers, int *nr_features, int feature_density)
     //int *V = (int *)malloc((( nr_ports)/32)*sizeof(int));
     ret->brain = (int **)malloc_2d(ret->nr_synapsis/32, ret->nr_synapsis,  4);
 
+
+    random_fill(&ret->brain[0][0], (ret->nr_synapsis/32)*ret->nr_synapsis*4);
+    for(i = 0; i < (ret->nr_synapsis/32)*ret->nr_synapsis*4*8; i++)
+        if(!random_int_r(0, 100))
+            SetBit(&ret->brain[0][0],i);
+        else
+            ClearBit(&ret->brain[0][0],i);
+
     ret->move_nr = 0;
     ret->nr_wins = ret->nr_losses = 0;
     ret->generation = 0;
@@ -110,40 +118,7 @@ int8_t multiply(piece_t *features, piece_t *board, int n)
 }
 */
 
-int multiply8(piece_t *features, piece_t *board, int n, int op, int mask)
-{
-    unsigned int i, s;
 
-    for (i = 0; likely(i < n); ++i) {
-        if ((features[i] & board[i] & mask) == (board[i]) & mask) {
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
-int multiply(piece_t *features, int *board, int n, int op, int mask)
-{
-    unsigned int i, s;
-
-    int score = 0;
-    if (op == 0) {
-        for (i = 0; likely(i < n); i++) {
-            if ((features[i] & board[i] & mask) == (board[i]) & mask){
-                score++;
-            } else {
-                score--;
-            }
-        }
-        return score+n;
-    } else if(op == 1)
-        for (i = 0; likely(i < n); i++){
-            if ((features[i] & board[i] & mask) != (features[i] & mask))
-                return 0;
-        }
-    return 1;
-}
 
 int nand(int *a, int *b, int size, piece_t *board, int board_size)
 {
@@ -152,26 +127,49 @@ int nand(int *a, int *b, int size, piece_t *board, int board_size)
 
         ad = _mm_loadu_si128((__m128i *)a);
         bd = _mm_loadu_si128((__m128i *)b);
-        if(!_mm_test_all_zeros(ad, bd))
-            return 0;
+        if(!_mm_test_all_zeros(ad, bd)){
+               return 0;
+        }
         
     int i;
     for (i = 0; i < (board_size)/32; i+=4) {
-            ad = _mm_loadu_si128((__m128i *)(int*)board+i);
-            bd = _mm_loadu_si128((__m128i *)(int*)b+i+(size/32));
-            //printf("i: %d\n", i);
-            
-           if(!_mm_test_all_zeros(ad, bd))
+            ad = _mm_loadu_si128((__m128i *)(((int*)board)+i));
+            bd = _mm_loadu_si128((__m128i *)((int*)b+(i+(size/32))));
+           if(!_mm_test_all_zeros(ad, bd)){            
                 return 0;
+            }
     }
     return 1;
 
 }
+int nand_validation(int *a, int *b, int size, int *board, int board_size)
+{
+
+    int i;
+    for (i = 0; i < size; i++) {
+        if(TestBit(a,i)  && TestBit(b,i)){
+            return 0;
+        }
+    }
+
+    for (i = 0; i < board_size; i++) {
+        if(TestBit(board,i)  && TestBit(b,(i+size))){
+            return 0;
+        }
+    }
+    return 1;
+}
+
 
 int eval_curcuit(int *V, int **M,  int nr_ports, piece_t *board, int board_size)
-{
+{   
+    
     int i;
     for (i = 0; i < nr_ports; i++) {
+       // if(nand(V, M[i], nr_ports, board, board_size) != nand_validation(V, M[i], nr_ports, board, board_size))
+       //     printf("NAND and NAND validation did not return same value\n");
+        
+
         if (nand(V, M[i], nr_ports, board, board_size))
             SetBit(V,i);
         else
