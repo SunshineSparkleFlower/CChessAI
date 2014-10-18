@@ -25,7 +25,6 @@ unsigned long now(void)
     return s * 1000 + ms;
 }
 
-
 void score_test(void)
 {
     int ret;
@@ -42,7 +41,6 @@ void score_test(void)
 
     printf("score ret: %d\n", ret);
 }
-
 
 void do_best_move_test(void)
 {

@@ -9,15 +9,15 @@ struct job_list {
     struct job *job;
 };
 
-static int num_jobs = 0;
-static struct job_list jobs;
+static volatile int run = 1; /* is set to 0 if threads are to terminate */
+static volatile int num_jobs = 0;
+static volatile struct job_list jobs;
 
 /* used to free job->data */
 static void (*free_function)(void *) = NULL;
 static pthread_mutex_t jobs_lock;
 static pthread_t *threads;
 static int num_threads = 0;
-static int run = 1; /* is set to 0 if threads are to terminate */
 
 /* must be called in a locked context */
 static inline void add_tail(struct job_list *j)

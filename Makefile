@@ -16,5 +16,8 @@ debug: test
 test: unit_test_ai.o board.o AI.o common.o bitboard.o magicmoves.o
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
 
+bench: bench.o board.o AI.o common.o bitboard.o magicmoves.o
+	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
+
 clean:
 	-$(RM) *.o C_AI fast test
