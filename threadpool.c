@@ -3,6 +3,7 @@
 #include <signal.h>
 #include <pthread.h>
 #include "threadpool.h"
+#include "common.h"
 
 struct job_list {
     struct job_list *next, *prev;
@@ -11,11 +12,12 @@ struct job_list {
 
 static volatile int run = 1; /* is set to 0 if threads are to terminate */
 static volatile int num_jobs = 0;
-static volatile struct job_list jobs;
+static struct job_list jobs;
 
 /* used to free job->data */
 static void (*free_function)(void *) = NULL;
 static pthread_mutex_t jobs_lock;
+static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 static pthread_t *threads;
 static int num_threads = 0;
 
@@ -41,6 +43,7 @@ static inline void unlink_node(struct job_list *j)
 void put_new_job(struct job *j)
 {
     struct job_list *new;
+
     pthread_mutex_lock(&jobs_lock);
 
     new = malloc(sizeof(struct job_list));
@@ -50,51 +53,43 @@ void put_new_job(struct job *j)
     ++num_jobs;
 
     pthread_mutex_unlock(&jobs_lock);
+    pthread_cond_signal(&cond);
 }
 
 static struct job *get_job(void)
 {
     struct job_list *tmp;
-    struct job *ret;
+    struct job *ret = NULL;
 
-    while (run) {
-        while (num_jobs == 0 && run)
-            usleep(10 * 1000); /* sleep 10 milliseconds */
+    pthread_mutex_lock(&jobs_lock);
+    while (num_jobs == 0 && run)
+        pthread_cond_wait(&cond, &jobs_lock);
 
-        if (!run)
-            break;
+    if (run && num_jobs > 0) {
+        tmp = jobs.next;
+        unlink_node(tmp);
+        ret = tmp->job;
+        free(tmp);
 
-        pthread_mutex_lock(&jobs_lock);
-
-        if (num_jobs != 0) {
-            tmp = jobs.next;
-            unlink_node(tmp);
-            ret = tmp->job;
-
-            --num_jobs;
-            free(tmp);
-
-            pthread_mutex_unlock(&jobs_lock);
-            return ret;
-        }
-
-        pthread_mutex_unlock(&jobs_lock);
+        --num_jobs;
     }
 
-    return NULL; /* should never happen */
+    pthread_mutex_unlock(&jobs_lock);
+    return ret;
 }
 
 static void *loiter(void *arg)
 {
     struct job *job;
     int thread_id = (long)arg;
+    long i = 0;
 
     while (run) {
         job = get_job();
         if (job == NULL)
             break;
 
-        printf("thread %d got a job\n", thread_id);
+        ++i;
         job->task(job->data);
 
         if (free_function)
@@ -102,7 +97,7 @@ static void *loiter(void *arg)
         free(job);
     }
 
-    return NULL;
+    return (void *)i;
 }
 
 void init_threadpool(int pool_size)
@@ -127,13 +122,16 @@ void set_free_function(void (*f)(void *))
 
 void shutdown_threadpool(void)
 {
-    int i;
+    int i, count;
     struct job_list *ptr, *next;
 
     run = 0;
+    pthread_cond_broadcast(&cond);
 
-    for (i = 0; i < num_threads; i++)
-        pthread_join(threads[i], NULL);
+    for (i = 0; i < num_threads; i++) {
+        pthread_join(threads[i], (void *)&count);
+        debug_print("thread %d got %d jobs\n", i + 1, count);
+    }
     pthread_mutex_destroy(&jobs_lock);
 
     for (ptr = jobs.next; ptr != &jobs; ptr = next) {
@@ -146,14 +144,13 @@ void shutdown_threadpool(void)
     free(threads);
 }
 
+/*
 static void hello(void *a)
 {
     int id = (long)a;
-    //printf("hello world (%d)\n", id);
-    usleep(100*1000);
+    printf("hello world (%d)\n", id);
 }
 
-/*
 int main(int argc, char *argv[])
 {
     int i;
@@ -165,7 +162,7 @@ int main(int argc, char *argv[])
         jobs[i]->data = (void *)(long)i + 1;
     }
 
-    init_threadpool(10);
+    init_threadpool(20);
 
     for (i = 0; i < 100; i++)
         put_new_job(jobs[i]);
