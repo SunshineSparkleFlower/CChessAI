@@ -188,6 +188,30 @@ int do_random_move(board_t *board)
     return 1;
 }
 
+//perform a random move return 0 if stalemate, -1 if check mate 1 of success
+int do_nonrandom_move(board_t *board)
+{
+    int rndmove;
+
+    do {
+        if (is_checkmate(board)) {
+            debug_print("checkmate\n");
+            return -1;
+        }
+        if (is_stalemate(board)) {
+            debug_print("stalemate\n");
+            return 0;
+        }
+        rndmove = 0;
+
+    } while (!do_move(board, rndmove));
+
+    swapturn(board);
+
+    return 1;
+}
+
+
 void punish(AI_instance_t *ai)
 {
     ai->nr_losses++;
@@ -201,15 +225,22 @@ void reward(AI_instance_t *ai)
 //layers in a a1 is replaced with layers from a2 pluss a mutation
 int mutate(AI_instance_t *a1, AI_instance_t *a2)
 {
-    memcpy(&a1->brain[0][0], &a2->brain[0][0], a1->nr_synapsis* a1->nr_synapsis/32);
+    memcpy(&a1->brain[0][0], &a2->brain[0][0], 4*a1->nr_synapsis* a1->nr_synapsis/32);
 
     unsigned r1 = random_uint()%a1->nr_synapsis;
     unsigned r2 = random_uint()%a1->nr_synapsis;
-    SetBit(a1->brain[r1],r2);
+     if(!random_int_r(0, 100))
+            SetBit(a1->brain[r1],r2);
+        else
+            ClearBit(a1->brain[r1],r2);
 
     r1 = random_uint()%a1->nr_synapsis;
     r2 = random_uint()%a1->nr_synapsis;
-    ClearBit(a1->brain[r1],r2);
+
+     if(!random_int_r(0, 100))
+            SetBit(a1->brain[r1],r2);
+     else
+            ClearBit(a1->brain[r1],r2);
 
     return 1;
 }
