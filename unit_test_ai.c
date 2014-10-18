@@ -67,7 +67,10 @@ void ai_test(void)
     while(1) {
         printf("iteration: %d\n", iteration++);
         int ai1_won = 0;
+        int ai1_won_l1 = 0;
         int ai2_won = 0;
+        int ai2_won_l1 = 0;
+
         int game_pr_e = 1000;
         int games = 0;
 
@@ -105,7 +108,7 @@ void ai_test(void)
                 //print_board(board->board);
 
 
-                ret = do_random_move(board);
+                ret = do_nonrandom_move(board);
 #ifdef DEBUG
                 debug_print("did move. board:\n");
                 print_board(board->board);
@@ -120,6 +123,8 @@ void ai_test(void)
                 }
                 else if(ret == -1){
                     //   printf("AI WON\n");
+                    if(games < 100)
+                        ai1_won_l1++;
                     ai1_won++;
                     break;
                 }
@@ -128,6 +133,7 @@ void ai_test(void)
             free_board(board);
         }
         printf("ai1_won: %d\n", ai1_won);
+        printf("ai1_won_l1: %d\n", ai1_won_l1);
 
         games = 0;
         while(games++ < game_pr_e) {
@@ -165,7 +171,7 @@ void ai_test(void)
                 //print_board(board->board);
 
 
-                ret = do_random_move(board);
+                ret = do_nonrandom_move(board);
 #ifdef DEBUG
                 debug_print("did move. board:\n");
                 print_board(board->board);
@@ -182,6 +188,8 @@ void ai_test(void)
                 }
                 else if(ret == -1){
                     ai2_won++;
+                     if(games < 100)
+                        ai2_won_l1++;
 #ifdef DEBUG
                     printf("AI WON\n");
                     print_board(board->board);
@@ -195,6 +203,7 @@ void ai_test(void)
             free_board(board);
         }
         printf("ai2_won: %d\n", ai2_won);
+        printf("ai2_won_l1: %d\n", ai2_won_l1);
 
         if(ai1_won > ai2_won){
             mutate(ai2,ai2);
