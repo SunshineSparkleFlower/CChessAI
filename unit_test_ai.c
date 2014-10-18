@@ -77,10 +77,10 @@ void ai_test(void)
 
             board = new_board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1");
 #ifdef DEBUG
-                debug_print("start board:\n");
-                print_board(board->board);
-                bb_print(board->white_pieces.apieces);
-                getchar();
+            debug_print("start board:\n");
+            print_board(board->board);
+            bb_print(board->white_pieces.apieces);
+            getchar();
 #endif
 
             int max_moves = 100;
@@ -189,6 +189,8 @@ void ai_test(void)
         //dump(ai1->brain,32);
         //dump(ai2->brain,32);
     }
+    ai_free(ai1);
+    ai_free(ai2);
 }
 
 void malloc_2d_test(void)
@@ -332,10 +334,10 @@ int main(int argc, char *argv[])
     //malloc_2d_test();
     //do_best_move_test();
     //mutate_test();
+    init_magicmoves();
     ai_test();
 
     /*
-       init_magicmoves();
 
        start = now();
        rounds = argc > 1 ? atoi(argv[1]) : 2000;
