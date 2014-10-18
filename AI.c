@@ -120,8 +120,6 @@ static int _get_best_move(AI_instance_t *ai, board_t *board)
     float cumdist[board->moves_count], fcount, x;
     int scores[board->moves_count];
 
-    printf("moves_count = %d\n", board->moves_count);
-
     memcpy(&board->board[64], &board->board[0], 64 * sizeof(piece_t));
     for (i = count = 0; i < board->moves_count; i = count++) {
         moveret = move(board, i);
@@ -145,14 +143,7 @@ static int _get_best_move(AI_instance_t *ai, board_t *board)
         fcount += scores[i];
         cumdist[i] = fcount;
     }
-    printf("moves_count = %d\n", board->moves_count);
     x = random_float() * cumdist[board->moves_count - 1];
-    printf("moves_count = %d\n", board->moves_count);
-
-    printf("moves_count = %d, x = %f\n", board->moves_count, x);
-    getchar();
-    printf("x = %f, moves_count = %d\n", x, board->moves_count);
-    getchar();
 
     return bisect(cumdist, x, board->moves_count);
 }
