@@ -14,7 +14,7 @@
 
 struct game {
     int rounds, max_moves;
-    int checkmates, stalemates, timeouts;
+    int stalemates, timeouts, ai_wins, ai_losses;
 };
 
 unsigned long now(void)
@@ -39,6 +39,7 @@ void *ai_bench(void *arg)
     struct game *game = (struct game *)arg;
     long rounds = game->rounds;
     int moves, max_moves = game->max_moves;
+    int ai_wins = 0, ai_losses = 0;
 
     ai = ai_new();
 
@@ -46,26 +47,37 @@ void *ai_bench(void *arg)
         board = new_board(NULL);
         for (moves = 0; moves < max_moves; moves++) {
             ret = do_best_move(ai, board);
-            // break if stalemate or checkmate
-            if (ret <= 0)
+            if (ret == -1) {
+                ++ai_losses;
                 break;
+            } else if (ret == 0) {
+                // break if stalemate or checkmate
+                ++game->stalemates;
+                break;
+            }
 
             // break if stalemate or checkmate
             ret = do_random_move(board);
-            if (ret <= 0)
+            if (ret == -1) {
+                ++ai_wins;
                 break;
+            } else if (ret == 0) {
+                // break if stalemate or checkmate
+                ++game->stalemates;
+                break;
+            }
         }
 
-        if (ret == 0)
-            ++game->stalemates;
-        else if (ret == -1)
-            ++game->checkmates;
-        else
+        if (moves >= max_moves) {
             ++game->timeouts;
+        }
 
         free_board(board);
     }
     ai_free(ai);
+
+    game->ai_wins = ai_wins;
+    game->ai_losses = ai_losses;
 
     return NULL;
 }
@@ -73,8 +85,8 @@ void *ai_bench(void *arg)
 void spawn_n_games(int n, int rounds, int max_moves)
 {
     pthread_t threads[n - 1];
-    int i;
-    int checkmate, stalemate, timeout;
+    int i, ai_wins, ai_losses;
+    int stalemate, timeout;
     struct game games[n];
 
     memset(games, 0, sizeof(games));
@@ -88,19 +100,22 @@ void spawn_n_games(int n, int rounds, int max_moves)
     }
 
     ai_bench((void *)&games[i]);
-    checkmate = games[i].checkmates;
+    ai_wins = games[i].ai_wins;
+    ai_losses = games[i].ai_losses;
     stalemate = games[i].stalemates;
     timeout = games[i].timeouts;
 
     for (i = 0; i < n - 1; i++) {
         pthread_join(threads[i], NULL);
 
-        checkmate += games[i].checkmates;
+        ai_wins += games[i].ai_wins;
+        ai_losses += games[i].ai_losses;
         stalemate += games[i].stalemates;
         timeout += games[i].timeouts;
     }
 
-    printf("%d checkmates\n", checkmate);
+    printf("%d ai wins\n", ai_wins);
+    printf("%d ai losses\n", ai_losses);
     printf("%d stalemates\n", stalemate);
     printf("%d timeouts\n", timeout);
 }
