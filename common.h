@@ -27,8 +27,9 @@ enum moves_index {
 #define __inline __attribute__((always_inline))
 #define is_set(b, n) ((b) & (1lu << (n)))
 #define set_bit(b, n) ((b) |= (1lu << (n)))
+#define set_mask(b, m) ((b) |= (m))
 #define isolate_bit(b, n) ((b) & (1lu << (n)))
-#define clear_bit(b, n) ((b) &= ~isolate_bit(b, n))
+#define clear_bit(b, n) ((b) &= ~(1lu << (n)))
 
 
 // returns the piece at board[row][col]

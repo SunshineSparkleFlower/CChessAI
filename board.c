@@ -221,6 +221,11 @@ int undo_move(board_t *b, int n)
     PIECE(b->board, m->frm.y, fx) = PIECE(b->board, m->to.y, tx);
     PIECE(b->board, m->to.y, tx) = b->backup.piece;
 
+    if (b->backup.promotion) {
+        PIECE(b->board, m->frm.y, fx) = b->turn == WHITE
+            ? WHITE_PAWN : BLACK_PAWN;
+    }
+
     return 1;
 }
 
@@ -232,6 +237,7 @@ int do_move(board_t *b, int n)
 
     if (n >= b->moves_count)
         return 0;
+
 
     b->is_check = -1;
     if (bb_do_move(b, n) != 1) {
@@ -255,11 +261,20 @@ int do_move(board_t *b, int n)
     }
 
     m = &b->moves[n];
+
+    debug_print("moving from %d, %d to %d, %d\n", m->frm.y, ~m->frm.x & 0x7,
+            m->to.y, ~m->to.x & 0x7);
+
     tx = ~m->to.x & 0x7;
     fx = ~m->frm.x & 0x7;
     b->backup.piece = PIECE(b->board, m->to.y, tx);
     PIECE(b->board, m->to.y, tx) = PIECE(b->board, m->frm.y, fx);
     PIECE(b->board, m->frm.y, fx) = P_EMPTY;
+
+    if (b->backup.promotion) {
+        PIECE(b->board, m->to.y, tx) = b->turn == WHITE
+            ? WHITE_QUEEN : BLACK_QUEEN;
+    }
 
     return 1;
 }

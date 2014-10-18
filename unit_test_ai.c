@@ -91,6 +91,7 @@ void ai_test(void)
 #ifdef DEBUG
                 debug_print("did move. board:\n");
                 print_board(board->board);
+                printf("fen: %s\n", get_fen(board));
                 bb_print(board->white_pieces.apieces);
                 getchar();
 #endif
@@ -110,6 +111,7 @@ void ai_test(void)
 #ifdef DEBUG
                 debug_print("did move. board:\n");
                 print_board(board->board);
+                printf("fen: %s\n", get_fen(board));
                 bb_print(board->white_pieces.apieces);
                 getchar();
 #endif
@@ -135,40 +137,59 @@ void ai_test(void)
             board = new_board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1");
             int max_moves = 100;
             int moves = 0;
-            while(moves++ < max_moves){
+            while(moves++ < max_moves) {
 
                 int ret = do_best_move(ai2, board);
-#ifdef DEBUG2
+#ifdef DEBUG
                 debug_print("did move. board:\n");
                 print_board(board->board);
+                printf("fen: %s\n", get_fen(board));
                 getchar();
 #endif
-                if(ret == 0){
-                    // printf("STALEMATE\n");
-                    //print_board(board->board);
+                if(ret == 0) {
+#ifdef DEBUG
+                    printf("STALEMATE\n");
+                    print_board(board->board);
+                    bb_print(board->white_pieces.apieces);
+                    getchar();
+#endif
                     break;
                 }
                 else if(ret == -1){
-                    //printf("AI Lost\n");
+#ifdef DEBUG
+                    printf("AI Lost\n");
+                    print_board(board->board);
+                    bb_print(board->white_pieces.apieces);
+                    getchar();
+#endif
                     break;
                 }
                 //print_board(board->board);
 
 
                 ret = do_random_move(board);
-#ifdef DEBUG2
+#ifdef DEBUG
                 debug_print("did move. board:\n");
                 print_board(board->board);
+                printf("fen: %s\n", get_fen(board));
                 getchar();
 #endif
                 if(ret == 0){
-                    //printf("STALEMATE\n");
-                    //  print_board(board->board);
+#ifdef DEBUG
+                    printf("STALEMATE\n");
+                    print_board(board->board);
+                    bb_print(board->white_pieces.apieces);
+#endif
                     break;
                 }
                 else if(ret == -1){
-                    // printf("AI WON\n");
                     ai2_won++;
+#ifdef DEBUG
+                    printf("AI WON\n");
+                    print_board(board->board);
+                    bb_print(board->white_pieces.apieces);
+                    getchar();
+#endif
                     break;
                 }
                 //print_board(board->board);

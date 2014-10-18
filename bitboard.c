@@ -255,17 +255,19 @@ static inline u64 generate_pawn_moves(struct bitboard *b, int pos,
     static const uint64_t fileh = 0xfefefefefefefefe;
 
     if (turn == WHITE) {
-        ret = (b->pawns << 8) & ~b->pieces;
-        ret |= ((ret & 0xff0000) << 8) & ~b->pieces;
+        ret = (b->pawns << 8) & ~b->apieces;
+        ret |= ((ret & 0xff0000) << 8) & ~b->apieces;
         *attacks = (b->pawns & fileh) << 7;
         *attacks |= (b->pawns & filea) << 9;
     } else {
-        ret = (b->pawns >> 8) & ~b->pieces;
-        ret |= ((ret & 0x0000ff0000000000) >> 8) & ~b->pieces;
+        ret = (b->pawns >> 8) & ~b->apieces;
+        ret |= ((ret & 0x0000ff0000000000) >> 8) & ~b->apieces;
         *attacks = (b->pawns & filea) >> 7;
         *attacks |= (b->pawns & fileh) >> 9;
     }
-    *attacks &= (b->apieces & ~b->pieces);
+    //*attacks &= (b->apieces & ~b->pieces);
+    *attacks &= b->apieces;
+    *attacks &= ~b->pieces;
 
     return ret;
 }
@@ -375,20 +377,24 @@ int bb_do_move(board_t *board, int index)
 
     board->backup.capture_board = capture_board = find_board(enemy, to);
     if (capture_board != NULL) {
+#ifdef DEBUG
+        printf("before capture:\n");
+        bb_print(*capture_board);
+#endif
         board->backup.capture_mask = isolate_bit(*capture_board, to);
         clear_bit(*capture_board, to);
-    } else
+#ifdef DEBUG
+        printf("after capture:\n");
+        bb_print(*capture_board);
+        printf("capture mask:\n");
+        bb_print(board->backup.capture_mask);
+#endif
+    } else {
         board->backup.capture_mask = 0;
+    }
 
     clear_bit(*move_board, from);
     set_bit(*move_board, to);
-
-    // update friends and "all pieces"-board
-    self->pieces = self->pawns | self->rooks | self->knights
-        | self->bishops | self->queens | self->king;
-    enemy->pieces = enemy->pawns | enemy->rooks | enemy->knights
-        | enemy->bishops | enemy->queens | enemy->king;
-    self->apieces = enemy->apieces = self->pieces | enemy->pieces;
 
     // check for pawn promotion
     if (&self->pawns == move_board) {
@@ -398,7 +404,15 @@ int bb_do_move(board_t *board, int index)
             clear_bit(*move_board, to);
             set_bit(self->queens, to);
         }
-    }
+    } else
+        board->backup.promotion = 0;
+
+    // update friends and "all pieces"-board
+    self->pieces = self->pawns | self->rooks | self->knights
+        | self->bishops | self->queens | self->king;
+    enemy->pieces = enemy->pawns | enemy->rooks | enemy->knights
+        | enemy->bishops | enemy->queens | enemy->king;
+    self->apieces = enemy->apieces = self->pieces | enemy->pieces;
 
     return 1;
 }
@@ -432,8 +446,23 @@ int bb_undo_move(board_t *board, int index)
     clear_bit(*move_board, to);
     set_bit(*move_board, from);
 
-    if (capture_board)
-        set_bit(*capture_board, mask);
+    if (capture_board) {
+#ifdef DEBUG
+        debug_print("undoing move. capture board:\n");
+        bb_print(*capture_board);
+        debug_print("capture mask:\n");
+        bb_print(mask);
+#endif
+        set_mask(*capture_board, mask);
+#ifdef DEBUG
+        debug_print("after undoing move. capture board:\n");
+        bb_print(*capture_board);
+#endif
+    }
+
+    // check for pawn promotion
+    if (board->backup.promotion)
+        clear_bit(self->queens, to);
 
     // update friends and "all pieces"-board
     self->pieces = self->pawns | self->rooks | self->knights
@@ -442,15 +471,11 @@ int bb_undo_move(board_t *board, int index)
         | enemy->bishops | enemy->queens | enemy->king;
     self->apieces = enemy->apieces = self->pieces | enemy->pieces;
 
-    // check for pawn promotion
-    if (board->backup.promotion)
-        clear_bit(self->queens, to);
-
     return 1;
 }
 
 /* checks if current player is in check.
- */
+*/
 int bb_calculate_check(board_t *board)
 {
     u64 attacks;
