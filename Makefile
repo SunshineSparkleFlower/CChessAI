@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-O2 -msse4.1
+CFLAGS=-Wall -O2 -msse4.1
 LDFLAGS=-lpthread -lm
 
 %.o: %.c

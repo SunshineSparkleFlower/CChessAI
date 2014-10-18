@@ -221,13 +221,12 @@ int undo_move(board_t *b, int n)
     PIECE(b->board, m->frm.y, fx) = PIECE(b->board, m->to.y, tx);
     PIECE(b->board, m->to.y, tx) = b->backup.piece;
 
-    del_move(b, n);
+    return 1;
 }
 
 /* call this if you are totally sure the move is a legal one */
 int do_move(board_t *b, int n)
 {
-    piece_t backup;
     struct move *m;
     int tx, fx;
 

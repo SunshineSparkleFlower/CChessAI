@@ -18,7 +18,6 @@ void print_ai_stats(int tid, AI_instance_t *ai, int ite, int rndwins)
     printf("thread %d: memory attributes:\n", tid);
     printf("    P and R\n");
     printf("thread %d: generation: %d\n", tid, ai->generation);
-    printf("density : %d\n", ai->feature_density);
 }
 
 void *play(void *arg)
@@ -78,13 +77,12 @@ void *play(void *arg)
 
 void spawn_n_games(int n, int rounds)
 {
+    int i;
     pthread_t threads[n - 1];
-    int i, num_layers = 3, ret;
     struct game_struct games[n];
-    int features[] = {10, 100, 1}, feature_density = 10;
 
     for (i = 0; i < n; i++) {
-        games[i].ai = ai_new(num_layers, features, feature_density);
+        games[i].ai = ai_new();
         games[i].nr_games = rounds;
         games[i].thread_id = i + 1;
 

@@ -7,28 +7,10 @@
 #include "AI.h"
 
 
-static piece_t piecesl[] = {
-    WHITE_PAWN,
-    WHITE_KNIGHT,
-    WHITE_BISHOP,
-    WHITE_ROOK,
-    WHITE_QUEEN,
-    WHITE_KING,
-    BLACK_PAWN,
-    BLACK_KNIGHT,
-    BLACK_BISHOP,
-    BLACK_ROOK,
-    BLACK_QUEEN,
-    BLACK_KING,
-    P_EMPTY,
-};
-
 AI_instance_t *ai_new(void)
 {
-    int i,j;
+    int i;
     AI_instance_t *ret;
-    uint16_t piecess[4096];
-    uint16_t ***result_a, ***result_b;
 
     ret = malloc(sizeof(struct AI_instance));
     if (ret == NULL) {
@@ -59,41 +41,38 @@ AI_instance_t *ai_new(void)
 
 void ai_free(AI_instance_t *ai)
 {
-    int i;
-
     free(ai->brain);
     free(ai);
 }
 
 int nand(int *a, int *b, int size, piece_t *board, int board_size)
 {
-    __m128i ad, bd, tmp;
-
-
+    __m128i ad, bd;
 
     ad = _mm_loadu_si128((__m128i *)a);
     bd = _mm_loadu_si128((__m128i *)b);
     if(!_mm_test_all_zeros(ad, bd))
         return 0;
 
-        ad = _mm_loadu_si128((__m128i *)a);
-        bd = _mm_loadu_si128((__m128i *)b);
-        if(!_mm_test_all_zeros(ad, bd)){
-               return 0;
-        }
-        
+    ad = _mm_loadu_si128((__m128i *)a);
+    bd = _mm_loadu_si128((__m128i *)b);
+    if(!_mm_test_all_zeros(ad, bd)){
+        return 0;
+    }
+
     int i;
     for (i = 0; i < (board_size)/32; i+=4) {
-            ad = _mm_loadu_si128((__m128i *)(((int*)board)+i));
-            bd = _mm_loadu_si128((__m128i *)((int*)b+(i+(size/32))));
-           if(!_mm_test_all_zeros(ad, bd)){            
-                return 0;
-            }
+        ad = _mm_loadu_si128((__m128i *)(((int*)board)+i));
+        bd = _mm_loadu_si128((__m128i *)((int*)b+(i+(size/32))));
+        if(!_mm_test_all_zeros(ad, bd)){            
+            return 0;
+        }
 
     }
     return 1;
 
 }
+
 int nand_validation(int *a, int *b, int size, int *board, int board_size)
 {
 
@@ -112,15 +91,14 @@ int nand_validation(int *a, int *b, int size, int *board, int board_size)
     return 1;
 }
 
-
 int eval_curcuit(int *V, int **M,  int nr_ports, piece_t *board, int board_size)
 {   
-    
+
     int i;
     for (i = 0; i < nr_ports; i++) {
-       // if(nand(V, M[i], nr_ports, board, board_size) != nand_validation(V, M[i], nr_ports, board, board_size))
-       //     printf("NAND and NAND validation did not return same value\n");
-        
+        // if(nand(V, M[i], nr_ports, board, board_size) != nand_validation(V, M[i], nr_ports, board, board_size))
+        //     printf("NAND and NAND validation did not return same value\n");
+
 
         if (nand(V, M[i], nr_ports, board, board_size))
             SetBit(V,i);
@@ -138,10 +116,11 @@ int score(AI_instance_t *ai, piece_t *board)
 
 static int _get_best_move(AI_instance_t *ai, board_t *board)
 {
-    int i, j, count, moveret;
-    piece_t backup;
+    int i, count, moveret;
     float cumdist[board->moves_count], fcount, x;
     int scores[board->moves_count];
+
+    printf("moves_count = %d\n", board->moves_count);
 
     memcpy(&board->board[64], &board->board[0], 64 * sizeof(piece_t));
     for (i = count = 0; i < board->moves_count; i = count++) {
@@ -166,7 +145,14 @@ static int _get_best_move(AI_instance_t *ai, board_t *board)
         fcount += scores[i];
         cumdist[i] = fcount;
     }
+    printf("moves_count = %d\n", board->moves_count);
     x = random_float() * cumdist[board->moves_count - 1];
+    printf("moves_count = %d\n", board->moves_count);
+
+    printf("moves_count = %d, x = %f\n", board->moves_count, x);
+    getchar();
+    printf("x = %f, moves_count = %d\n", x, board->moves_count);
+    getchar();
 
     return bisect(cumdist, x, board->moves_count);
 }
@@ -174,8 +160,7 @@ static int _get_best_move(AI_instance_t *ai, board_t *board)
 //perform a best move return 0 if stalemate, -1 if check mate 1 of success
 int do_best_move(AI_instance_t *ai, board_t *board)
 {
-    int best_move, i;
-    piece_t backup;
+    int best_move;
 
     generate_all_moves(board);
     if (is_checkmate(board))
@@ -192,7 +177,6 @@ int do_best_move(AI_instance_t *ai, board_t *board)
 //perform a random move return 0 if stalemate, -1 if check mate 1 of success
 int do_random_move(board_t *board)
 {
-    piece_t backup;
     int rndmove;
 
     do {
@@ -235,6 +219,8 @@ int mutate(AI_instance_t *a1, AI_instance_t *a2)
     r1 = random_uint()%a1->nr_synapsis;
     r2 = random_uint()%a1->nr_synapsis;
     ClearBit(a1->brain[r1],r2);
+
+    return 1;
 }
 
 int get_score(AI_instance_t *ai)

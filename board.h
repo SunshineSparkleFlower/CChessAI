@@ -46,15 +46,19 @@ typedef struct board {
 
 extern board_t *new_board(char *_fen);
 extern void free_board(board_t *b);
+extern void generate_all_moves(board_t *b);
 extern int is_stalemate(board_t *b);
 extern int is_check(board_t *board);
 extern int is_checkmate(board_t *b);
 extern void swapturn(board_t *b);
 extern int undo_move(board_t *b, int n);
 extern int move(board_t *b, int n);
+extern int do_move(board_t *b, int n);
 extern char *get_fen(board_t *board);
 extern void print_board(piece_t *board);
 extern void print_move(board_t *board, int n);
 extern void print_legal_moves(board_t *board);
+
+extern void init_magicmoves(void);
 
 #endif

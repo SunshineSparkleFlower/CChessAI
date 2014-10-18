@@ -46,7 +46,7 @@ void score_test(void)
 
 void do_best_move_test(void)
 {
-    int ret, i, j;
+    int i;
     board_t *board = new_board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1");
     AI_instance_t *ai1;
 
@@ -58,7 +58,7 @@ void do_best_move_test(void)
 
 void ai_test(void)
 {
-    int ret, i, j, iteration;
+    int iteration;
     board_t *board;
     AI_instance_t *ai1, *ai2;
 
@@ -258,12 +258,14 @@ void *moves_test(void *arg)
     game->checkmates = checkmate;
     game->stalemates = stalemate;
     game->timeouts = timeout;
+
+    return NULL;
 }
 
 void spawn_n_games(int n, int rounds)
 {
     pthread_t threads[n - 1];
-    int i, num_layers = 3, ret;
+    int i;
     int checkmate, stalemate, timeout;
     struct game_struct games[n];
 
@@ -273,7 +275,7 @@ void spawn_n_games(int n, int rounds)
 
         if (i == n - 1)
             break;
-        pthread_create(&threads[i], NULL, moves_test, &games[i]);
+        pthread_create(&threads[i], NULL, moves_test, (void *)&games[i]);
     }
 
     moves_test(&games[i]);
@@ -294,7 +296,7 @@ void spawn_n_games(int n, int rounds)
     printf("%d timeouts\n", timeout);
 }
 
-int nandscore_test()
+void nandscore_test()
 {
     int nr_ports = 64;
     int board_size = 64*2*2*8;
@@ -314,7 +316,7 @@ int nandscore_test()
 
     printf("ret from eval: %d\n", eval_curcuit(V, M, nr_ports,
                 board->board, board_size));
-    printf("V : %x\n ", &V);
+    printf("V : %p\n ", &V);
     for(i = 0; i < nr_ports; i++){
 
         if(TestBit(V,i))
@@ -326,9 +328,6 @@ int nandscore_test()
 
 int main(int argc, char *argv[])
 {
-    unsigned long start, end;
-    double diff;
-    int i, rounds, threads, count;
     //multiply_test();
     //score_test();
     //malloc_2d_test();
@@ -338,6 +337,9 @@ int main(int argc, char *argv[])
     ai_test();
 
     /*
+       unsigned long start, end;
+       double diff;
+       int i, rounds, threads, count;
 
        start = now();
        rounds = argc > 1 ? atoi(argv[1]) : 2000;

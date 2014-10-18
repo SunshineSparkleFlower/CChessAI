@@ -26,7 +26,12 @@ extern int do_best_move(AI_instance_t *ai, board_t *board);
 extern void punish(AI_instance_t *ai);
 extern void reward(AI_instance_t *ai);
 extern int get_score(AI_instance_t *ai);
-extern void ai_mutate(AI_instance_t *a, AI_instance_t *b);
+extern int mutate(AI_instance_t *a1, AI_instance_t *a2);
 extern void clear_nr_wins(AI_instance_t *ai);
+extern int do_random_move(board_t *board);
+
+
+extern int score(AI_instance_t *ai, piece_t *board);
+extern int eval_curcuit(int *V, int **M,  int nr_ports, piece_t *board, int board_size);
 
 #endif

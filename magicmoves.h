@@ -125,6 +125,6 @@ static inline u64 QmagicNOMASK(const unsigned int square, const u64 occupancy)
     return BmagicNOMASK(square,occupancy)|RmagicNOMASK(square,occupancy);
 }
 
-extern void initmagicmoves(void);
+extern void init_magicmoves(void);
 
 #endif //_magicmoveshvesh
