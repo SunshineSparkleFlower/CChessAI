@@ -6,13 +6,15 @@
 #include "common.h"
 #include "AI.h"
 
+#define MAGIC_LENGTH 6
+static unsigned char ai_mem_magic[] = "\x01\x02\x03\x04\x05\x06";
 
 AI_instance_t *ai_new(void)
 {
     int i;
     AI_instance_t *ret;
 
-    ret = malloc(sizeof(struct AI_instance));
+    ret = calloc(1, sizeof(struct AI_instance));
     if (ret == NULL) {
         perror("malloc");
         return NULL;
@@ -22,19 +24,72 @@ AI_instance_t *ai_new(void)
     ret->board_size = 64*2*2*8;
     ret->nr_synapsis = ret->nr_ports + ret->board_size;
 
-    ret->brain = (int **)malloc_2d(ret->nr_synapsis/32, ret->nr_synapsis,  4);
-
-
-    random_fill(&ret->brain[0][0], (ret->nr_synapsis/32)*ret->nr_synapsis*4);
-    for(i = 0; i < (ret->nr_synapsis/32)*ret->nr_synapsis*4*8; i++)
+    ret->brain = (int **)malloc_2d(ret->nr_synapsis / (sizeof(int) * 8),
+            ret->nr_synapsis,  sizeof(int));
+    for(i = 0; i < (ret->nr_synapsis / (sizeof(int) * 8)) *
+            ret->nr_synapsis * sizeof(int) * 8; i++)
         if(!random_int_r(0, 100))
-            SetBit(&ret->brain[0][0],i);
+            SetBit(&ret->brain[0][0], i);
         else
-            ClearBit(&ret->brain[0][0],i);
+            ClearBit(&ret->brain[0][0], i);
 
     ret->move_nr = 0;
     ret->nr_wins = ret->nr_losses = 0;
     ret->generation = 0;
+
+    return ret;
+}
+
+int dump_ai(char *file, AI_instance_t *ai)
+{
+    FILE *out;
+    long brain_size = (ai->nr_synapsis/(sizeof(int) * 8)) *
+        ai->nr_synapsis * sizeof(int);
+
+    out = fopen(file, "w");
+    if (out == NULL)
+        return 0;
+
+    fwrite(ai_mem_magic, 1, MAGIC_LENGTH, out);
+    fwrite(ai, 1, sizeof(AI_instance_t), out);
+    fwrite(&ai->brain[0][0], 1, brain_size, out);
+
+    fclose(out);
+
+    return 1;
+}
+
+AI_instance_t *load_ai(char *file)
+{
+    FILE *in;
+    AI_instance_t *ret;
+    unsigned char magic[MAGIC_LENGTH];
+    long brain_size;
+    ret = malloc(sizeof(AI_instance_t));
+
+    in = fopen(file, "r");
+    if (in == NULL) {
+        perror("fopen");
+        return NULL;
+    }
+
+    fread(magic, 1, MAGIC_LENGTH, in);
+    if (memcmp(magic, ai_mem_magic, MAGIC_LENGTH)) {
+        fprintf(stderr, "%s is not a valid AI dump\n", file);
+        free(ret);
+        fclose(in);
+        return NULL;
+    }
+
+    fread(ret, 1, sizeof(AI_instance_t), in);
+    ret->brain = (int **)malloc_2d(ret->nr_synapsis/(sizeof(int) *  8),
+            ret->nr_synapsis, sizeof(int));
+
+    brain_size = (ret->nr_synapsis/(sizeof(int) * 8)) *
+        ret->nr_synapsis * sizeof(int);
+    fread(&ret->brain[0][0], 1, brain_size, in);
+
+    fclose(in);
 
     return ret;
 }
@@ -188,7 +243,7 @@ int do_random_move(board_t *board)
     return 1;
 }
 
-//perform a random move return 0 if stalemate, -1 if check mate 1 of success
+//perform a nonrandom move return 0 if stalemate, -1 if check mate 1 of success
 int do_nonrandom_move(board_t *board)
 {
     int rndmove;
@@ -211,7 +266,6 @@ int do_nonrandom_move(board_t *board)
     return 1;
 }
 
-
 void punish(AI_instance_t *ai)
 {
     ai->nr_losses++;
@@ -229,18 +283,18 @@ int mutate(AI_instance_t *a1, AI_instance_t *a2)
 
     unsigned r1 = random_uint()%a1->nr_synapsis;
     unsigned r2 = random_uint()%a1->nr_synapsis;
-     if(!random_int_r(0, 100))
-            SetBit(a1->brain[r1],r2);
-        else
-            ClearBit(a1->brain[r1],r2);
+    if(!random_int_r(0, 100))
+        SetBit(a1->brain[r1],r2);
+    else
+        ClearBit(a1->brain[r1],r2);
 
     r1 = random_uint()%a1->nr_synapsis;
     r2 = random_uint()%a1->nr_synapsis;
 
-     if(!random_int_r(0, 100))
-            SetBit(a1->brain[r1],r2);
-     else
-            ClearBit(a1->brain[r1],r2);
+    if(!random_int_r(0, 100))
+        SetBit(a1->brain[r1],r2);
+    else
+        ClearBit(a1->brain[r1],r2);
 
     return 1;
 }

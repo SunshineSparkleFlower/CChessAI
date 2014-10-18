@@ -13,14 +13,15 @@ typedef struct AI_instance {
     int move_nr;
     int nr_wins, nr_losses;
     int generation;
-    piece_t *nextboard;
     int **brain;
     int nr_ports;
     int nr_synapsis;
     int board_size;
-} AI_instance_t;
+} __attribute__((packed)) AI_instance_t;
 
 extern AI_instance_t *ai_new(void);
+AI_instance_t *load_ai(char *file);
+int dump_ai(char *file, AI_instance_t *ai);
 extern void ai_free(AI_instance_t *ai);
 extern int do_best_move(AI_instance_t *ai, board_t *board);
 extern void punish(AI_instance_t *ai);
@@ -28,6 +29,7 @@ extern void reward(AI_instance_t *ai);
 extern int get_score(AI_instance_t *ai);
 extern int mutate(AI_instance_t *a1, AI_instance_t *a2);
 extern void clear_nr_wins(AI_instance_t *ai);
+extern int do_nonrandom_move(board_t *board);
 extern int do_random_move(board_t *board);
 
 

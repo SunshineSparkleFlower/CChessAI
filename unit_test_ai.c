@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <math.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "common.h"
 #include "AI.h"
@@ -221,6 +222,76 @@ void ai_test(void)
     ai_free(ai2);
 }
 
+void ai_dumptest(void)
+{
+    int i, ret = 1;
+    board_t *board;
+    AI_instance_t *ai, *restored;
+    long rounds = 2;
+    int moves, max_moves = 100;
+    char *file = "aidump_test.ai";
+    int **aib, **resb;
+    long brain_size;
+
+    ai = ai_new();
+
+    brain_size = (ai->nr_synapsis/(sizeof(int) * 8)) *
+        ai->nr_synapsis * sizeof(int);
+
+    /* run a couple of rounds */
+    for (i = 0; i < rounds; i++) {
+        board = new_board(NULL);
+        for (moves = 0; moves < max_moves; moves++) {
+            ret = do_best_move(ai, board);
+            if (ret <= 0)
+                break;
+
+            // break if stalemate or checkmate
+            ret = do_random_move(board);
+            if (ret <= 0)
+                break;
+        }
+
+        free_board(board);
+    }
+
+    if (!dump_ai(file, ai)) {
+        perror("dump_ai");
+        return;
+    }
+
+    restored = load_ai(file);
+    if (restored == NULL) {
+        perror("load_ai");
+        free(ai);
+        return;
+    }
+
+    aib = ai->brain;
+    resb = restored->brain;
+    ai->brain = NULL;
+    restored->brain = NULL;
+
+    if (memcmp(ai, restored, sizeof(AI_instance_t))) {
+        printf("restored ai metadata does not match original\n");
+        return;
+    }
+
+    ai->brain = aib;
+    restored->brain = resb;
+
+    if (memcmp(&ai->brain[0][0], &restored->brain[0][0], brain_size)) {
+        printf("restored ai brain does not match original\n");
+        return;
+    }
+
+    ai_free(ai);
+    ai_free(restored);
+
+    printf("ai dump test succeeded\n");
+    unlink(file);
+}
+
 void malloc_2d_test(void)
 {
     int i, j;
@@ -362,7 +433,10 @@ int main(int argc, char *argv[])
     //do_best_move_test();
     //mutate_test();
     init_magicmoves();
-    ai_test();
+
+    ai_dumptest();
+
+    //ai_test();
 
     /*
        unsigned long start, end;
