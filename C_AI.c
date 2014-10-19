@@ -1,13 +1,25 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <pthread.h>
+
 #include "common.h"
 #include "board.h"
 #include "AI.h"
+#include "threadpool.h"
+
+struct stats {
+    int ai_wins;
+};
 
 struct game_struct {
     AI_instance_t *ai;
-    int nr_games, thread_id;
+    int games_to_play, max_moves;
+    int (*do_a_move)(board_t *);
+    char *fen;
+
+    int game_id;
+    struct stats *stats;
 };
 
 void print_ai_stats(int tid, AI_instance_t *ai, int ite, int rndwins)
@@ -20,93 +32,114 @@ void print_ai_stats(int tid, AI_instance_t *ai, int ite, int rndwins)
     printf("thread %d: generation: %d\n", tid, ai->generation);
 }
 
-void *play(void *arg)
+void play_chess(void *arg)
 {
-    board_t *board;
-    AI_instance_t *ai;
-    int i, rounds, turn, rnd, rndwins;
     struct game_struct *game = (struct game_struct *)arg;
+    struct stats *stats = game->stats;
+    int games_to_play, nr_games, max_moves, moves, ret, ai_wins;
+    int (*do_a_move)(board_t *);
+    AI_instance_t *ai;
+    board_t *board;
 
-    rounds = game->nr_games;
     ai = game->ai;
+    games_to_play = game->games_to_play;
+    max_moves = game->max_moves;
+    do_a_move = game->do_a_move;
+    ai_wins = 0;
 
-    rndwins = 0;
+    printf("starting game %d\n", game->game_id);
 
-    for (i = 1; i < rounds + 1; i++) {
-        board = new_board(NULL);
-        turn = 0;
-
-        if (i % 100 == 0)
-            print_ai_stats(game->thread_id, ai, i, rndwins);
-
-        while (1) {
-            if (is_checkmate(board)) {
-                print_board(board->board);
-                printf("thread %d: ai lost\n", game->thread_id);
-                punish(ai);
-                ++rndwins;
+    for (nr_games = 0; nr_games < games_to_play; nr_games++) {
+        board = new_board(game->fen);
+        for (moves = 0; moves < max_moves; moves++) {
+            ret = do_best_move(ai, board);
+            if(ret == 0)
                 break;
-            } else
-                do_best_move(ai, board);
-
-            swapturn(board);
-
-            if (is_checkmate(board)) {
-                print_board(board->board);
-                printf("thread %d: ai won\n", game->thread_id);
-                reward(ai);
+            else if (ret == -1)
                 break;
-            } else {
-                generate_all_moves(board);
-                do {
-                    rnd = random_int_r(0, board->moves_count - 1);
-                } while (!move(board, rnd));
+
+            ret = do_a_move(board);
+            if(ret == 0)
+                break;
+            else if(ret == -1) {
+                ai_wins++;
+                break;
             }
-
-            swapturn(board);
-            ++turn;
-            if (turn > 80)
-                break;
         }
-
         free_board(board);
     }
 
-    return NULL;
+    stats->ai_wins = ai_wins;
 }
 
-void spawn_n_games(int n, int rounds)
+int get_best_ai(struct stats *s, int n)
 {
-    int i;
-    pthread_t threads[n - 1];
-    struct game_struct games[n];
+    int i, best = 0;;
 
-    for (i = 0; i < n; i++) {
-        games[i].ai = ai_new();
-        games[i].nr_games = rounds;
-        games[i].thread_id = i + 1;
-
-        if (i == n - 1)
-            break;
-        pthread_create(&threads[i], NULL, play, &games[i]);
+    for (i = 1; i < n; i++) {
+        if (s[i].ai_wins > s[best].ai_wins)
+            best = i;
     }
 
-    play(&games[i]);
-    ai_free(games[i].ai);
-
-    for (i = 0; i < n - 1; i++) {
-        pthread_join(threads[i], NULL);
-        ai_free(games[i].ai);
-    }
+    return best;
 }
 
 int main(int argc, char *argv[])
 {
-    if (argc != 3) {
-        printf("USAGE: %s <nr. concurrent games> <nr. rounds>\n", argv[0]);
-        return 0;
+    int nr_threads, nr_jobs, i, best;
+    struct game_struct *games;
+    struct stats *stats;
+    struct job *jobs;
+
+    nr_threads = argc > 1 ? atoi(argv[1]) : 2;
+    nr_jobs = argc > 2 ? atoi(argv[2]) : 2;
+
+    if (nr_threads == 0 || nr_jobs == 0) {
+        printf("threads or jobs cannot be 0\n");
+        printf("USAGE: %s <nr threads> <nr jobs>\n", argv[0]);
+        return 1;
     }
 
-    spawn_n_games(atoi(argv[1]), atoi(argv[2]));
+    init_threadpool(nr_threads);
+    init_magicmoves();
+
+    jobs = malloc(nr_jobs * sizeof(struct job));
+    games = malloc(nr_jobs * sizeof(struct game_struct));
+    stats = malloc(nr_jobs * sizeof(struct stats));
+
+    for (i = 0; i < nr_jobs; i++) {
+        games[i].ai = ai_new();
+        games[i].games_to_play = 1000;
+        games[i].max_moves = 100;
+        games[i].do_a_move = do_nonrandom_move;
+        games[i].fen = DEFAULT_FEN;
+        games[i].game_id = i + 1;
+        games[i].stats = stats + i;
+
+        jobs[i].data = games + i;
+        jobs[i].task = play_chess;
+    }
+
+    while (1) {
+        for (i = 0; i < nr_jobs; i++) {
+            stats[i].ai_wins = 0;
+            put_new_job(jobs + i);
+        }
+
+        /* wait for jobs to finish */
+        while (get_jobs_left() > 0 || get_jobs_in_progess() > 0)
+            usleep(1000 * 10); // sleep 10 ms
+
+        best = get_best_ai(stats, nr_jobs);
+        for (i = 0; i < nr_jobs; i++) {
+            if (i == best)
+                continue;
+
+            printf("mutating ai%d (%d wins) from ai%d (%d wins)\n",
+                    i, stats[i].ai_wins, best, stats[best].ai_wins);
+            mutate(games[i].ai, games[best].ai);
+        }
+    }
+
     return 0;
 }

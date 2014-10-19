@@ -432,11 +432,12 @@ int main(int argc, char *argv[])
     //malloc_2d_test();
     //do_best_move_test();
     //mutate_test();
+
     init_magicmoves();
 
-    ai_dumptest();
+    //ai_dumptest();
 
-    //ai_test();
+    ai_test();
 
     /*
        unsigned long start, end;

@@ -7,7 +7,7 @@ LDFLAGS=-lpthread -lm
 
 all: fast
 
-fast: C_AI.o board.o AI.o common.o bitboard.o magicmoves.o
+fast: C_AI.o board.o AI.o common.o bitboard.o magicmoves.o threadpool.o
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
 
 debug: CFLAGS += -DDEBUG -g

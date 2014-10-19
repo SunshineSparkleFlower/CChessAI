@@ -44,6 +44,8 @@ typedef struct board {
     int is_check;
 } board_t;
 
+#define DEFAULT_FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1"
+
 extern board_t *new_board(char *_fen);
 extern void free_board(board_t *b);
 extern void generate_all_moves(board_t *b);

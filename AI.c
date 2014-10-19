@@ -147,7 +147,7 @@ int nand_validation(int *a, int *b, int size, int *board, int board_size)
 }
 
 int eval_curcuit(int *V, int **M,  int nr_ports, piece_t *board, int board_size)
-{   
+{
 
     int i;
     for (i = 0; i < nr_ports; i++) {

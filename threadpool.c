@@ -11,7 +11,8 @@ struct job_list {
 };
 
 static volatile int run = 1; /* is set to 0 if threads are to terminate */
-static volatile int num_jobs = 0;
+static volatile int num_free_jobs = 0;
+static volatile int jobs_in_progress = 0;
 static struct job_list jobs;
 
 /* used to free job->data */
@@ -50,10 +51,20 @@ void put_new_job(struct job *j)
     new->job = j;
 
     add_tail(new);
-    ++num_jobs;
+    ++num_free_jobs;
 
     pthread_mutex_unlock(&jobs_lock);
     pthread_cond_signal(&cond);
+}
+
+int get_jobs_left(void)
+{
+    return num_free_jobs;
+}
+
+int get_jobs_in_progess(void)
+{
+    return jobs_in_progress;
 }
 
 static struct job *get_job(void)
@@ -62,20 +73,34 @@ static struct job *get_job(void)
     struct job *ret = NULL;
 
     pthread_mutex_lock(&jobs_lock);
-    while (num_jobs == 0 && run)
+    while (num_free_jobs == 0 && run)
         pthread_cond_wait(&cond, &jobs_lock);
 
-    if (run && num_jobs > 0) {
+    if (run && num_free_jobs > 0) {
         tmp = jobs.next;
         unlink_node(tmp);
         ret = tmp->job;
         free(tmp);
 
-        --num_jobs;
+        --num_free_jobs;
     }
 
     pthread_mutex_unlock(&jobs_lock);
     return ret;
+}
+
+static inline void report_start(void)
+{
+    pthread_mutex_lock(&jobs_lock);
+    ++jobs_in_progress;
+    pthread_mutex_unlock(&jobs_lock);
+}
+
+static inline void report_done(void)
+{
+    pthread_mutex_lock(&jobs_lock);
+    --jobs_in_progress;
+    pthread_mutex_unlock(&jobs_lock);
 }
 
 static void *loiter(void *arg)
@@ -88,13 +113,16 @@ static void *loiter(void *arg)
         job = get_job();
         if (job == NULL)
             break;
-
         ++i;
+
+        report_start();
         job->task(job->data);
+        printf("task %d completed job\n", thread_id);
+        report_done();
 
         if (free_function)
-            free_function(job->data);
-        free(job);
+            free_function(job);
+
     }
 
     return (void *)i;
@@ -114,7 +142,7 @@ void init_threadpool(int pool_size)
     num_threads = pool_size;
 }
 
-/* register a function to be used to free job->data */
+/* register a function to be used to free job when completed */
 void set_free_function(void (*f)(void *))
 {
     free_function = f;
