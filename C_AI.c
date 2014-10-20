@@ -13,10 +13,6 @@
 #include "AI.h"
 #include "threadpool.h"
 
-struct stats {
-    int ai_wins;
-};
-
 struct game_struct {
     AI_instance_t *ai;
     int games_to_play, max_moves;
@@ -24,12 +20,10 @@ struct game_struct {
     char *fen;
 
     int game_id;
-    struct stats *stats;
 };
 
 int nr_threads, nr_jobs, i, best, iteration;
 struct game_struct *games = NULL;
-struct stats *stats = NULL;
 struct job *jobs = NULL;
 
 void print_ai_stats(int tid, AI_instance_t *ai, int ite, int rndwins)
@@ -45,8 +39,7 @@ void print_ai_stats(int tid, AI_instance_t *ai, int ite, int rndwins)
 void play_chess(void *arg)
 {
     struct game_struct *game = (struct game_struct *)arg;
-    struct stats *stats = game->stats;
-    int games_to_play, nr_games, max_moves, moves, ret, ai_wins;
+    int games_to_play, nr_games, max_moves, moves, ret;
     int (*do_a_move)(board_t *);
     AI_instance_t *ai;
     board_t *board;
@@ -55,7 +48,6 @@ void play_chess(void *arg)
     games_to_play = game->games_to_play;
     max_moves = game->max_moves;
     do_a_move = game->do_a_move;
-    ai_wins = 0;
 
     printf("starting game %d\n", game->game_id);
 
@@ -63,31 +55,35 @@ void play_chess(void *arg)
         board = new_board(game->fen);
         for (moves = 0; moves < max_moves; moves++) {
             ret = do_best_move(ai, board);
-            if(ret == 0)
+            if(ret == 0) {
                 break;
-            else if (ret == -1)
+            } else if (ret == -1) {
+                punish(ai);
                 break;
+            }
 
             ret = do_a_move(board);
-            if(ret == 0)
+            if(ret == 0) {
                 break;
-            else if(ret == -1) {
-                ai_wins++;
+            } else if(ret == -1) {
+                reward(ai);
                 break;
             }
         }
+
+        if (ret >= 0)
+            ++game->ai->nr_games_played;
+
         free_board(board);
     }
-
-    stats->ai_wins = ai_wins;
 }
 
-int get_best_ai(struct stats *s, int n)
+int get_best_ai(struct game_struct *g, int n)
 {
     int i, best = 0;;
 
     for (i = 1; i < n; i++) {
-        if (s[i].ai_wins > s[best].ai_wins)
+        if (get_score(g[i].ai) > get_score(g[best].ai))
             best = i;
     }
 
@@ -97,7 +93,7 @@ int get_best_ai(struct stats *s, int n)
 void sighandler(int sig)
 {
     char buffer[512], file[128];
-    int force_kill = 1, n = 1, i, best;
+    int n = 1, i, best;
     struct timeval tv;
     struct tm *tm;
 
@@ -137,12 +133,11 @@ void sighandler(int sig)
     }
 
     for (i = 0; i < n; i++) {
-        best = get_best_ai(stats, nr_jobs);
+        best = get_best_ai(games, nr_jobs);
         sprintf(buffer, "%s-%d.aidump", file, i + 1);
         fprintf(stderr, "saving ai to file '%s'\n", buffer);
-        dump_ai(buffer, games[i].ai);
-
-        stats[best].ai_wins = -1;
+        dump_ai(buffer, games[best].ai);
+        clear_score(games[best].ai);
     }
 
     exit(0);
@@ -166,7 +161,6 @@ int main(int argc, char *argv[])
 
     jobs = malloc(nr_jobs * sizeof(struct job));
     games = malloc(nr_jobs * sizeof(struct game_struct));
-    stats = malloc(nr_jobs * sizeof(struct stats));
 
     for (i = 0; i < nr_jobs; i++) {
         games[i].ai = ai_new();
@@ -175,7 +169,6 @@ int main(int argc, char *argv[])
         games[i].do_a_move = do_nonrandom_move;
         games[i].fen = DEFAULT_FEN;
         games[i].game_id = i + 1;
-        games[i].stats = stats + i;
 
         jobs[i].data = games + i;
         jobs[i].task = play_chess;
@@ -185,7 +178,6 @@ int main(int argc, char *argv[])
     while (1) {
         printf("iteration %d\n", ++iteration);
         for (i = 0; i < nr_jobs; i++) {
-            stats[i].ai_wins = 0;
             put_new_job(jobs + i);
         }
 
@@ -193,13 +185,13 @@ int main(int argc, char *argv[])
         while (get_jobs_left() > 0 || get_jobs_in_progess() > 0)
             usleep(1000 * 10); // sleep 10 ms
 
-        best = get_best_ai(stats, nr_jobs);
+        best = get_best_ai(games, nr_jobs);
         for (i = 0; i < nr_jobs; i++) {
             if (i == best)
                 continue;
 
-            printf("mutating ai%d (%d wins) from ai%d (%d wins)\n",
-                    i, stats[i].ai_wins, best, stats[best].ai_wins);
+            printf("mutating ai%d (score %f) from ai%d (score %f)\n",
+                    i, get_score(games[i].ai), best, get_score(games[best].ai));
             mutate(games[i].ai, games[best].ai);
         }
     }

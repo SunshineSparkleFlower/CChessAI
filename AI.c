@@ -297,15 +297,16 @@ int mutate(AI_instance_t *a1, AI_instance_t *a2)
             ClearBit(a1->brain[r1], r2);
     }
 
+    clear_score(a1);
     return 1;
 }
 
-int get_score(AI_instance_t *ai)
+float get_score(AI_instance_t *ai)
 {
-    return (float)(ai->nr_wins - ai->nr_losses)/(ai->nr_games_played);
+    return ((float)(ai->nr_wins - ai->nr_losses))/((float)ai->nr_games_played);
 }
 
-void clear_nr_wins(AI_instance_t *ai)
+void clear_score(AI_instance_t *ai)
 {
     ai->nr_losses = ai->nr_wins = ai->nr_games_played = 0;
 }
