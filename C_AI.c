@@ -2,6 +2,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <signal.h>
+#include <sys/time.h>
+#include <time.h>
+#include <ctype.h>
+#include <string.h>
 
 #include "common.h"
 #include "board.h"
@@ -21,6 +26,11 @@ struct game_struct {
     int game_id;
     struct stats *stats;
 };
+
+int nr_threads, nr_jobs, i, best, iteration;
+struct game_struct *games = NULL;
+struct stats *stats = NULL;
+struct job *jobs = NULL;
 
 void print_ai_stats(int tid, AI_instance_t *ai, int ite, int rndwins)
 {
@@ -84,13 +94,62 @@ int get_best_ai(struct stats *s, int n)
     return best;
 }
 
+void sighandler(int sig)
+{
+    char buffer[512], file[128];
+    int force_kill = 1, n = 1, i, best;
+    struct timeval tv;
+    struct tm *tm;
+
+    gettimeofday(&tv, NULL);
+    tm = localtime(&tv.tv_sec);
+    strftime(file, 64, "ai_save-%d%m%y-%H%M", tm);
+
+    fprintf(stderr, "Are you sure you want to quit? (Y/n): [default: n] ");
+    fgets(buffer, sizeof(buffer), stdin);
+    if (tolower(buffer[0]) != 'y')
+        return;
+
+    fprintf(stderr, "Save N best AIs to file? (Y/n): [default: y] ");
+    fgets(buffer, sizeof(buffer), stdin);
+    if (tolower(buffer[0]) == 'n')
+        n = 0;
+
+    if (n) {
+        fprintf(stderr, "N (0-%d): [default: %d] ", nr_jobs, n);
+        fgets(buffer, sizeof(buffer), stdin);
+        buffer[127] = 0;
+        if (buffer[0] != '\n')
+            n = atoi(buffer);
+        if (n > nr_jobs) {
+            fprintf(stderr, "N > %d, setting N to %d\n", nr_jobs, nr_jobs);
+            n = nr_jobs;
+        }
+
+        fprintf(stderr, "File prefix (<= 64 chars): [default: %s] ", file);
+        fgets(buffer, 64, stdin);
+        if (buffer[0] != '\n') {
+            strncpy(file, buffer, 64);
+            if (file[strlen(file) - 1] == '\n')
+                file[strlen(file) - 1] = 0;
+            file[64] = 0;
+        }
+    }
+
+    for (i = 0; i < n; i++) {
+        best = get_best_ai(stats, nr_jobs);
+        sprintf(buffer, "%s-%d.aidump", file, i + 1);
+        fprintf(stderr, "saving ai to file '%s'\n", buffer);
+        dump_ai(buffer, games[i].ai);
+
+        stats[best].ai_wins = -1;
+    }
+
+    exit(0);
+}
+
 int main(int argc, char *argv[])
 {
-    int nr_threads, nr_jobs, i, best;
-    struct game_struct *games;
-    struct stats *stats;
-    struct job *jobs;
-
     nr_threads = argc > 1 ? atoi(argv[1]) : 2;
     nr_jobs = argc > 2 ? atoi(argv[2]) : 2;
 
@@ -102,6 +161,8 @@ int main(int argc, char *argv[])
 
     init_threadpool(nr_threads);
     init_magicmoves();
+
+    signal(SIGINT, sighandler);
 
     jobs = malloc(nr_jobs * sizeof(struct job));
     games = malloc(nr_jobs * sizeof(struct game_struct));
@@ -120,7 +181,9 @@ int main(int argc, char *argv[])
         jobs[i].task = play_chess;
     }
 
+    iteration = 0;
     while (1) {
+        printf("iteration %d\n", ++iteration);
         for (i = 0; i < nr_jobs; i++) {
             stats[i].ai_wins = 0;
             put_new_job(jobs + i);

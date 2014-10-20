@@ -279,22 +279,20 @@ void reward(AI_instance_t *ai)
 //layers in a a1 is replaced with layers from a2 pluss a mutation
 int mutate(AI_instance_t *a1, AI_instance_t *a2)
 {
-    memcpy(&a1->brain[0][0], &a2->brain[0][0], 4*a1->nr_synapsis* a1->nr_synapsis/32);
+    int i;
+    unsigned r1, r2;
 
-    unsigned r1 = random_uint()%a1->nr_synapsis;
-    unsigned r2 = random_uint()%a1->nr_synapsis;
-    if(!random_int_r(0, 100))
-        SetBit(a1->brain[r1],r2);
-    else
-        ClearBit(a1->brain[r1],r2);
+    memcpy(&a1->brain[0][0], &a2->brain[0][0], 4 * a1->nr_synapsis * a1->nr_synapsis / 32);
 
-    r1 = random_uint()%a1->nr_synapsis;
-    r2 = random_uint()%a1->nr_synapsis;
+    for (i = 0; i < 50000; i++) {
+        r1 = random_uint() % a1->nr_synapsis;
+        r2 = random_uint() % a1->nr_synapsis;
 
-    if(!random_int_r(0, 100))
-        SetBit(a1->brain[r1],r2);
-    else
-        ClearBit(a1->brain[r1],r2);
+        if (!random_int_r(0, 100))
+            SetBit(a1->brain[r1], r2);
+        else
+            ClearBit(a1->brain[r1], r2);
+    }
 
     return 1;
 }

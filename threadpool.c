@@ -105,9 +105,11 @@ static inline void report_done(void)
 
 static void *loiter(void *arg)
 {
+    long i = 0;
     struct job *job;
     int thread_id = (long)arg;
-    long i = 0;
+
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL); 
 
     while (run) {
         job = get_job();
@@ -122,7 +124,6 @@ static void *loiter(void *arg)
 
         if (free_function)
             free_function(job);
-
     }
 
     return (void *)i;
@@ -148,7 +149,7 @@ void set_free_function(void (*f)(void *))
     free_function = f;
 }
 
-void shutdown_threadpool(void)
+void shutdown_threadpool(int force_kill)
 {
     int i, count;
     struct job_list *ptr, *next;
@@ -157,48 +158,48 @@ void shutdown_threadpool(void)
     pthread_cond_broadcast(&cond);
 
     for (i = 0; i < num_threads; i++) {
+        if (force_kill)
+            pthread_cancel(threads[i]);
         pthread_join(threads[i], (void *)&count);
-        debug_print("thread %d got %d jobs\n", i + 1, count);
     }
     pthread_mutex_destroy(&jobs_lock);
 
     for (ptr = jobs.next; ptr != &jobs; ptr = next) {
         next = ptr->next;
         if (free_function)
-            free_function(ptr->job->data);
-        free(ptr->job);
+            free_function(ptr->job);
         free(ptr);
     }
     free(threads);
 }
 
 /*
-static void hello(void *a)
-{
-    int id = (long)a;
-    printf("hello world (%d)\n", id);
-}
+   static void hello(void *a)
+   {
+   int id = (long)a;
+   printf("hello world (%d)\n", id);
+   }
 
-int main(int argc, char *argv[])
-{
-    int i;
-    struct job *jobs[100];
+   int main(int argc, char *argv[])
+   {
+   int i;
+   struct job *jobs[100];
 
-    for (i = 0; i < 100; i++) {
-        jobs[i] = malloc(sizeof(struct job));
-        jobs[i]->task = hello;
-        jobs[i]->data = (void *)(long)i + 1;
-    }
+   for (i = 0; i < 100; i++) {
+   jobs[i] = malloc(sizeof(struct job));
+   jobs[i]->task = hello;
+   jobs[i]->data = (void *)(long)i + 1;
+   }
 
-    init_threadpool(20);
+   init_threadpool(20);
 
-    for (i = 0; i < 100; i++)
-        put_new_job(jobs[i]);
+   for (i = 0; i < 100; i++)
+   put_new_job(jobs[i]);
 
-    getchar();
+   getchar();
 
-    shutdown_threadpool();
+   shutdown_threadpool();
 
-    return 0;
-}
-*/
+   return 0;
+   }
+   */
