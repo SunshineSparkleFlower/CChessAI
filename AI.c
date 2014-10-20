@@ -34,8 +34,9 @@ AI_instance_t *ai_new(void)
             ClearBit(&ret->brain[0][0], i);
 
     ret->move_nr = 0;
-    ret->nr_wins = ret->nr_losses = 0;
+    ret->nr_wins = ret->nr_losses = ret->nr_games_played = 0;
     ret->generation = 0;
+    ret->mutation_rate = 5000;
 
     return ret;
 }
@@ -269,11 +270,13 @@ int do_nonrandom_move(board_t *board)
 void punish(AI_instance_t *ai)
 {
     ai->nr_losses++;
+    ai->nr_games_played++;
 }
 
 void reward(AI_instance_t *ai)
 {
     ai->nr_wins++;
+    ai->nr_games_played++;
 }
 
 //layers in a a1 is replaced with layers from a2 pluss a mutation
@@ -284,7 +287,7 @@ int mutate(AI_instance_t *a1, AI_instance_t *a2)
 
     memcpy(&a1->brain[0][0], &a2->brain[0][0], 4 * a1->nr_synapsis * a1->nr_synapsis / 32);
 
-    for (i = 0; i < 50000; i++) {
+    for (i = 0; i < a1->mutation_rate; i++) {
         r1 = random_uint() % a1->nr_synapsis;
         r2 = random_uint() % a1->nr_synapsis;
 
@@ -299,10 +302,10 @@ int mutate(AI_instance_t *a1, AI_instance_t *a2)
 
 int get_score(AI_instance_t *ai)
 {
-    return ai->nr_wins - ai->nr_losses;
+    return (float)(ai->nr_wins - ai->nr_losses)/(ai->nr_games_played);
 }
 
 void clear_nr_wins(AI_instance_t *ai)
 {
-    ai->nr_losses = ai->nr_wins = 0;
+    ai->nr_losses = ai->nr_wins = ai->nr_games_played = 0;
 }

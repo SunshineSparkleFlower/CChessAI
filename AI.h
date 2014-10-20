@@ -11,12 +11,13 @@
 
 typedef struct AI_instance {
     int move_nr;
-    int nr_wins, nr_losses;
+    int nr_wins, nr_losses, nr_games_played;
     int generation;
     int **brain;
     int nr_ports;
     int nr_synapsis;
     int board_size;
+    int mutation_rate;
 } __attribute__((packed)) AI_instance_t;
 
 extern AI_instance_t *ai_new(void);
