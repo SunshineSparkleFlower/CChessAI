@@ -10,6 +10,8 @@ all: fast
 fast: C_AI.o board.o AI.o common.o bitboard.o magicmoves.o threadpool.o
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
 
+ai_debug: ai_debug.o board.o AI.o common.o bitboard.o magicmoves.o
+
 debug: CFLAGS += -DDEBUG -g
 debug: test
 

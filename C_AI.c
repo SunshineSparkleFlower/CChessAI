@@ -22,7 +22,7 @@ struct game_struct {
     int game_id;
 };
 
-int nr_threads, nr_jobs, i, best, iteration;
+int nr_threads = 2, nr_jobs = 2, i, best, iteration;
 struct game_struct *games = NULL;
 struct job *jobs = NULL;
 
@@ -39,7 +39,7 @@ void print_ai_stats(int tid, AI_instance_t *ai, int ite, int rndwins)
 void play_chess(void *arg)
 {
     struct game_struct *game = (struct game_struct *)arg;
-    int games_to_play, nr_games, max_moves, moves, ret;
+    int games_to_play, nr_games, max_moves, moves, ret = -1;
     int (*do_a_move)(board_t *);
     AI_instance_t *ai;
     board_t *board;
@@ -145,8 +145,14 @@ void sighandler(int sig)
 
 int main(int argc, char *argv[])
 {
-    nr_threads = argc > 1 ? atoi(argv[1]) : 2;
-    nr_jobs = argc > 2 ? atoi(argv[2]) : 2;
+    char *ai_file = NULL;
+
+    if (argc > 2 && !strcmp("--file", argv[1])) {
+        ai_file = argv[2];
+    } else {
+        nr_threads = argc > 1 ? atoi(argv[1]) : 2;
+        nr_jobs = argc > 2 ? atoi(argv[2]) : 2;
+    }
 
     if (nr_threads == 0 || nr_jobs == 0) {
         printf("threads or jobs cannot be 0\n");
@@ -163,10 +169,19 @@ int main(int argc, char *argv[])
     games = malloc(nr_jobs * sizeof(struct game_struct));
 
     for (i = 0; i < nr_jobs; i++) {
-        games[i].ai = ai_new();
+        if (ai_file && i == 0) {
+            games[i].ai = load_ai(ai_file);
+            clear_score(games[i].ai);
+        } else
+            games[i].ai = ai_new();
+        if (games[i].ai == NULL) {
+            perror("ai creation");
+            exit(1);
+        }
         games[i].games_to_play = 1000;
         games[i].max_moves = 100;
-        games[i].do_a_move = do_nonrandom_move;
+        //games[i].do_a_move = do_nonrandom_move;
+        games[i].do_a_move = do_random_move;
         games[i].fen = DEFAULT_FEN;
         games[i].game_id = i + 1;
 
@@ -190,8 +205,8 @@ int main(int argc, char *argv[])
             if (i == best)
                 continue;
 
-            printf("mutating ai%d (score %f) from ai%d (score %f)\n",
-                    i, get_score(games[i].ai), best, get_score(games[best].ai));
+            printf("mutating ai%d (score %f, %d wins) from ai%d (score %f, %d wins)\n",
+                    i, get_score(games[i].ai), games[i].ai->nr_wins, best, get_score(games[best].ai), games[best].ai->nr_wins);
             mutate(games[i].ai, games[best].ai);
         }
     }
