@@ -22,4 +22,4 @@ bench: bench.o board.o AI.o common.o bitboard.o magicmoves.o
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
 
 clean:
-	-$(RM) *.o C_AI fast test bench
+	-$(RM) *.o C_AI fast test bench ai_debug
