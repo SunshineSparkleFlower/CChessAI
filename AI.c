@@ -9,7 +9,7 @@
 #define MAGIC_LENGTH 6
 static unsigned char ai_mem_magic[] = "\x01\x02\x03\x04\x05\x06";
 
-AI_instance_t *ai_new(void)
+AI_instance_t *ai_new(int mutation_rate)
 {
     int i;
     AI_instance_t *ret;
@@ -36,8 +36,19 @@ AI_instance_t *ai_new(void)
     ret->move_nr = 0;
     ret->nr_wins = ret->nr_losses = ret->nr_games_played = 0;
     ret->generation = 0;
-    ret->mutation_rate = 5000;
+    ret->mutation_rate = mutation_rate;
 
+    return ret;
+}
+
+AI_instance_t *copy_ai(AI_instance_t *ai)
+{
+    AI_instance_t *ret = calloc(1, sizeof(AI_instance_t));
+
+    memcpy(ret, ai, sizeof(AI_instance_t));
+    ret->brain = (int **)memdup_2d((void **)ai->brain);
+
+    clear_score(ret);
     return ret;
 }
 
