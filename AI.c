@@ -11,7 +11,7 @@ static unsigned char ai_mem_magic[] = "\x01\x02\x03\x04\x05\x06";
 
 AI_instance_t *ai_new(int mutation_rate)
 {
-    int i;
+    int i,j;
     AI_instance_t *ret;
 
     ret = calloc(1, sizeof(struct AI_instance));
@@ -23,15 +23,21 @@ AI_instance_t *ai_new(int mutation_rate)
     ret->nr_ports = 128;
     ret->board_size = 64*2*2*8;
     ret->nr_synapsis = ret->nr_ports + ret->board_size;
+    ret->nr_brain_parts = 3;    
 
-    ret->brain = (int **)malloc_2d(ret->nr_synapsis / (sizeof(int) * 8),
-            ret->nr_synapsis,  sizeof(int));
-    for(i = 0; i < (ret->nr_synapsis / (sizeof(int) * 8)) *
-            ret->nr_synapsis * sizeof(int) * 8; i++)
-        if(!random_int_r(0, 100))
-            SetBit(&ret->brain[0][0], i);
-        else
-            ClearBit(&ret->brain[0][0], i);
+    ret->brain = (int **)malloc_3d(ret->nr_synapsis / (sizeof(int) * 8),
+            ret->nr_synapsis,  sizeof(int), ret->nr_brain_parts);
+
+    for(j = 0; j < ret->nr_brain_parts; j++){
+        for(i = 0; i < (ret->nr_synapsis / (sizeof(int) * 8)) *
+                ret->nr_synapsis * sizeof(int) * 8; i++)
+
+                if(!random_int_r(0, 100))
+                    SetBit(&ret->brain[j][0][0], i);
+                else
+                    ClearBit(&ret->brain[j][0][0], i);
+
+    }
 
     ret->move_nr = 0;
     ret->nr_wins = ret->nr_losses = ret->nr_games_played = 0;
@@ -56,7 +62,7 @@ int dump_ai(char *file, AI_instance_t *ai)
 {
     FILE *out;
     long brain_size = (ai->nr_synapsis/(sizeof(int) * 8)) *
-        ai->nr_synapsis * sizeof(int);
+        ai->nr_synapsis * sizeof(int)*ai->nr_brain_parts;
 
     out = fopen(file, "w");
     if (out == NULL)
@@ -64,8 +70,9 @@ int dump_ai(char *file, AI_instance_t *ai)
 
     fwrite(ai_mem_magic, 1, MAGIC_LENGTH, out);
     fwrite(ai, 1, sizeof(AI_instance_t), out);
-    fwrite(&ai->brain[0][0], 1, brain_size, out);
-
+    
+    fwrite(&ai->brain[0][0][0], 1, brain_size, out);
+    
     fclose(out);
 
     return 1;
@@ -94,12 +101,20 @@ AI_instance_t *load_ai(char *file)
     }
 
     fread(ret, 1, sizeof(AI_instance_t), in);
-    ret->brain = (int **)malloc_2d(ret->nr_synapsis/(sizeof(int) *  8),
-            ret->nr_synapsis, sizeof(int));
+
+
+    ret->brain = (int **)malloc_3d(ret->nr_synapsis / (sizeof(int) * 8),
+            ret->nr_synapsis,  sizeof(int), ret->nr_brain_parts);
+
 
     brain_size = (ret->nr_synapsis/(sizeof(int) * 8)) *
-        ret->nr_synapsis * sizeof(int);
-    fread(&ret->brain[0][0], 1, brain_size, in);
+        ret->nr_synapsis * sizeof(int)*ret->nr_brain_parts;
+    fread(&ret->brain[0][0][0], 1, brain_size, in);
+
+
+
+
+
 
     fclose(in);
 
@@ -178,7 +193,12 @@ int score(AI_instance_t *ai, piece_t *board)
     int V[( ai->nr_ports)/32];
 
     bzero(V, sizeof(V));
-    return eval_curcuit(V, ai->brain, ai->nr_ports, board, ai->board_size);
+    int score_sum = 0;
+    int i;
+    for(i = 0; i < ai->nr_brain_parts; i++){
+        score_sum+= eval_curcuit(V, ai->brain[i], ai->nr_ports, board, ai->board_size);
+    }
+    return score_sum;
 }
 
 static int _get_best_move(AI_instance_t *ai, board_t *board)
@@ -194,6 +214,7 @@ static int _get_best_move(AI_instance_t *ai, board_t *board)
         /* move returns 1 on success */
         if (moveret == 1) {
             scores[i] = score(ai, board->board);
+            //printf("score: %d\n", scores[i]);
             undo_move(board, i);
             continue;
         }
@@ -290,31 +311,37 @@ void reward(AI_instance_t *ai)
     ai->nr_games_played++;
 }
 
-//layers in a a1 is replaced with layers from a2 pluss a mutation
+//brain in a a1 is replaced with brain from a2 pluss a mutation
 int mutate(AI_instance_t *a1, AI_instance_t *a2)
 {
     int i;
     unsigned r1, r2;
+    memcpy(a1, a2, sizeof(AI_instance_t));
 
-    memcpy(&a1->brain[0][0], &a2->brain[0][0], 4 * a1->nr_synapsis * a1->nr_synapsis / 32);
-
+   // memcpy(&a1->brain[0][0], &a2->brain[0][0], 4 * a1->nr_synapsis * a1->nr_synapsis / 32);
+    int r = random_int_r(0,a1->nr_brain_parts);
+    
     for (i = 0; i < a1->mutation_rate; i++) {
         r1 = random_uint() % a1->nr_synapsis;
         r2 = random_uint() % a1->nr_synapsis;
 
         if (!random_int_r(0, 100))
-            SetBit(a1->brain[r1], r2);
-        else
-            ClearBit(a1->brain[r1], r2);
+            SetBit(a1->brain[r][r1], r2);
+        else 
+            ClearBit(a1->brain[r][r1], r2);
+        
     }
-
     clear_score(a1);
     return 1;
+}
+int crossover(AI_instance_t *a1, AI_instance_t *a2, AI_instance_t *a3){
+    int r = random_int_r(0,1);
+    return -1;
 }
 
 float get_score(AI_instance_t *ai)
 {
-    return ((float)(ai->nr_wins - ai->nr_losses))/((float)ai->nr_games_played);
+    return ((float)(ai->nr_wins - ai->nr_losses))/((float)ai->nr_games_played+1);
 }
 
 void clear_score(AI_instance_t *ai)

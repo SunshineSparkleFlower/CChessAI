@@ -103,9 +103,13 @@ void sighandler(int sig)
 
     fprintf(stderr, "Are you sure you want to quit? (Y/n): [default: n] ");
     fgets(buffer, sizeof(buffer), stdin);
+    if (tolower(buffer[0]) == 'c') //exit without any further questions
+        exit(0);
+
     if (tolower(buffer[0]) != 'y')
         return;
-
+    
+    
     fprintf(stderr, "Save N best AIs to file? (Y/n): [default: y] ");
     fgets(buffer, sizeof(buffer), stdin);
     if (tolower(buffer[0]) == 'n')
@@ -143,52 +147,117 @@ void sighandler(int sig)
     exit(0);
 }
 
-void do_mutate(void)
+//void do_mutate(void)
+//{
+//    int best, second, i, j, x, y, ts;
+//    AI_instance_t *copy;
+
+//    best = get_best_ai(games, nr_jobs, -1.0);
+//    second = get_best_ai(games, nr_jobs, best);
+
+//    copy = copy_ai(games[best].ai);
+
+//    mem_2d_get_dims((void **)copy->brain, &x, &y, &ts);
+
+ //   for (i = 0; i < y; i++)
+ //       for (j = 0; j < x; j++)
+//            copy->brain[i][j] |= games[second].ai->brain[i][j];
+
+//    for (i = 0; i < nr_jobs; i++) {
+//        if (i == best || i == second)
+//            continue;
+
+//        printf("mutating ai%d (score %f, %d wins) from ai%d (score %f, %d wins)"
+//                " and ai%d (score %f, %d wins)\n", i, get_score(games[i].ai),
+//                games[i].ai->nr_wins, best, get_score(games[best].ai),
+//                games[best].ai->nr_wins, second, get_score(games[second].ai),
+//                games[second].ai->nr_wins);
+//        mutate(games[i].ai, copy);
+//    }
+//    ai_free(copy);
+//}
+
+
+void natural_selection(void)
 {
-    int best, second, i, j, x, y, ts;
-    AI_instance_t *copy;
+    int ai1 = random_int_r(0,nr_jobs-1);
+    int ai2 = random_int_r(0,nr_jobs-1);
+    float score_ai1  = get_score(games[ai1].ai);
+    float score_ai2 =  get_score(games[ai2].ai);
+    
+    if(score_ai1 > score_ai2){
+       printf("mutating ai%d (score %f, %d wins) from ai%d (score %f, %d wins)\n",
+                ai2, get_score(games[ai2].ai),
+                games[ai2].ai->nr_wins, 
+                ai1, get_score(games[ai1].ai),
+                games[ai1].ai->nr_wins);
 
-    best = get_best_ai(games, nr_jobs, -1.0);
-    second = get_best_ai(games, nr_jobs, best);
-
-    copy = copy_ai(games[best].ai);
-
-    mem_2d_get_dims((void **)copy->brain, &x, &y, &ts);
-
-    for (i = 0; i < y; i++)
-        for (j = 0; j < x; j++)
-            copy->brain[i][j] |= games[second].ai->brain[i][j];
-
-    for (i = 0; i < nr_jobs; i++) {
-        if (i == best || i == second)
-            continue;
-
-        printf("mutating ai%d (score %f, %d wins) from ai%d (score %f, %d wins)"
-                " and ai%d (score %f, %d wins)\n", i, get_score(games[i].ai),
-                games[i].ai->nr_wins, best, get_score(games[best].ai),
-                games[best].ai->nr_wins, second, get_score(games[second].ai),
-                games[second].ai->nr_wins);
-        mutate(games[i].ai, copy);
+        mutate(games[ai2].ai, games[ai1].ai);
     }
-    ai_free(copy);
+    else if(score_ai2 > score_ai1){
+      printf("mutating ai%d (score %f, %d wins) from ai%d (score %f, %d wins)\n",
+                ai1, get_score(games[ai1].ai),
+                games[ai1].ai->nr_wins, 
+                ai2, get_score(games[ai2].ai),
+                games[ai2].ai->nr_wins); 
+
+        mutate(games[ai1].ai, games[ai2].ai);   
+    }
+    
+   
+
+ 
 }
+
 
 int main(int argc, char *argv[])
 {
     char *ai_file = NULL;
 
-    if (argc > 2 && !strcmp("--file", argv[1])) {
-        ai_file = argv[2];
-    } else {
-        nr_threads = argc > 1 ? atoi(argv[1]) : 2;
-        nr_jobs = argc > 2 ? atoi(argv[2]) : 2;
-    }
+
+  int mutation_rate = 1000;
+  char *cvalue = NULL;
+  int index;
+  int c;
+  
+  opterr = 0;
+  while ((c = getopt (argc, argv, "t:j:f:m:")) != -1)
+    switch (c)
+      {
+      case 't':
+        nr_threads = atoi(optarg);
+        break;
+      case 'j':
+        nr_jobs = atoi(optarg);
+        break;
+      case 'f':
+        ai_file = optarg;
+        break;
+      case 'm':
+        mutation_rate = atoi(optarg);
+        break;
+      case '?':
+        if (optopt == 'f')
+          fprintf (stderr, "Option -%c requires an file name.\n", optopt);
+        else if (isprint (optopt))
+          fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+        else
+          fprintf (stderr,
+                   "Unknown option character `\\x%x'.\n",
+                   optopt);
+        printf("USAGE: %s -t <nr threads> -j <nr jobs> -f <ai_filename> -m <mutation rate>\n", argv[0]);
+
+        return 1;
+      default:
+        abort ();
+      }
+
 
     srand(100);
 
     if (nr_threads == 0 || nr_jobs == 0) {
         printf("threads or jobs cannot be 0\n");
-        printf("USAGE: %s <nr threads> <nr jobs>\n", argv[0]);
+        printf("USAGE: %s -t <nr threads> -j <nr jobs> -f <ai_filename> -m <mutation rate>\n", argv[0]);
         return 1;
     }
 
@@ -205,13 +274,13 @@ int main(int argc, char *argv[])
             games[i].ai = load_ai(ai_file);
             clear_score(games[i].ai);
         } else
-            games[i].ai = ai_new(5000); // mutation rate = 5000
+            games[i].ai = ai_new(mutation_rate); // mutation rate = 5000
         if (games[i].ai == NULL) {
             perror("ai creation");
             exit(1);
         }
-        games[i].games_to_play = 1000;
-        games[i].max_moves = 100;
+        games[i].games_to_play = 10;
+        games[i].max_moves = 50;
         //games[i].do_a_move = do_nonrandom_move;
         games[i].do_a_move = do_random_move;
         games[i].fen = DEFAULT_FEN;
@@ -233,7 +302,7 @@ int main(int argc, char *argv[])
             usleep(1000 * 10); // sleep 10 ms
 
         if (nr_jobs > 2)
-            do_mutate();
+            natural_selection();
         else {
             best = get_best_ai(games, nr_jobs, -1);
             for (i = 0; i < nr_jobs; i++) {
