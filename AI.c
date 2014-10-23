@@ -208,9 +208,9 @@ static int _get_best_move(AI_instance_t *ai, board_t *board)
     int scores[board->moves_count];
 
     memcpy(&board->board[64], &board->board[0], 64 * sizeof(piece_t));
-    for (i = count = 0; i < board->moves_count; i = count++) {
+    for (i = count = 0; i < board->moves_count; i = ++count) {
         moveret = move(board, i);
-
+       // printf("moveret: %d\n", moveret);
         /* move returns 1 on success */
         if (moveret == 1) {
             scores[i] = score(ai, board->board);
@@ -232,7 +232,8 @@ static int _get_best_move(AI_instance_t *ai, board_t *board)
         cumdist[i] = fcount;
     }
     x = random_float() * cumdist[board->moves_count - 1];
-
+    if(bisect(cumdist, x, board->moves_count) >= board->moves_count)
+        printf("INVALID MOVE RETURNED\n");
     return bisect(cumdist, x, board->moves_count);
 }
 
@@ -244,11 +245,16 @@ int do_best_move(AI_instance_t *ai, board_t *board)
     generate_all_moves(board);
     if (is_checkmate(board))
         return -1;
-    if (is_stalemate(board) || (best_move = _get_best_move(ai, board)) == -1)
+    if (is_stalemate(board) || (best_move = _get_best_move(ai, board)) == -1){
+        if (is_checkmate(board))
+            return -1;
+        
         return 0;
+    }
 
-    do_move(board, best_move);
-
+    int ret = do_move(board, best_move);
+    if(!ret)
+        printf("ret %d\n", ret);
     swapturn(board);
     return 1;
 }
@@ -334,13 +340,14 @@ int mutate(AI_instance_t *a1, AI_instance_t *a2)
     return 1;
 }
 int crossover(AI_instance_t *a1, AI_instance_t *a2, AI_instance_t *a3){
-    int r = random_int_r(0,1);
+    //int r = random_int_r(0,1);
     return -1;
 }
 
 float get_score(AI_instance_t *ai)
 {
     return ((float)(ai->nr_wins - ai->nr_losses))/((float)ai->nr_games_played+1);
+    //return ((float)(ai->nr_wins))/((float)ai->nr_losses+1);
 }
 
 void clear_score(AI_instance_t *ai)

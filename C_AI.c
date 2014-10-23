@@ -49,10 +49,12 @@ void play_chess(void *arg)
     max_moves = game->max_moves;
     do_a_move = game->do_a_move;
 
-    printf("starting game %d\n", game->game_id);
+    //printf("starting game %d\n", game->game_id);
 
     for (nr_games = 0; nr_games < games_to_play; nr_games++) {
         board = new_board(game->fen);
+        //board_t *board = new_board("rnbqkbnr/qqqqqqqq/8/8/8/8/qqqqqqqq/qqqqKqqq w - - 0 1");
+
         for (moves = 0; moves < max_moves; moves++) {
             ret = do_best_move(ai, board);
             if(ret == 0) {
@@ -184,29 +186,34 @@ void natural_selection(void)
     int ai2 = random_int_r(0,nr_jobs-1);
     float score_ai1  = get_score(games[ai1].ai);
     float score_ai2 =  get_score(games[ai2].ai);
-    
     if(score_ai1 > score_ai2){
-       printf("mutating ai%d (score %f, %d wins) from ai%d (score %f, %d wins)\n",
+        printf("mutating ai%d (score %f, %d wins, %d losses)",
                 ai2, get_score(games[ai2].ai),
-                games[ai2].ai->nr_wins, 
+                games[ai2].ai->nr_wins, games[ai2].ai->nr_losses);
+        printf(" from ai%d (score %f, %d wins, %d losses)\n",
                 ai1, get_score(games[ai1].ai),
-                games[ai1].ai->nr_wins);
+                games[ai1].ai->nr_wins, games[ai1].ai->nr_losses);
 
         mutate(games[ai2].ai, games[ai1].ai);
     }
     else if(score_ai2 > score_ai1){
-      printf("mutating ai%d (score %f, %d wins) from ai%d (score %f, %d wins)\n",
+        printf("mutating ai%d (score %f, %d wins, %d losses)",
                 ai1, get_score(games[ai1].ai),
-                games[ai1].ai->nr_wins, 
+                games[ai1].ai->nr_wins, games[ai1].ai->nr_losses);
+        printf(" from ai%d (score %f, %d wins, %d losses)\n",
                 ai2, get_score(games[ai2].ai),
-                games[ai2].ai->nr_wins); 
+                games[ai2].ai->nr_wins, games[ai2].ai->nr_losses);
 
         mutate(games[ai1].ai, games[ai2].ai);   
     }
     
    
-
- 
+    best = get_best_ai(games, nr_jobs, -1);
+    
+  printf("BEST: ai%d (score %f, %d wins, %d losses, wlr: %f)",
+                best, get_score(games[best].ai),
+                games[best].ai->nr_wins, games[best].ai->nr_losses, games[best].ai->nr_wins/(float)games[best].ai->nr_losses);
+  
 }
 
 
@@ -216,12 +223,11 @@ int main(int argc, char *argv[])
 
 
   int mutation_rate = 1000;
-  char *cvalue = NULL;
-  int index;
+  int games_to_play = 100;
   int c;
   
   opterr = 0;
-  while ((c = getopt (argc, argv, "t:j:f:m:")) != -1)
+  while ((c = getopt (argc, argv, "t:j:f:m:g:")) != -1)
     switch (c)
       {
       case 't':
@@ -235,6 +241,9 @@ int main(int argc, char *argv[])
         break;
       case 'm':
         mutation_rate = atoi(optarg);
+        break;
+      case 'g':
+        games_to_play = atoi(optarg);
         break;
       case '?':
         if (optopt == 'f')
@@ -279,7 +288,7 @@ int main(int argc, char *argv[])
             perror("ai creation");
             exit(1);
         }
-        games[i].games_to_play = 10;
+        games[i].games_to_play = games_to_play;
         games[i].max_moves = 50;
         //games[i].do_a_move = do_nonrandom_move;
         games[i].do_a_move = do_random_move;
