@@ -26,7 +26,7 @@ AI_instance_t *ai_new(int mutation_rate)
     ret->nr_brain_parts = 3;    
 
     ret->brain = (int **)malloc_3d(ret->nr_synapsis / (sizeof(int) * 8),
-            ret->nr_synapsis,  sizeof(int), ret->nr_brain_parts);
+            ret->nr_synapsis,  ret->nr_brain_parts, sizeof(int));
 
     for(j = 0; j < ret->nr_brain_parts; j++){
         for(i = 0; i < (ret->nr_synapsis / (sizeof(int) * 8)) *
@@ -104,7 +104,7 @@ AI_instance_t *load_ai(char *file)
 
 
     ret->brain = (int **)malloc_3d(ret->nr_synapsis / (sizeof(int) * 8),
-            ret->nr_synapsis,  sizeof(int), ret->nr_brain_parts);
+            ret->nr_synapsis, ret->nr_brain_parts, sizeof(int));
 
 
     brain_size = (ret->nr_synapsis/(sizeof(int) * 8)) *
