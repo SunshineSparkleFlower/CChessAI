@@ -25,7 +25,7 @@ AI_instance_t *ai_new(int mutation_rate)
     ret->nr_synapsis = ret->nr_ports + ret->board_size;
     ret->nr_brain_parts = 3;    
 
-    ret->brain = (int **)malloc_3d(ret->nr_synapsis / (sizeof(int) * 8),
+    ret->brain = (int ***)malloc_3d(ret->nr_synapsis / (sizeof(int) * 8),
             ret->nr_synapsis,  ret->nr_brain_parts, sizeof(int));
 
     for(j = 0; j < ret->nr_brain_parts; j++){
@@ -52,7 +52,7 @@ AI_instance_t *copy_ai(AI_instance_t *ai)
     AI_instance_t *ret = calloc(1, sizeof(AI_instance_t));
 
     memcpy(ret, ai, sizeof(AI_instance_t));
-    ret->brain = (int **)memdup_2d((void **)ai->brain);
+    ret->brain = (int ***)memdup_3d((void ***)ai->brain);
 
     clear_score(ret);
     return ret;
@@ -103,7 +103,7 @@ AI_instance_t *load_ai(char *file)
     fread(ret, 1, sizeof(AI_instance_t), in);
 
 
-    ret->brain = (int **)malloc_3d(ret->nr_synapsis / (sizeof(int) * 8),
+    ret->brain = (int ***)malloc_3d(ret->nr_synapsis / (sizeof(int) * 8),
             ret->nr_synapsis, ret->nr_brain_parts, sizeof(int));
 
 
@@ -319,12 +319,11 @@ int mutate(AI_instance_t *a1, AI_instance_t *a2)
     memcpy(a1, a2, sizeof(AI_instance_t));
 
    // memcpy(&a1->brain[0][0], &a2->brain[0][0], 4 * a1->nr_synapsis * a1->nr_synapsis / 32);
-    int r = random_int_r(0,a1->nr_brain_parts);
+    int r = random_int_r(0,a1->nr_brain_parts-1);
     
     for (i = 0; i < a1->mutation_rate; i++) {
         r1 = random_uint() % a1->nr_synapsis;
         r2 = random_uint() % a1->nr_synapsis;
-
         if (!random_int_r(0, 100))
             SetBit(a1->brain[r][r1], r2);
         else 
