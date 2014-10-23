@@ -149,37 +149,6 @@ void sighandler(int sig)
     exit(0);
 }
 
-//void do_mutate(void)
-//{
-//    int best, second, i, j, x, y, ts;
-//    AI_instance_t *copy;
-
-//    best = get_best_ai(games, nr_jobs, -1.0);
-//    second = get_best_ai(games, nr_jobs, best);
-
-//    copy = copy_ai(games[best].ai);
-
-//    mem_2d_get_dims((void **)copy->brain, &x, &y, &ts);
-
- //   for (i = 0; i < y; i++)
- //       for (j = 0; j < x; j++)
-//            copy->brain[i][j] |= games[second].ai->brain[i][j];
-
-//    for (i = 0; i < nr_jobs; i++) {
-//        if (i == best || i == second)
-//            continue;
-
-//        printf("mutating ai%d (score %f, %d wins) from ai%d (score %f, %d wins)"
-//                " and ai%d (score %f, %d wins)\n", i, get_score(games[i].ai),
-//                games[i].ai->nr_wins, best, get_score(games[best].ai),
-//                games[best].ai->nr_wins, second, get_score(games[second].ai),
-//                games[second].ai->nr_wins);
-//        mutate(games[i].ai, copy);
-//    }
-//    ai_free(copy);
-//}
-
-
 void natural_selection(void)
 {
     int ai1 = random_int_r(0,nr_jobs-1);
