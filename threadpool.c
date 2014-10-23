@@ -107,7 +107,6 @@ static void *loiter(void *arg)
 {
     long i = 0;
     struct job *job;
-    //int thread_id = (long)arg;
 
     pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL); 
 
@@ -119,7 +118,6 @@ static void *loiter(void *arg)
 
         report_start();
         job->task(job->data);
-       // printf("task %d completed job\n", thread_id);
         report_done();
 
         if (free_function)
