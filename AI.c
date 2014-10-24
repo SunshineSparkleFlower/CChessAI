@@ -136,11 +136,7 @@ int nand(int *a, int *b, int size, piece_t *board, int board_size)
     if(!_mm_test_all_zeros(ad, bd))
         return 0;
 
-    ad = _mm_loadu_si128((__m128i *)a);
-    bd = _mm_loadu_si128((__m128i *)b);
-    if(!_mm_test_all_zeros(ad, bd)){
-        return 0;
-    }
+ 
 
     int i;
     for (i = 0; i < (board_size)/32; i+=4) {
@@ -192,10 +188,10 @@ int score(AI_instance_t *ai, piece_t *board)
 {
     int V[( ai->nr_ports)/32];
 
-    bzero(V, sizeof(V));
     int score_sum = 0;
     int i;
     for(i = 0; i < ai->nr_brain_parts; i++){
+        bzero(V, sizeof(V));
         score_sum+= eval_curcuit(V, ai->brain[i], ai->nr_ports, board, ai->board_size);
     }
     return score_sum;
