@@ -320,7 +320,8 @@ int mutate(AI_instance_t *a1, AI_instance_t *a2)
     unsigned r1, r2;
     memcpy(a1, a2, sizeof(AI_instance_t));
 
-   // memcpy(&a1->brain[0][0], &a2->brain[0][0], 4 * a1->nr_synapsis * a1->nr_synapsis / 32);
+   memcpy(&a1->brain[0][0][0], &a2->brain[0][0][0], a1->nr_brain_parts*4 * a1->nr_synapsis * a1->nr_synapsis / 32);
+
     int r = random_int_r(0,a1->nr_brain_parts-1);
     
     for (i = 0; i < a1->mutation_rate; i++) {

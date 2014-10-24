@@ -51,7 +51,7 @@ void play_chess(void *arg)
 
     //printf("starting game %d\n", game->game_id);
 
-    for (nr_games = 0; nr_games < games_to_play; nr_games++) {
+    for (nr_games = ai->nr_games_played; nr_games < games_to_play; nr_games++) {
         board = new_board(game->fen);
         //board_t *board = new_board("rnbqkbnr/qqqqqqqq/8/8/8/8/qqqqqqqq/qqqqKqqq w - - 0 1");
 
@@ -179,7 +179,7 @@ void natural_selection(void)
    
     best = get_best_ai(games, nr_jobs, -1);
     
-  printf("BEST: ai%d (score %f, %d wins, %d losses, wlr: %f)",
+  printf("BEST: ai%d (score %f, %d wins, %d losses, wlr: %f\n)",
                 best, get_score(games[best].ai),
                 games[best].ai->nr_wins, games[best].ai->nr_losses, games[best].ai->nr_wins/(float)games[best].ai->nr_losses);
   
@@ -279,8 +279,11 @@ int main(int argc, char *argv[])
         while (get_jobs_left() > 0 || get_jobs_in_progess() > 0)
             usleep(1000 * 10); // sleep 10 ms
 
-        if (nr_jobs > 2)
+        if (nr_jobs > 20000){
             natural_selection();
+            natural_selection();
+
+        }
         else {
             best = get_best_ai(games, nr_jobs, -1);
             for (i = 0; i < nr_jobs; i++) {
@@ -291,6 +294,8 @@ int main(int argc, char *argv[])
                         i, get_score(games[i].ai), games[i].ai->nr_wins, best, get_score(games[best].ai), games[best].ai->nr_wins);
                 mutate(games[i].ai, games[best].ai);
             }
+            mutate(games[best].ai, games[best].ai);
+
         }
     }
 
