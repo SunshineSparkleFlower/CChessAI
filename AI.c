@@ -346,12 +346,15 @@ int mutate(AI_instance_t *a1, AI_instance_t *a2)
            r1 = random_int_r(0,a1->nr_ports-1);
 
 
-           bzero(a1->brain[r][r1], (a1->nr_synapsis/8));
+           //bzero(a1->brain[r][r1], (a1->nr_synapsis/8));
 
-           for(j = 0; j < 10; j++){
+           //for(j = 0; j < 10; j++){
                 r2 = random_int_r(0,a1->nr_synapsis-1);
                 SetBit(a1->brain[r][r1], r2);
-            }
+                r2 = random_int_r(0,a1->nr_synapsis-1);
+                ClearBit(a1->brain[r][r1], r2);
+
+            //}
      //       r = random_int_r(0,a1->nr_brain_parts-1);
      //       r1 = random_int_r(0,a1->nr_ports-1);
 
