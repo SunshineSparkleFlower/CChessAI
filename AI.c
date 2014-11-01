@@ -107,7 +107,7 @@ AI_instance_t *load_ai(char *file)
 
 
     brain_size = (ret->nr_synapsis/(sizeof(int) * 8)) *
-        ret->nr_ports/8 * sizeof(int)*ret->nr_brain_parts;
+        ret->nr_ports * sizeof(int)*ret->nr_brain_parts;
     fread(&ret->brain[0][0][0], 1, brain_size, in);
 
 
