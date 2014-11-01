@@ -196,9 +196,10 @@ int main(int argc, char *argv[])
   int games_to_play = 100;
   int c;
   int max_iterations = 100;
+  int brain_size = 3;
 
   opterr = 0;
-  while ((c = getopt (argc, argv, "t:j:f:m:g:i:")) != -1)
+  while ((c = getopt (argc, argv, "t:j:f:m:g:i:b:")) != -1)
     switch (c)
       {
       case 't':
@@ -218,6 +219,9 @@ int main(int argc, char *argv[])
         break;
       case 'i':
         max_iterations = atoi(optarg);
+        break;
+     case 'b':
+        brain_size = atoi(optarg);
         break;
       case '?':
         if (optopt == 'f')
@@ -257,7 +261,7 @@ int main(int argc, char *argv[])
             games[i].ai = load_ai(ai_file);
             clear_score(games[i].ai);
         } else
-            games[i].ai = ai_new(mutation_rate); // mutation rate = 5000
+            games[i].ai = ai_new(mutation_rate, brain_size); // mutation rate = 5000
         if (games[i].ai == NULL) {
             perror("ai creation");
             exit(1);

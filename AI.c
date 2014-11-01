@@ -9,7 +9,7 @@
 #define MAGIC_LENGTH 6
 static unsigned char ai_mem_magic[] = "\x01\x02\x03\x04\x05\x06";
 
-AI_instance_t *ai_new(int mutation_rate)
+AI_instance_t *ai_new(int mutation_rate, int brain_size)
 {
     int i,j;
     AI_instance_t *ret;
@@ -23,7 +23,7 @@ AI_instance_t *ai_new(int mutation_rate)
     ret->nr_ports = 128;
     ret->board_size = 64*2*2*8;
     ret->nr_synapsis = ret->nr_ports + ret->board_size;
-    ret->nr_brain_parts = 3;    
+    ret->nr_brain_parts = brain_size;    
 
     ret->brain = (int ***)malloc_3d(ret->nr_synapsis / (sizeof(int) * 8),
             ret->nr_ports,  ret->nr_brain_parts, sizeof(int));
