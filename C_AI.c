@@ -51,7 +51,7 @@ void play_chess(void *arg)
 
     //printf("starting game %d\n", game->game_id);
 
-    for (nr_games = ai->nr_games_played; nr_games < games_to_play; nr_games++) {
+    for (nr_games = 0; nr_games < games_to_play; nr_games++) {
         board = new_board(game->fen);
         //board_t *board = new_board("rnbqkbnr/qqqqqqqq/8/8/8/8/qqqqqqqq/qqqqKqqq w - - 0 1");
 
@@ -72,10 +72,11 @@ void play_chess(void *arg)
                 break;
             }
         }
-
-        if (ret >= 0)
-            ++game->ai->nr_games_played;
-
+      if(ret == 0 || moves == max_moves)
+          draw(ai, board);
+      //  if (ret >= 0){
+      //          small_reward(ai,score_board(board->board));            
+      //  }
         free_board(board);
     }
 }
@@ -258,7 +259,7 @@ int main(int argc, char *argv[])
             exit(1);
         }
         games[i].games_to_play = games_to_play;
-        games[i].max_moves = 50;
+        games[i].max_moves = 20;
         //games[i].do_a_move = do_nonrandom_move;
         games[i].do_a_move = do_random_move;
         games[i].fen = DEFAULT_FEN;
@@ -294,7 +295,11 @@ int main(int argc, char *argv[])
                         i, get_score(games[i].ai), games[i].ai->nr_wins, best, get_score(games[best].ai), games[best].ai->nr_wins);
                 mutate(games[i].ai, games[best].ai);
             }
-            mutate(games[best].ai, games[best].ai);
+            //clear_score(games[best].ai);
+           // games[best].ai->nr_wins/=2;
+            //games[best].ai->nr_losses/=2;
+           // games[best].ai->nr_games_played/=2;
+           // games[best].ai->positive_reward/=2;
 
         }
     }

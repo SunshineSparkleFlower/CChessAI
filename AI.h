@@ -12,6 +12,7 @@
 typedef struct AI_instance {
     int move_nr;
     int nr_wins, nr_losses, nr_games_played;
+    float positive_reward;
     int generation;
     int ***brain;       
     int nr_ports;
