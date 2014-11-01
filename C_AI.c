@@ -195,9 +195,10 @@ int main(int argc, char *argv[])
   int mutation_rate = 1000;
   int games_to_play = 100;
   int c;
-  
+  int max_iterations = 100;
+
   opterr = 0;
-  while ((c = getopt (argc, argv, "t:j:f:m:g:")) != -1)
+  while ((c = getopt (argc, argv, "t:j:f:m:g:i:")) != -1)
     switch (c)
       {
       case 't':
@@ -214,6 +215,9 @@ int main(int argc, char *argv[])
         break;
       case 'g':
         games_to_play = atoi(optarg);
+        break;
+      case 'i':
+        max_iterations = atoi(optarg);
         break;
       case '?':
         if (optopt == 'f')
@@ -270,7 +274,7 @@ int main(int argc, char *argv[])
     }
 
     iteration = 0;
-    while (1) {
+    while (iteration < max_iterations) {
         printf("iteration %d\n", ++iteration);
         for (i = 0; i < nr_jobs; i++) {
             put_new_job(jobs + i);
@@ -303,6 +307,8 @@ int main(int argc, char *argv[])
 
         }
     }
+       dump_ai("ai.aidump", games[best].ai);
+        clear_score(games[best].ai);
 
     return 0;
 }
