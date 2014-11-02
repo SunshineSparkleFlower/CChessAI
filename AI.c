@@ -27,7 +27,6 @@ AI_instance_t *ai_new(int mutation_rate, int brain_size)
 
     ret->brain = (int ***)malloc_3d(ret->nr_synapsis / (sizeof(int) * 8),
             ret->nr_ports,  ret->nr_brain_parts, sizeof(int));
-
     for(j = 0; j < ret->nr_brain_parts; j++){
         for(i = 0; i < ret->nr_synapsis * ret->nr_ports; i++)
 
@@ -352,6 +351,10 @@ int mutate(AI_instance_t *a1, AI_instance_t *a2)
                 r2 = random_int_r(0,a1->nr_synapsis-1);
                 SetBit(a1->brain[r][r1], r2);
                 r2 = random_int_r(0,a1->nr_synapsis-1);
+                ClearBit(a1->brain[r][r1], r2);
+                r2 = random_int_r(0,a1->nr_synapsis-1);
+                ClearBit(a1->brain[r][r1], r2);
+                 r2 = random_int_r(0,a1->nr_synapsis-1);
                 ClearBit(a1->brain[r][r1], r2);
 
             //}

@@ -75,7 +75,7 @@
 #ifndef _magicmovesh
 #define _magicmovesh
 
-typedef uint64_t u64;
+//typedef uint64_t u64;
 
 /*Defining the inlining keyword*/
 #define MMINLINE inline

@@ -197,9 +197,9 @@ int main(int argc, char *argv[])
   int c;
   int max_iterations = 100;
   int brain_size = 3;
-
+  int selection_function = 0;
   opterr = 0;
-  while ((c = getopt (argc, argv, "t:j:f:m:g:i:b:")) != -1)
+  while ((c = getopt (argc, argv, "t:j:f:m:g:i:b:s:")) != -1)
     switch (c)
       {
       case 't':
@@ -222,6 +222,9 @@ int main(int argc, char *argv[])
         break;
      case 'b':
         brain_size = atoi(optarg);
+        break;
+     case 's':
+       selection_function = atoi(optarg);
         break;
       case '?':
         if (optopt == 'f')
@@ -288,12 +291,12 @@ int main(int argc, char *argv[])
         while (get_jobs_left() > 0 || get_jobs_in_progess() > 0)
             usleep(1000 * 10); // sleep 10 ms
 
-        if (nr_jobs > 20000){
+        if (selection_function == 0){
             natural_selection();
             natural_selection();
 
         }
-        else {
+        if(selection_function == 1) {
             best = get_best_ai(games, nr_jobs, -1);
             for (i = 0; i < nr_jobs; i++) {
                 if (i == best)
