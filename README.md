@@ -6,7 +6,7 @@ ___________
 
 ### USAGE: ./fast <options>
 Valid options
---t <num> -- number of threads to spawn (default 2)
++ -t <num> -- number of threads to spawn (default 2)
 - -j <num> -- number of jobs to spawn (default 2)
 - -f <file> -- load a saved ai from file
 - -m <rate> -- mutation rate (default 1000)
