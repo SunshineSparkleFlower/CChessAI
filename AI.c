@@ -27,15 +27,15 @@ AI_instance_t *ai_new(int mutation_rate, int brain_size)
 
     ret->brain = (int ***)malloc_3d(ret->nr_synapsis / (sizeof(int) * 8),
             ret->nr_ports,  ret->nr_brain_parts, sizeof(int));
-    for(j = 0; j < ret->nr_brain_parts; j++){
-        for(i = 0; i < ret->nr_synapsis * ret->nr_ports; i++)
+ //   for(j = 0; j < ret->nr_brain_parts; j++){
+ //       for(i = 0; i < ret->nr_synapsis * ret->nr_ports; i++)
 
-                if(!random_int_r(0, 100000))
-                    SetBit(&ret->brain[j][0][0], i);
-                else
-                    ClearBit(&ret->brain[j][0][0], i);
+   //             if(!random_int_r(0, 100000))
+  //                  SetBit(&ret->brain[j][0][0], i);
+    //            else
+      //              ClearBit(&ret->brain[j][0][0], i);
 
-    }
+   // }
 
     ret->move_nr = 0;
     ret->nr_wins = ret->nr_losses = ret->nr_games_played = 0;
@@ -347,17 +347,12 @@ int mutate(AI_instance_t *a1, AI_instance_t *a2)
 
            //bzero(a1->brain[r][r1], (a1->nr_synapsis/8));
 
-           //for(j = 0; j < 10; j++){
                 r2 = random_int_r(0,a1->nr_synapsis-1);
                 SetBit(a1->brain[r][r1], r2);
+           for(j = 0; j < 100; j++){
                 r2 = random_int_r(0,a1->nr_synapsis-1);
                 ClearBit(a1->brain[r][r1], r2);
-                r2 = random_int_r(0,a1->nr_synapsis-1);
-                ClearBit(a1->brain[r][r1], r2);
-                 r2 = random_int_r(0,a1->nr_synapsis-1);
-                ClearBit(a1->brain[r][r1], r2);
-
-            //}
+            }
      //       r = random_int_r(0,a1->nr_brain_parts-1);
      //       r1 = random_int_r(0,a1->nr_ports-1);
 

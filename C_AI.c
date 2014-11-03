@@ -178,11 +178,11 @@ void natural_selection(void)
     }
     
    
-    best = get_best_ai(games, nr_jobs, -1);
+ //   best = get_best_ai(games, nr_jobs, -1);
     
-  printf("BEST: ai%d (score %f, %d wins, %d losses, wlr: %f\n)",
-                best, get_score(games[best].ai),
-                games[best].ai->nr_wins, games[best].ai->nr_losses, games[best].ai->nr_wins/(float)games[best].ai->nr_losses);
+ // printf("BEST: ai%d (score %f, %d wins, %d losses, wlr: %f\n)",
+//                best, get_score(games[best].ai),
+ //               games[best].ai->nr_wins, games[best].ai->nr_losses, games[best].ai->nr_wins/(float)games[best].ai->nr_losses);
   
 }
 
@@ -260,7 +260,7 @@ int main(int argc, char *argv[])
     games = malloc(nr_jobs * sizeof(struct game_struct));
 
     for (i = 0; i < nr_jobs; i++) {
-        if (ai_file && i == 0) {
+        if (ai_file) {
             games[i].ai = load_ai(ai_file);
             clear_score(games[i].ai);
         } else
@@ -294,7 +294,8 @@ int main(int argc, char *argv[])
         if (selection_function == 0){
             natural_selection();
             natural_selection();
-
+            natural_selection();
+            natural_selection();
         }
         if(selection_function == 1) {
             best = get_best_ai(games, nr_jobs, -1);
