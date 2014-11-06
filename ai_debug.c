@@ -93,15 +93,15 @@ int main(int argc, char *argv[])
     games = malloc(nr_jobs * sizeof(struct game_struct));
 
     i = 0;
-    games[i].ai = load_ai(ai_file);
+    games[i].ai = load_ai(ai_file, 0);
     clear_score(games[i].ai);
     if (games[i].ai == NULL) {
         perror("ai creation");
         exit(1);
     }
     games[i].games_to_play = 1;
-    games[i].max_moves = 100;
-    games[i].do_a_move = do_nonrandom_move;
+    games[i].max_moves = 20;
+    games[i].do_a_move = do_random_move;
     //games[i].do_a_move = do_random_move;
     games[i].fen = DEFAULT_FEN;
     games[i].game_id = i + 1;

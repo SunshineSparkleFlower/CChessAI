@@ -191,15 +191,16 @@ int main(int argc, char *argv[])
 {
     char *ai_file = NULL;
 
-
+  int j;
   int mutation_rate = 1000;
   int games_to_play = 100;
   int c;
   int max_iterations = 100;
   int brain_size = 3;
   int selection_function = 0;
+  int nr_selections = 1;
   opterr = 0;
-  while ((c = getopt (argc, argv, "t:j:f:m:g:i:b:s:")) != -1)
+  while ((c = getopt (argc, argv, "t:j:f:m:g:i:b:s:r:")) != -1)
     switch (c)
       {
       case 't':
@@ -225,6 +226,9 @@ int main(int argc, char *argv[])
         break;
      case 's':
        selection_function = atoi(optarg);
+        break;
+     case 'r':
+        nr_selections = atoi(optarg);
         break;
       case '?':
         if (optopt == 'f')
@@ -261,7 +265,7 @@ int main(int argc, char *argv[])
 
     for (i = 0; i < nr_jobs; i++) {
         if (ai_file) {
-            games[i].ai = load_ai(ai_file);
+            games[i].ai = load_ai(ai_file, mutation_rate);
             clear_score(games[i].ai);
         } else
             games[i].ai = ai_new(mutation_rate, brain_size); // mutation rate = 5000
@@ -292,10 +296,8 @@ int main(int argc, char *argv[])
             usleep(1000 * 10); // sleep 10 ms
 
         if (selection_function == 0){
-            natural_selection();
-            natural_selection();
-            natural_selection();
-            natural_selection();
+            for(j = 0; j < nr_selections;j++)
+                natural_selection();
         }
         if(selection_function == 1) {
             best = get_best_ai(games, nr_jobs, -1);
@@ -303,10 +305,12 @@ int main(int argc, char *argv[])
                 if (i == best)
                     continue;
 
-                printf("mutating ai%d (score %f, %d wins) from ai%d (score %f, %d wins)\n",
-                        i, get_score(games[i].ai), games[i].ai->nr_wins, best, get_score(games[best].ai), games[best].ai->nr_wins);
+                printf("mutating ai%d (score %f, %d wins, %d games) from ai%d (score %f, %d wins)\n",
+                        i, get_score(games[i].ai), games[i].ai->nr_wins,games[i].ai->nr_games_played,  best, get_score(games[best].ai), games[best].ai->nr_wins);
                 mutate(games[i].ai, games[best].ai);
             }
+            if(get_score(games[best].ai) == 0)
+                mutate(games[best].ai, games[best].ai);
             //clear_score(games[best].ai);
            // games[best].ai->nr_wins/=2;
             //games[best].ai->nr_losses/=2;

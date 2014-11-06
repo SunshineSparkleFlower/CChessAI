@@ -23,7 +23,7 @@ typedef struct AI_instance {
 } __attribute__((packed)) AI_instance_t;
 
 extern AI_instance_t *ai_new(int mutation_rate, int brain_size);
-extern AI_instance_t *load_ai(char *file);
+extern AI_instance_t *load_ai(char *file, int mutation_rate);
 extern int dump_ai(char *file, AI_instance_t *ai);
 extern void ai_free(AI_instance_t *ai);
 extern AI_instance_t *copy_ai(AI_instance_t *ai);

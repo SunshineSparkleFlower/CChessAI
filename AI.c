@@ -76,7 +76,7 @@ int dump_ai(char *file, AI_instance_t *ai)
     return 1;
 }
 
-AI_instance_t *load_ai(char *file)
+AI_instance_t *load_ai(char *file, int mutation_rate)
 {
     FILE *in;
     AI_instance_t *ret;
@@ -108,7 +108,8 @@ AI_instance_t *load_ai(char *file)
     brain_size = (ret->nr_synapsis/(sizeof(int) * 8)) *
         ret->nr_ports * sizeof(int)*ret->nr_brain_parts;
     fread(&ret->brain[0][0][0], 1, brain_size, in);
-
+    
+    ret->mutation_rate = mutation_rate;
 
 
 
@@ -350,6 +351,8 @@ int mutate(AI_instance_t *a1, AI_instance_t *a2)
                 r2 = random_int_r(0,a1->nr_synapsis-1);
                 SetBit(a1->brain[r][r1], r2);
            for(j = 0; j < 100; j++){
+           int r = random_int_r(0,a1->nr_brain_parts-1);
+           r1 = random_int_r(0,a1->nr_ports-1);
                 r2 = random_int_r(0,a1->nr_synapsis-1);
                 ClearBit(a1->brain[r][r1], r2);
             }
