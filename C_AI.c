@@ -51,7 +51,7 @@ void play_chess(void *arg)
 
     //printf("starting game %d\n", game->game_id);
 
-    for (nr_games = 0; nr_games < games_to_play; nr_games++) {
+    for (nr_games = 0; nr_games < 50; nr_games++) {
         board = new_board(game->fen);
         //board_t *board = new_board("rnbqkbnr/qqqqqqqq/8/8/8/8/qqqqqqqq/qqqqKqqq w - - 0 1");
 
@@ -84,10 +84,12 @@ void play_chess(void *arg)
 int get_best_ai(struct game_struct *g, int n, int lim)
 {
     int i, best = lim ? 0 : 1;
-
+    float best_val = -1000000.0;
     for (i = 0; i < n; i++) {
-        if (get_score(g[i].ai) > get_score(g[best].ai) && lim != i)
+        if (get_score(g[i].ai) > best_val && lim != i && g[i].games_to_play <= g[i].ai->nr_games_played){
             best = i;
+            best_val = get_score(g[i].ai);
+        }
     }
 
     return best;
@@ -301,16 +303,23 @@ int main(int argc, char *argv[])
         }
         if(selection_function == 1) {
             best = get_best_ai(games, nr_jobs, -1);
+            printf("best: %d\n", best);
             for (i = 0; i < nr_jobs; i++) {
-                if (i == best)
+              if( games[best].games_to_play > games[best].ai->nr_games_played)
+                break;          
+              if (i == best)
                     continue;
+                if (get_score(games[i].ai) < get_score(games[best].ai)){
+                    printf("mutating ai%d (score %f, %d wins, %d games) from ai%d (score %f, %d wins)\n",
+                            i, get_score(games[i].ai), games[i].ai->nr_wins,games[i].ai->nr_games_played,  best, get_score(games[best].ai), games[best].ai->nr_wins);
+                    mutate(games[i].ai, games[best].ai);
+                }
+                else
+                     printf("not ting ai%d (score %f, %d wins, %d games) from ai%d (score %f, %d wins)\n",
+                            i, get_score(games[i].ai), games[i].ai->nr_wins,games[i].ai->nr_games_played,  best, get_score(games[best].ai), games[best].ai->nr_wins);
 
-                printf("mutating ai%d (score %f, %d wins, %d games) from ai%d (score %f, %d wins)\n",
-                        i, get_score(games[i].ai), games[i].ai->nr_wins,games[i].ai->nr_games_played,  best, get_score(games[best].ai), games[best].ai->nr_wins);
-                mutate(games[i].ai, games[best].ai);
             }
-            if(get_score(games[best].ai) == 0)
-                mutate(games[best].ai, games[best].ai);
+      
             //clear_score(games[best].ai);
            // games[best].ai->nr_wins/=2;
             //games[best].ai->nr_losses/=2;
