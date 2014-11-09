@@ -26,6 +26,7 @@ unsigned long now(void)
     return s * 1000 + ms;
 }
 
+/*
 void score_test(void)
 {
     int ret;
@@ -189,7 +190,7 @@ void ai_test(void)
                 }
                 else if(ret == -1){
                     ai2_won++;
-                     if(games < 100)
+                    if(games < 100)
                         ai2_won_l1++;
 #ifdef DEBUG
                     printf("AI WON\n");
@@ -238,7 +239,7 @@ void ai_dumptest(void)
     brain_size = (ai->nr_synapsis/(sizeof(int) * 8)) *
         ai->nr_synapsis * sizeof(int);
 
-    /* run a couple of rounds */
+    // run a couple of rounds
     for (i = 0; i < rounds; i++) {
         board = new_board(NULL);
         for (moves = 0; moves < max_moves; moves++) {
@@ -308,6 +309,37 @@ void malloc_2d_test(void)
     printf("%s suceeded\n", __FUNCTION__);
 }
 
+void nandscore_test()
+{
+    int nr_ports = 64;
+    int board_size = 64*2*2*8;
+    int synapsis = nr_ports + board_size;
+
+    int *V = (int *)malloc((( nr_ports)/32)*sizeof(int)); 
+    int **M = (int **)malloc_2d(synapsis/32, synapsis,  4);
+    int i;
+    board_t *board = new_board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1");
+
+    //int **board = (int *)malloc(64*2*2); 
+    for (i = 0; i < nr_ports; i++)
+        random_fill(&M[i][0], synapsis/8);
+
+    printf("M[0][0]: %d\n", M[0][0]);
+    //printf("M[0]: %d\n", TestBit(M[0],0));
+
+    printf("ret from eval: %d\n", eval_curcuit(V, M, nr_ports,
+                board->board, board_size));
+    printf("V : %p\n ", &V);
+    for(i = 0; i < nr_ports; i++){
+
+        if(TestBit(V,i))
+            printf("1");
+        else
+            printf("0");
+    }
+}
+*/
+
 struct game_struct {
     int nr_games, thread_id;
     long checkmates, stalemates, timeouts;
@@ -319,6 +351,7 @@ void *moves_test(void *arg)
     board_t *board;
     long checkmate = 0, stalemate = 0, timeout = 0;
     struct game_struct *game = (struct game_struct *)arg;
+    uint64_t num = 0, *num_moves;
 
     for (j = 0; j < game->nr_games; j++) {
         board = new_board(NULL);
@@ -327,6 +360,7 @@ void *moves_test(void *arg)
 
         for (i = 0; i < 100; i++) {
             generate_all_moves(board);
+            num += board->moves_count;
             ret = do_random_move(board);
 
 #ifdef DEBUG2
@@ -358,32 +392,33 @@ void *moves_test(void *arg)
     game->stalemates = stalemate;
     game->timeouts = timeout;
 
-    return NULL;
+    printf("%lu\n", num);
+
+    num_moves = malloc(sizeof(num));
+    *num_moves = num;
+    pthread_exit(num_moves);
 }
 
-void spawn_n_games(int n, int rounds)
+uint64_t spawn_n_games(int n, int rounds)
 {
     pthread_t threads[n - 1];
     int i;
     int checkmate, stalemate, timeout;
     struct game_struct games[n];
+    uint64_t ret = 0, *tmp;
 
     for (i = 0; i < n; i++) {
         games[i].nr_games = rounds;
         games[i].thread_id = i + 1;
 
-        if (i == n - 1)
-            break;
         pthread_create(&threads[i], NULL, moves_test, (void *)&games[i]);
     }
 
-    moves_test(&games[i]);
-    checkmate = games[i].checkmates;
-    stalemate = games[i].stalemates;
-    timeout = games[i].timeouts;
-
-    for (i = 0; i < n - 1; i++) {
-        pthread_join(threads[i], NULL);
+    checkmate = stalemate = timeout = 0;
+    for (i = 0; i < n; i++) {
+        pthread_join(threads[i], (void **)&tmp);
+        ret += *tmp;
+        free(tmp);
 
         checkmate += games[i].checkmates;
         stalemate += games[i].stalemates;
@@ -393,37 +428,10 @@ void spawn_n_games(int n, int rounds)
     printf("%d checkmates\n", checkmate);
     printf("%d stalemates\n", stalemate);
     printf("%d timeouts\n", timeout);
+
+    return ret;
 }
 
-void nandscore_test()
-{
-    int nr_ports = 64;
-    int board_size = 64*2*2*8;
-    int synapsis = nr_ports + board_size;
-
-    int *V = (int *)malloc((( nr_ports)/32)*sizeof(int)); 
-    int **M = (int **)malloc_2d(synapsis/32, synapsis,  4);
-    int i;
-    board_t *board = new_board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1");
-
-    //int **board = (int *)malloc(64*2*2); 
-    for (i = 0; i < nr_ports; i++)
-        random_fill(&M[i][0], synapsis/8);
-
-    printf("M[0][0]: %d\n", M[0][0]);
-    //printf("M[0]: %d\n", TestBit(M[0],0));
-
-    printf("ret from eval: %d\n", eval_curcuit(V, M, nr_ports,
-                board->board, board_size));
-    printf("V : %p\n ", &V);
-    for(i = 0; i < nr_ports; i++){
-
-        if(TestBit(V,i))
-            printf("1");
-        else
-            printf("0");
-    }
-}
 
 int main(int argc, char *argv[])
 {
@@ -437,25 +445,26 @@ int main(int argc, char *argv[])
 
     //ai_dumptest();
 
-    ai_test();
+    //ai_test();
 
-    /*
-       unsigned long start, end;
-       double diff;
-       int i, rounds, threads, count;
+    unsigned long start, end;
+    double diff;
+    int i, rounds, threads, count;
+    uint64_t num_trekk;
 
-       start = now();
-       rounds = argc > 1 ? atoi(argv[1]) : 2000;
-       threads = argc > 2 ? atoi(argv[2]) : 1;
-       spawn_n_games(threads, rounds);
-       end = now();
+    start = now();
+    rounds = argc > 1 ? atoi(argv[1]) : 2000;
+    threads = argc > 2 ? atoi(argv[2]) : 1;
+    num_trekk = spawn_n_games(threads, rounds);
+    end = now();
 
-       diff = end - start;
+    diff = end - start;
 
-       count = rounds * threads;
-       printf("%d games played in %.0f ms (%.1f games pr. second, w/ %d threads)\n",
-       count, diff, (double)count / (diff / 1000), threads);
-       */
+    printf("%lu\n", num_trekk);
+    count = rounds * threads;
+    printf("%d games played in %.0f ms (%.1f games pr. second, w/ %d threads)",
+            count, diff, (double)count / (diff / 1000), threads);
+    printf(" %lu moves pr. second\n", (uint64_t)((double)num_trekk / (diff / 1000)));
 
     shutdown();
     return 0;
