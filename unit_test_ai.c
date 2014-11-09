@@ -392,8 +392,6 @@ void *moves_test(void *arg)
     game->stalemates = stalemate;
     game->timeouts = timeout;
 
-    printf("%lu\n", num);
-
     num_moves = malloc(sizeof(num));
     *num_moves = num;
     pthread_exit(num_moves);
