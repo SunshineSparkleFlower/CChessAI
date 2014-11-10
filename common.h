@@ -66,6 +66,10 @@ void _debug_print(const char *function, char *fmt, ...);
 #define debug_print(fmt, ...)
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "board.h"
 extern int get_moves_index(piece_t piece);
 extern int color(piece_t p);
@@ -92,5 +96,9 @@ extern int bitwise_or_3d(void ***a, void ***b, void ***res);
 extern void _dump(char *arr, int n);
 extern int choice_3d(uint16_t *samples, int n, uint16_t ***out);
 extern void shutdown(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* end of include guard: __COMMON_H */

@@ -183,7 +183,7 @@ int eval_curcuit(int *V, int **M,  int nr_ports, piece_t *board, int board_size)
     return !!TestBit(V,(nr_ports-1));
 }
 
-int score(AI_instance_t *ai, piece_t *board)
+int score(AI_instance_t *ai, piece_t *board, int print)
 {
     int V[( ai->nr_ports)/32];
 
@@ -192,6 +192,11 @@ int score(AI_instance_t *ai, piece_t *board)
     for(i = 0; i < ai->nr_brain_parts; i++){
         bzero(V, sizeof(V));
         score_sum+= eval_curcuit(V, ai->brain[i], ai->nr_ports, board, ai->board_size);
+    }
+
+    if (print) {
+        printf("C V:\n");
+        dump(V, sizeof(V));
     }
     
     return score_sum;
@@ -209,7 +214,7 @@ static int _get_best_move(AI_instance_t *ai, board_t *board)
        // printf("moveret: %d\n", moveret);
         /* move returns 1 on success */
         if (moveret == 1) {
-            scores[i] = score(ai, board->board);
+            scores[i] = score(ai, board->board, 0);
             //printf("score: %d\n", scores[i]);
             undo_move(board, i);
             continue;

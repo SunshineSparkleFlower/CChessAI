@@ -22,6 +22,10 @@ typedef struct AI_instance {
     int nr_brain_parts;
 } __attribute__((packed)) AI_instance_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern AI_instance_t *ai_new(int mutation_rate, int brain_size);
 extern AI_instance_t *load_ai(char *file, int mutation_rate);
 extern int dump_ai(char *file, AI_instance_t *ai);
@@ -38,7 +42,11 @@ extern int do_random_move(board_t *board);
 extern int do_pseudo_random_move(board_t *board);
 
 
-extern int score(AI_instance_t *ai, piece_t *board);
+extern int score(AI_instance_t *ai, piece_t *board, int print);
 extern int eval_curcuit(int *V, int **M,  int nr_ports, piece_t *board, int board_size);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
