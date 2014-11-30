@@ -26,19 +26,25 @@ __device__ int cu_nand(int *a, int *b, int size, piece_t *board, int board_size)
 }
 
 __global__ void cu_eval_curcuit(int* brainpart_value, int *M, int nr_ports, piece_t *board, int board_size) {
-
+    __shared__ piece_t s_bord[128];
+        if (threadIdx.x == 1 && blockIdx.x == 1) {
+        for(int i = threadIdx.x; i  <128; i ++) {
+            s_bord[i] = board[i];
+        }
+    }
+    __syncthreads();
     const int max_prts = 128;
     int V[max_prts];
 
     int brain_idx = blockIdx.x;
     int i;
-    int size_port = nr_ports + board_size/32;
-    int brain = brain_idx*(nr_ports*size_port)/32;
+    int size_port = (nr_ports + board_size)/32;
+    int brain = brain_idx*(nr_ports*size_port);
     
 
     for (i = 0; i < nr_ports; i++) {
         //get the value of port i using a offset
-        if (cu_nand(V, M+brain+i*size_port, nr_ports, board, board_size))
+        if (cu_nand(V, M+brain+i*size_port, nr_ports, s_bord, board_size))
             SetBit(V, i);
     }
     brainpart_value[brain_idx] = !!TestBit(V,(nr_ports-1));
@@ -48,19 +54,19 @@ __global__ void cu_eval_curcuit(int* brainpart_value, int *M, int nr_ports, piec
 int cu_score(AI_instance_t *ai, piece_t *board) {
     dim3 blocks(ai->nr_brain_parts, 1);
     dim3 grids(1, 1);
-    piece_t *cu_board;
+    //piece_t *cu_board;
     int *cu_brainpart_value;
     int *brainpart_value;
 
     //allocate memory for CUDA
-    cudaMalloc(&cu_board, sizeof(piece_t)*64);
+    //cudaMalloc(&cu_board, sizeof(piece_t)*64);
     cudaMalloc(&cu_brainpart_value, ai->nr_brain_parts * sizeof (int));
     brainpart_value = (int *) malloc(ai->nr_brain_parts * sizeof (int));
 
    
-    cudaMemcpy(cu_board, board, sizeof(piece_t)*64, cudaMemcpyHostToDevice);
+    cudaMemcpy(ai->cu_board, board, sizeof(piece_t)*128, cudaMemcpyHostToDevice);
 
-    cu_eval_curcuit << <grids, blocks, 1 >> >(cu_brainpart_value, ai->cu_brain, ai->nr_ports, cu_board, ai->board_size);
+    cu_eval_curcuit <<<1, ai->nr_brain_parts >>>(cu_brainpart_value, ai->cu_brain, ai->nr_ports, ai->cu_board, ai->board_size);
     //wait for all the brain parts to finish
     if(cudaDeviceSynchronize())
         printf("synch error\n");
@@ -74,7 +80,6 @@ int cu_score(AI_instance_t *ai, piece_t *board) {
         score_sum += brainpart_value[i];
     }
     //free the allocated memory
-    cudaFree(cu_board);
     cudaFree(cu_brainpart_value);
     free(brainpart_value);
     return score_sum;
