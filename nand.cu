@@ -62,7 +62,8 @@ int cu_score(AI_instance_t *ai, piece_t *board) {
 
     cu_eval_curcuit << <grids, blocks, 1 >> >(cu_brainpart_value, ai->cu_brain, ai->nr_ports, cu_board, ai->board_size);
     //wait for all the brain parts to finish
-    cudaDeviceSynchronize();
+    if(cudaDeviceSynchronize())
+        printf("synch error\n");
     
     //get the results from each brain part
     cudaMemcpy(brainpart_value, cu_brainpart_value, ai->nr_brain_parts * sizeof (int), cudaMemcpyDeviceToHost);
