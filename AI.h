@@ -20,6 +20,11 @@ typedef struct AI_instance {
     int board_size;
     int mutation_rate;
     int nr_brain_parts;
+    int *cu_brain;
+    int iam_best;
+    int *best_brain;
+    struct cudaPitchedPtr *pitch;
+    void *r_state;
 } __attribute__((packed)) AI_instance_t;
 
 #ifdef __cplusplus
@@ -34,6 +39,8 @@ extern AI_instance_t *copy_ai(AI_instance_t *ai);
 extern int do_best_move(AI_instance_t *ai, board_t *board);
 extern void punish(AI_instance_t *ai);
 extern void reward(AI_instance_t *ai);
+extern void draw(AI_instance_t *ai, board_t * board);
+extern void cu_mutate(AI_instance_t *a1);
 extern float get_score(AI_instance_t *ai);
 extern int mutate(AI_instance_t *a1, AI_instance_t *a2);
 extern void clear_score(AI_instance_t *ai);

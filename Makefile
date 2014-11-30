@@ -8,16 +8,23 @@ LDFLAGS=-lpthread -lm -lrt -lcudart -lcuda
 
 all: fast
 
-fast: nand.o board.o AI.o common.o bitboard.o magicmoves.o
+fast: C_AI.o board.o AI.o common.o bitboard.o magicmoves.o threadpool.o nand.o
 	$(CXX) $^ $(CFLAGS) $(LDFLAGS) -o $@
 
 ai_debug: ai_debug.o board.o AI.o common.o bitboard.o magicmoves.o
 
-debug: CFLAGS += -DDEBUG -g
-debug: all
-
 nand.o: nand.cu
 	nvcc $< -c -o $@
+AI.o: AI.cu
+	nvcc $< -c -o $@
+debug: CFLAGS += -DDEBUG -g
+debug: test
+
+test: unit_test_ai.o board.o AI.o common.o bitboard.o magicmoves.o
+	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
+
+bench: bench.o board.o AI.o common.o bitboard.o magicmoves.o
+	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
 
 clean:
 	-$(RM) *.o C_AI fast test bench ai_debug
