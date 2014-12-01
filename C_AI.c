@@ -111,7 +111,7 @@ void play_chess(void *arg) {
     do_a_move = game->do_a_move;
 
     //printf("starting game %d\n", game->game_id);
-
+    printf("playing %d\n", pthread_self());
     for (nr_games = 0; nr_games < 50; nr_games++) {
         board = new_board(game->fen);
         //board_t *board = new_board("rnbqkbnr/qqqqqqqq/8/8/8/8/qqqqqqqq/qqqqKqqq w - - 0 1");
@@ -141,6 +141,8 @@ void play_chess(void *arg) {
         //  }
         free_board(board);
     }
+        printf("done %d\n", pthread_self());
+
 }
 
 int get_best_ai(struct game_struct *g, int n, int lim) {

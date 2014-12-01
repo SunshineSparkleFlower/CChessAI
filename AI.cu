@@ -40,8 +40,7 @@ AI_instance_t *ai_new(int mutation_rate, int brain_size) {
     cudaMalloc(&ret->r_state, 1);
     cudaMalloc(&ret->cu_board, sizeof(piece_t)*128);
     init_random << <1, 1 >> >((curandState *) ret->r_state);
-    cudaMalloc(&ret->cu_board, sizeof(piece_t)*64);
-
+    cudaStreamCreate ( &ret->stream);
     return ret;
 }
 
