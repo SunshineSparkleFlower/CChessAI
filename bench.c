@@ -13,7 +13,8 @@
 #include "board.h"
 
 struct game {
-    int rounds, max_moves;
+    int thread_id;
+    int max_moves, nr_games;
     int stalemates, timeouts, ai_wins, ai_losses;
 };
 
@@ -37,13 +38,15 @@ void *ai_bench(void *arg)
     board_t *board;
     AI_instance_t *ai;
     struct game *game = (struct game *)arg;
-    long rounds = game->rounds;
+    long nr_games = game->nr_games;
     int moves, max_moves = game->max_moves;
     int ai_wins = 0, ai_losses = 0;
+    int mutation_rate = 1000;
+    int brain_size = 3;
 
-    ai = ai_new();
+    ai = ai_new(mutation_rate, brain_size);
 
-    for (i = 0; i < rounds; i++) {
+    for (i = 0; i < nr_games; i++) {
         board = new_board(NULL);
         for (moves = 0; moves < max_moves; moves++) {
             ret = do_best_move(ai, board);
@@ -82,64 +85,94 @@ void *ai_bench(void *arg)
     return NULL;
 }
 
-void spawn_n_games(int n, int rounds, int max_moves)
+void *move_gen(void *arg)
 {
-    pthread_t threads[n - 1];
-    int i, ai_wins, ai_losses;
-    int stalemate, timeout;
-    struct game games[n];
+    int i, ret = 1;
+    board_t *board;
+    struct game *game = (struct game *)arg;
+    long nr_games = game->nr_games;
+    int moves, max_moves = game->max_moves;
+    uint64_t num = 0, *num_moves;
 
-    memset(games, 0, sizeof(games));
+    for (i = 0; i < nr_games; i++) {
+        board = new_board(NULL);
+        for (moves = 0; moves < max_moves; moves++) {
+            generate_all_moves(board);
+            num += board->moves_count;
 
-    for (i = 0; i < n; i++) {
-        games[i].rounds = rounds;
-        games[i].max_moves = max_moves;
-        if (i == n - 1)
-            break;
-        pthread_create(&threads[i], NULL, ai_bench, (void *)&games[i]);
+            ret = do_random_move(board);
+            if (ret <= 0)
+                break;
+
+            generate_all_moves(board);
+            num += board->moves_count;
+
+            ret = do_random_move(board);
+            if (ret <= 0)
+                break;
+        }
+
+        free_board(board);
     }
 
-    ai_bench((void *)&games[i]);
-    ai_wins = games[i].ai_wins;
-    ai_losses = games[i].ai_losses;
-    stalemate = games[i].stalemates;
-    timeout = games[i].timeouts;
-
-    for (i = 0; i < n - 1; i++) {
-        pthread_join(threads[i], NULL);
-
-        ai_wins += games[i].ai_wins;
-        ai_losses += games[i].ai_losses;
-        stalemate += games[i].stalemates;
-        timeout += games[i].timeouts;
-    }
-
-    printf("%d ai wins\n", ai_wins);
-    printf("%d ai losses\n", ai_losses);
-    printf("%d stalemates\n", stalemate);
-    printf("%d timeouts\n", timeout);
+    num_moves = malloc(sizeof(num));
+    *num_moves = num;
+    pthread_exit(num_moves);
 }
 
-int main(int argc, char *argv[])
+uint64_t spawn_n_games(int n, int nr_games, int max_moves, void *(*f)(void *))
+{
+    pthread_t threads[n - 1];
+    int i;
+    struct game games[n];
+    uint64_t ret = 0, *tmp;
+
+    for (i = 0; i < n; i++) {
+        games[i].nr_games = nr_games;
+        games[i].max_moves = max_moves;
+        games[i].thread_id = i + 1;
+
+        pthread_create(&threads[i], NULL, f, (void *)&games[i]);
+    }
+
+    for (i = 0; i < n; i++) {
+        pthread_join(threads[i], (void **)&tmp);
+        ret += *tmp;
+        free(tmp);
+    }
+
+    return ret;
+}
+
+int move_gen_bench(int argc, char **argv)
 {
     unsigned long start, end;
     double diff;
-    int rounds, threads, count, max_moves;
+    uint64_t num_moves;
+    int nr_games, threads, max_moves;
 
     init_magicmoves();
 
     start = now();
-    rounds = argc > 1 ? atoi(argv[1]) : 200;
+    nr_games = argc > 1 ? atoi(argv[1]) : 200;
     max_moves = argc > 2 ? atoi(argv[2]) : 100; 
     threads = argc > 3 ? atoi(argv[3]) : 1;
-
-    spawn_n_games(threads, rounds, max_moves);
+    num_moves = spawn_n_games(threads, nr_games, max_moves, move_gen);
     end = now();
 
     diff = end - start;
 
-    count = rounds * threads;
-    printf("%d games played in %.0f ms (%.1f games pr. second, w/ %d threads, %d maximum moves)\n",
-            count, diff, (double)count / (diff / 1000), threads, max_moves);
+    printf("%lu moves in %.1f seconds = %lu moves pr. second. w/ %d threads\n",
+            num_moves, diff, (uint64_t)((double)num_moves / (diff / 1000)), threads);
+
+    return 0;
+}
+
+int main(int argc, char *argv[])
+{
+    init_magicmoves();
+
+    move_gen_bench(argc, argv);
+
     return 0;
 }
