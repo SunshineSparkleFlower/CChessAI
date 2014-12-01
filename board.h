@@ -29,6 +29,7 @@ typedef struct board {
     piece_t _board[8 * 8 * 2];
     piece_t *board_2d[8];
     piece_t *board; // only for backwards compatability. points to _board
+    piece_t *cu_board;
     struct bitboard white_pieces, black_pieces;
     // used in case an illegal move is made
     struct {
@@ -46,7 +47,8 @@ typedef struct board {
 
 #define DEFAULT_FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1"
 
-extern board_t *new_board(char *_fen);
+extern void set_board(board_t *board, const char *_fen);
+extern board_t *new_board(const char *_fen);
 extern void free_board(board_t *b);
 extern void generate_all_moves(board_t *b);
 extern int is_stalemate(board_t *b);

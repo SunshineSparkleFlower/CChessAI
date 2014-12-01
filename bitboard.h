@@ -16,13 +16,21 @@ enum coords {
 
 #define coord_to_index(row, col) ((row) * 8 + (col))
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "board.h"
-extern void init_bitboards(char *_fen, board_t *board);
-extern void bb_print(u64 b);
-extern int bb_can_attack(u64 moves, int pos);
-extern int bb_calculate_check(board_t *board);
-extern void bb_generate_all_legal_moves(board_t *board);
-extern int bb_do_move(board_t *b, int index);
-extern int bb_undo_move(board_t *b, int index);
+    extern void init_bitboards(char *_fen, board_t *board);
+    extern void bb_print(u64 b);
+    extern int bb_can_attack(u64 moves, int pos);
+    extern int bb_calculate_check(board_t *board);
+    extern void bb_generate_all_legal_moves(board_t *board);
+    extern int bb_do_move(board_t *b, int index);
+    extern int bb_undo_move(board_t *b, int index);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

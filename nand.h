@@ -5,7 +5,8 @@
 extern "C" {
 #endif
 
-extern int cu_score(AI_instance_t *ai, piece_t *board);
+    extern int cu_score(AI_instance_t *ai, board_t *board);
+
 #ifdef __cplusplus
 }
 #endif

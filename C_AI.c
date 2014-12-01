@@ -38,7 +38,6 @@ void print_ai_stats(int tid, AI_instance_t *ai, int ite, int rndwins) {
 
 static int cu_get_best_move(AI_instance_t *ai, board_t *board) {
     int i, count, moveret;
-    float cumdist[board->moves_count], fcount, x;
     int scores[board->moves_count];
 
     memcpy(&board->board[64], &board->board[0], 64 * sizeof (piece_t));
@@ -47,7 +46,7 @@ static int cu_get_best_move(AI_instance_t *ai, board_t *board) {
         // printf("moveret: %d\n", moveret);
         /* move returns 1 on success */
         if (moveret == 1) {
-            scores[i] = cu_score(ai, board->board);
+            scores[i] = cu_score(ai, board);
             //printf("score: %d\n", scores[i]);
             undo_move(board, i);
             continue;
@@ -60,7 +59,6 @@ static int cu_get_best_move(AI_instance_t *ai, board_t *board) {
             return -1;
     }
 
-    fcount = 0;
     int best_i = 0;
     int best_val = 0;
     for (i = 0; i < board->moves_count; i++) {
@@ -110,12 +108,12 @@ void play_chess(void *arg) {
     max_moves = game->max_moves;
     do_a_move = game->do_a_move;
 
-    //printf("starting game %d\n", game->game_id);
-    printf("playing %d\n", pthread_self());
-    for (nr_games = 0; nr_games < 50; nr_games++) {
-        board = new_board(game->fen);
-        //board_t *board = new_board("rnbqkbnr/qqqqqqqq/8/8/8/8/qqqqqqqq/qqqqKqqq w - - 0 1");
+    board = new_board(NULL);
 
+    //printf("starting game %d\n", game->game_id);
+    printf("playing %d\n", get_thread_id());
+    for (nr_games = 0; nr_games < games_to_play; nr_games++) {
+        set_board(board, game->fen);
         for (moves = 0; moves < max_moves; moves++) {
             ret = cu_do_best_move(ai, board); // USE GPU
             //ret = do_best_move(ai, board); // USE CPU
@@ -139,9 +137,9 @@ void play_chess(void *arg) {
         //  if (ret >= 0){
         //          small_reward(ai,score_board(board->board));            
         //  }
-        free_board(board);
     }
-        printf("done %d\n", pthread_self());
+    free_board(board);
+    printf("done %d\n", get_thread_id());
 
 }
 
@@ -253,7 +251,7 @@ int main(int argc, char *argv[]) {
 
     int j;
     int mutation_rate = 1000;
-    int games_to_play = 100;
+    int games_to_play = 50;
     int c;
     int max_iterations = 100;
     int brain_size = 3;
@@ -296,8 +294,8 @@ int main(int argc, char *argv[]) {
                     fprintf(stderr, "Unknown option `-%c'.\n", optopt);
                 else
                     fprintf(stderr,
-                        "Unknown option character `\\x%x'.\n",
-                        optopt);
+                            "Unknown option character `\\x%x'.\n",
+                            optopt);
                 printf("USAGE: %s -t <nr threads> -j <nr jobs> -f <ai_filename> -m <mutation rate>\n", argv[0]);
 
                 return 1;
@@ -314,7 +312,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    init_threadpool(nr_threads);
+    init_threadpool(nr_threads, NULL, NULL);
     init_magicmoves();
 
     signal(SIGINT, sighandler);
@@ -360,7 +358,7 @@ int main(int argc, char *argv[]) {
         if (selection_function == 1) {
             best = get_best_ai(games, nr_jobs, -1);
             printf("best: %d\n", best);
-            
+
             //tell everyone who the best is
             for (i = 0; i < nr_jobs; i++) {
                 games[i].ai->best_brain = games[best].ai->cu_brain;
@@ -373,6 +371,12 @@ int main(int argc, char *argv[]) {
     }
     dump_ai("ai.aidump", games[best].ai);
     clear_score(games[best].ai);
+
+    shutdown_threadpool(0);
+    for (i = 0; i < nr_jobs; i++)
+        ai_free(games[i].ai);
+    free(jobs);
+    free(games);
 
     return 0;
 }

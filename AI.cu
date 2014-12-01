@@ -2,10 +2,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include "common.h"
-#include "AI.h"
 #include <curand.h>
 #include <curand_kernel.h>
+
+#include "common.h"
+#include "AI.h"
+
 #define MAGIC_LENGTH 6
 static unsigned char ai_mem_magic[] = "\x01\x02\x03\x04\x05\x06";
 
@@ -13,7 +15,9 @@ __global__ void init_random(curandState *state) {
     curand_init(1337, 0, 0, state);
 }
 
-AI_instance_t *ai_new(int mutation_rate, int brain_size) {
+AI_instance_t *ai_new(int mutation_rate, int brain_size)
+{
+    int i;
     AI_instance_t *ret;
 
     ret = (AI_instance*) calloc(1, sizeof (struct AI_instance));
@@ -30,17 +34,18 @@ AI_instance_t *ai_new(int mutation_rate, int brain_size) {
     ret->brain = (int ***) malloc_3d(ret->nr_synapsis / (sizeof (int) * 8),
             ret->nr_ports, ret->nr_brain_parts, sizeof (int));
 
-    printf("cu_brain: %d\n", cudaMalloc(&ret->cu_brain, ret->nr_synapsis / (sizeof (int) * 8) *
-            ret->nr_ports * ret->nr_brain_parts * sizeof (int)));
+    i = cudaMalloc(&ret->cu_brain, ret->nr_synapsis / (sizeof (int) * 8) *
+            ret->nr_ports * ret->nr_brain_parts * sizeof (int));
+    printf("cu_brain: %d\n", i);
 
     ret->move_nr = 0;
     ret->nr_wins = ret->nr_losses = ret->nr_games_played = 0;
     ret->generation = 0;
     ret->mutation_rate = mutation_rate;
     cudaMalloc(&ret->r_state, 1);
-    cudaMalloc(&ret->cu_board, sizeof(piece_t)*128);
     init_random << <1, 1 >> >((curandState *) ret->r_state);
     cudaStreamCreate ( &ret->stream);
+
     return ret;
 }
 
@@ -57,7 +62,7 @@ AI_instance_t *copy_ai(AI_instance_t *ai) {
 int dump_ai(char *file, AI_instance_t *ai) {
     FILE *out;
     long brain_size = (ai->nr_synapsis / (sizeof (int) * 8)) *
-            ai->nr_ports * sizeof (int)*ai->nr_brain_parts;
+        ai->nr_ports * sizeof (int)*ai->nr_brain_parts;
 
     out = fopen(file, "w");
     if (out == NULL)
@@ -96,27 +101,26 @@ AI_instance_t *load_ai(char *file, int mutation_rate) {
 
     fread(ret, 1, sizeof (AI_instance_t), in);
 
-
     ret->brain = (int ***) malloc_3d(ret->nr_synapsis / (sizeof (int) * 8),
             ret->nr_ports, ret->nr_brain_parts, sizeof (int));
 
-
     brain_size = (ret->nr_synapsis / (sizeof (int) * 8)) *
-            ret->nr_ports * sizeof (int)*ret->nr_brain_parts;
+        ret->nr_ports * sizeof (int)*ret->nr_brain_parts;
     fread(&ret->brain[0][0][0], 1, brain_size, in);
 
     ret->mutation_rate = mutation_rate;
-
-
-
-
 
     fclose(in);
 
     return ret;
 }
 
-void ai_free(AI_instance_t *ai) {
+void ai_free(AI_instance_t *ai)
+{
+    printf("freeing %p\n", ai);
+    cudaFree(ai->r_state);
+    cudaFree(ai->cu_brain);
+    cuStreamDestroy(ai->stream);
     free(ai->brain);
     free(ai);
 }
@@ -185,7 +189,6 @@ int score(AI_instance_t *ai, piece_t *board) {
 
 static int _get_best_move(AI_instance_t *ai, board_t *board) {
     int i, count, moveret;
-    float cumdist[board->moves_count], fcount, x;
     int scores[board->moves_count];
 
     memcpy(&board->board[64], &board->board[0], 64 * sizeof (piece_t));
@@ -207,7 +210,6 @@ static int _get_best_move(AI_instance_t *ai, board_t *board) {
             return -1;
     }
 
-    fcount = 0;
     int best_i = 0;
     int best_val = 0;
     for (i = 0; i < board->moves_count; i++) {
@@ -319,7 +321,7 @@ void draw(AI_instance_t *ai, board_t * board) {
 
 int mutate(AI_instance_t *a1, AI_instance_t *a2) {
     int i, j;
-    unsigned r1, r2, r3;
+    unsigned r1, r2;
     //memcpy(a1, a2, sizeof(AI_instance_t));
 
     memcpy(&a1->brain[0][0][0], &a2->brain[0][0][0], a1->nr_brain_parts * a1->nr_ports * a1->nr_synapsis / 8);
@@ -355,8 +357,7 @@ __device__ void cu_clear_score(AI_instance_t *ai) {
 
 __global__ void gcu_mutate(AI_instance_t *a1) {
 
-    int i, j;
-    unsigned r1, r2, r3;
+    int j;
     //memcpy(a1, a2, sizeof(AI_instance_t));
 
     memcpy(a1->cu_brain, a1->best_brain, a1->nr_brain_parts * a1->nr_ports * a1->nr_synapsis / 8);

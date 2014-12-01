@@ -10,6 +10,13 @@ struct job_list {
     struct job *job;
 };
 
+struct thread_struct {
+    pthread_t thread;
+    thread_init_func_t init_function;
+    void *init_function_arg;
+    int thread_id;
+};
+
 static volatile int run = 1; /* is set to 0 if threads are to terminate */
 static volatile int num_free_jobs = 0;
 static volatile int jobs_in_progress = 0;
@@ -19,7 +26,7 @@ static struct job_list jobs;
 static void (*free_function)(void *) = NULL;
 static pthread_mutex_t jobs_lock;
 static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-static pthread_t *threads;
+static struct thread_struct *threads;
 static int num_threads = 0;
 
 /* must be called in a locked context */
@@ -67,6 +74,17 @@ int get_jobs_in_progess(void)
     return jobs_in_progress;
 }
 
+int get_thread_id(void)
+{
+    int i;
+
+    for (i = 0; i < num_threads; i++) {
+        if (threads[i].thread == pthread_self())
+            return threads[i].thread_id;
+    }
+    return -1;
+}
+
 static struct job *get_job(void)
 {
     struct job_list *tmp;
@@ -107,8 +125,13 @@ static void *loiter(void *arg)
 {
     long i = 0;
     struct job *job;
+    struct thread_struct *thread_info = arg;
 
     pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL); 
+
+    if (thread_info->init_function)
+        thread_info->init_function(thread_info->thread_id,
+                thread_info->init_function_arg);
 
     while (run) {
         job = get_job();
@@ -127,16 +150,24 @@ static void *loiter(void *arg)
     return (void *)i;
 }
 
-void init_threadpool(int pool_size)
+int init_threadpool(int pool_size, thread_init_func_t init_function, 
+        void *arg)
 {
     int i;
 
     jobs.next = jobs.prev = &jobs;
     pthread_mutex_init(&jobs_lock, NULL);
 
-    threads = malloc(pool_size * sizeof(pthread_t));
-    for (i = 0; i < pool_size; i++)
-        pthread_create(threads + i, NULL, loiter, (void *)(long)i + 1);
+    threads = malloc(pool_size * sizeof(struct thread_struct));
+    if (threads == NULL)
+        return NULL;
+
+    for (i = 0; i < pool_size; i++) {
+        threads[i].init_function = init_function;
+        threads[i].init_function_arg = arg;
+        threads[i].thread_id = i;
+        pthread_create(&threads[i].thread, NULL, loiter, (void *)&threads[i]);
+    }
 
     num_threads = pool_size;
 }
@@ -157,8 +188,8 @@ void shutdown_threadpool(int force_kill)
 
     for (i = 0; i < num_threads; i++) {
         if (force_kill)
-            pthread_cancel(threads[i]);
-        pthread_join(threads[i], (void *)&count);
+            pthread_cancel(threads[i].thread);
+        pthread_join(threads[i].thread, (void *)&count);
     }
     pthread_mutex_destroy(&jobs_lock);
 

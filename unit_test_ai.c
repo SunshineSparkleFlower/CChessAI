@@ -430,7 +430,6 @@ uint64_t spawn_n_games(int n, int rounds)
     return ret;
 }
 
-
 int main(int argc, char *argv[])
 {
     //multiply_test();

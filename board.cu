@@ -12,43 +12,30 @@ static piece_t fen_to_chesspiece(char c)
     switch (c) {
         case 'P':
             return WHITE_PAWN;
-            break;
         case 'N':
             return WHITE_KNIGHT;
-            break;
         case 'B':
             return WHITE_BISHOP;
-            break;
         case 'R':
             return WHITE_ROOK;
-            break;
         case 'Q':
             return WHITE_QUEEN;
-            break;
         case 'K':
             return WHITE_KING;
-            break;
         case 'p':
             return BLACK_PAWN;
-            break;
         case 'n':
             return BLACK_KNIGHT;
-            break;
         case 'b':
             return BLACK_BISHOP;
-            break;
         case 'r':
             return BLACK_ROOK;
-            break;
         case 'q':
             return BLACK_QUEEN;
-            break;
         case 'k':
             return BLACK_KING;
-            break;
         default:
-            return -1; // error
-            break;
+            return (piece_t)-1; // error
     }
 }
 
@@ -57,67 +44,37 @@ static char chesspiece_to_fen(piece_t c)
     switch (c) {
         case WHITE_PAWN:
             return 'P';
-            break;
         case WHITE_KNIGHT:
             return 'N';
-            break;
         case WHITE_BISHOP:
             return 'B';
-            break;
         case WHITE_ROOK:
             return 'R';
-            break;
         case WHITE_QUEEN:
             return 'Q';
-            break;
         case WHITE_KING:
             return 'K';
-            break;
         case BLACK_PAWN:
             return 'p';
-            break;
         case BLACK_KNIGHT:
             return 'n';
-            break;
         case BLACK_BISHOP:
             return 'b';
-            break;
         case BLACK_ROOK:
             return 'r';
-            break;
         case BLACK_QUEEN:
             return 'q';
-            break;
         case BLACK_KING:
             return 'k';
-            break;
         default:
             return -1; // error
-            break;
     }
 }
 
-board_t *new_board(char *_fen)
+static void init_fen(board_t *board, char *fen)
 {
-    int i, j;
-    int col, row;
-    board_t *board;
+    int col, row, i, j;
     char *fen_ptr, *rank, *tmp;
-
-    if (_fen == NULL || *_fen == 0)
-        _fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    char fen[strlen(_fen) + 1];
-
-    strcpy(fen, _fen);
-
-    board = calloc(1, sizeof(board_t));
-    if (board == NULL)
-        return NULL;
-
-    for (i = 0; i < 8; i++)
-        board->board_2d[i] = &board->_board[i * 8];
-    board->board = board->_board; // backwards compatability
-
 
     fen_ptr = strchr(fen, ' ');
     *fen_ptr++ = 0;
@@ -149,18 +106,52 @@ board_t *new_board(char *_fen)
             }
         }
     }
+
+    board->turn = *fen_ptr == 'w' ? WHITE : BLACK;
+}
+
+void set_board(board_t *board, const char *_fen)
+{
+    int i;
+
+    if (_fen == NULL || *_fen == 0)
+        _fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    char fen[strlen(_fen) + 1];
+
+    for (i = 0; i < 8; i++)
+        board->board_2d[i] = &board->_board[i * 8];
+    board->board = board->_board; // backwards compatability
+
+    strcpy(fen, _fen);
+    init_fen(board, fen);
     
     board->is_check = -1;
     board->moves_count = -1;
-    board->turn = *fen_ptr == 'w' ? WHITE : BLACK;
 
-    init_bitboards(_fen, board);
+    strcpy(fen, _fen);
+    init_bitboards(fen, board);
+}
+
+board_t *new_board(const char *_fen)
+{
+    board_t *board;
+
+    board = (board_t *)calloc(1, sizeof(board_t));
+    if (board == NULL)
+        return NULL;
+
+    cudaMalloc(&board->cu_board, sizeof(piece_t) * 128);
+
+    if (_fen != NULL)
+        set_board(board, _fen);
 
     return board;
 }
 
+
 void free_board(board_t *b)
 {
+    cudaFree(b->cu_board);
     free(b);
 }
 
@@ -299,7 +290,7 @@ int move(board_t *b, int n)
 char *get_fen(board_t *board)
 {
     int row, col, cnt;
-    char *ret = malloc(256), *ptr;
+    char *ret = (char *)malloc(256), *ptr;
 
     ptr = ret;
 

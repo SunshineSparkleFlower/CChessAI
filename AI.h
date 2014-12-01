@@ -23,9 +23,8 @@ typedef struct AI_instance {
     int *cu_brain;
     int iam_best;
     int *best_brain;
-    piece_t *cu_board;
     struct cudaPitchedPtr *pitch;
-     struct CUstream_st* stream;
+    struct CUstream_st* stream;
     void *r_state;
 } __attribute__((packed)) AI_instance_t;
 
@@ -33,26 +32,26 @@ typedef struct AI_instance {
 extern "C" {
 #endif
 
-extern AI_instance_t *ai_new(int mutation_rate, int brain_size);
-extern AI_instance_t *load_ai(char *file, int mutation_rate);
-extern int dump_ai(char *file, AI_instance_t *ai);
-extern void ai_free(AI_instance_t *ai);
-extern AI_instance_t *copy_ai(AI_instance_t *ai);
-extern int do_best_move(AI_instance_t *ai, board_t *board);
-extern void punish(AI_instance_t *ai);
-extern void reward(AI_instance_t *ai);
-extern void draw(AI_instance_t *ai, board_t * board);
-extern void cu_mutate(AI_instance_t *a1);
-extern float get_score(AI_instance_t *ai);
-extern int mutate(AI_instance_t *a1, AI_instance_t *a2);
-extern void clear_score(AI_instance_t *ai);
-extern int do_nonrandom_move(board_t *board);
-extern int do_random_move(board_t *board);
-extern int do_pseudo_random_move(board_t *board);
+    extern AI_instance_t *ai_new(int mutation_rate, int brain_size);
+    extern AI_instance_t *load_ai(char *file, int mutation_rate);
+    extern int dump_ai(char *file, AI_instance_t *ai);
+    extern void ai_free(AI_instance_t *ai);
+    extern AI_instance_t *copy_ai(AI_instance_t *ai);
+    extern int do_best_move(AI_instance_t *ai, board_t *board);
+    extern void punish(AI_instance_t *ai);
+    extern void reward(AI_instance_t *ai);
+    extern void draw(AI_instance_t *ai, board_t * board);
+    extern void cu_mutate(AI_instance_t *a1);
+    extern float get_score(AI_instance_t *ai);
+    extern int mutate(AI_instance_t *a1, AI_instance_t *a2);
+    extern void clear_score(AI_instance_t *ai);
+    extern int do_nonrandom_move(board_t *board);
+    extern int do_random_move(board_t *board);
+    extern int do_pseudo_random_move(board_t *board);
 
 
-extern int score(AI_instance_t *ai, piece_t *board, int print);
-extern int eval_curcuit(int *V, int **M,  int nr_ports, piece_t *board, int board_size);
+    extern int score(AI_instance_t *ai, piece_t *board, int print);
+    extern int eval_curcuit(int *V, int **M,  int nr_ports, piece_t *board, int board_size);
 
 #ifdef __cplusplus
 }
