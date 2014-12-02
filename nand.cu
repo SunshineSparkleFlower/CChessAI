@@ -55,20 +55,20 @@ int cu_score(AI_instance_t *ai, board_t *board) {
     cudaMalloc(&cu_brainpart_value, ai->nr_brain_parts * sizeof (int));
     brainpart_value = (int *) malloc(ai->nr_brain_parts * sizeof (int));
 
-    cudaMemcpy(board->cu_board, board->board, sizeof (piece_t) * 128,
-            cudaMemcpyHostToDevice);
+    cudaMemcpyAsync(board->cu_board, board->board, sizeof (piece_t) * 128,
+            cudaMemcpyHostToDevice,  ai->stream);
     cu_eval_curcuit << <ai->nr_ports / 32 + 128 / 2, ai->nr_brain_parts, 0, ai->stream>>>
             (cu_brainpart_value, ai->cu_brain, ai->nr_ports,
             (int*) board->cu_board, ai->board_size);
 
     //wait for all the brain parts to finish
-    if (cudaDeviceSynchronize())
-        printf("synch error\n");
 
     //get the results from each brain part
-    cudaMemcpy(brainpart_value, cu_brainpart_value,
-            ai->nr_brain_parts * sizeof (int), cudaMemcpyDeviceToHost);
-
+    cudaMemcpyAsync(brainpart_value, cu_brainpart_value,
+            ai->nr_brain_parts * sizeof (int), cudaMemcpyDeviceToHost, ai->stream);
+    //if (cudaDeviceSynchronize())
+    //    printf("synch error\n");
+    cudaStreamSynchronize ( ai->stream );
     int score_sum = 0;
     int i;
     for (i = 0; i < ai->nr_brain_parts; i++) {
