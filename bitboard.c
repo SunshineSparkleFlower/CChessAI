@@ -491,35 +491,31 @@ int bb_calculate_check(board_t *board)
     }
     king_idx = lsb_to_index(self->king);
 
-    get_set_bits(enemy->king, bits);
-    for (i = 0; bits[i] != -1; i++)
-        if (bb_can_attack(generate_king_moves(enemy, bits[i]), king_idx))
-            goto yes;
-
-    get_set_bits(enemy->queens, bits);
-    for (i = 0; bits[i] != -1; i++) {
-        if (bb_can_attack(generate_queen_moves(enemy, bits[i]), king_idx))
-            goto yes;
-    }
-
-    get_set_bits(enemy->rooks, bits);
-    for (i = 0; bits[i] != -1; i++)
-        if (bb_can_attack(generate_rook_moves(enemy, bits[i]), king_idx))
-            goto yes;
-
-    get_set_bits(enemy->bishops, bits);
-    for (i = 0; bits[i] != -1; i++)
-        if (bb_can_attack(generate_bishop_moves(enemy, bits[i]), king_idx))
-            goto yes;
-
-    get_set_bits(enemy->knights, bits);
-    for (i = 0; bits[i] != -1; i++)
-        if (bb_can_attack(generate_knight_moves(enemy, bits[i]), king_idx))
-            goto yes;
-
     generate_pawn_moves(enemy, bits[i], &attacks, -board->turn);
     if (bb_can_attack(attacks, king_idx))
         goto yes;
+
+    for (i = 0; i < 64; i++) {
+        if ((enemy->king >> i) & 1)
+            if (bb_can_attack(generate_king_moves(enemy, i), king_idx))
+                goto yes;
+
+        if ((enemy->queens >> i) & 1)
+            if (bb_can_attack(generate_queen_moves(enemy, i), king_idx))
+                goto yes;
+
+        if ((enemy->rooks >> i) & 1)
+            if (bb_can_attack(generate_rook_moves(enemy, i), king_idx))
+                goto yes;
+
+        if ((enemy->bishops >> i) & 1)
+            if (bb_can_attack(generate_bishop_moves(enemy, i), king_idx))
+                goto yes;
+
+        if ((enemy->knights >> i) & 1)
+            if (bb_can_attack(generate_knight_moves(enemy, i), king_idx))
+                goto yes;
+    }
 
     board->is_check = 0;
     return 0;
@@ -536,30 +532,26 @@ void bb_generate_all_legal_moves(board_t *board)
 
     b = board->turn == WHITE ? &board->white_pieces : &board->black_pieces;
 
-    get_set_bits(b->king, bits);
-    for (i = 0; bits[i] != -1; i++)
-        store_moves(generate_king_moves(b, bits[i]), bits[i],
-                board->moves, &board->moves_count);
+    for (i = 0; i < 64; i++) {
+        if ((b->king >> i) & 1)
+            store_moves(generate_king_moves(b, i), i, board->moves,
+                    &board->moves_count);
 
-    get_set_bits(b->queens, bits);
-    for (i = 0; bits[i] != -1; i++)
-        store_moves(generate_queen_moves(b, bits[i]), bits[i],
-                board->moves, &board->moves_count);
+        if ((b->queens >> i) & 1)
+            store_moves(generate_queen_moves(b, i), i, board->moves,
+                    &board->moves_count);
 
-    get_set_bits(b->rooks, bits);
-    for (i = 0; bits[i] != -1; i++)
-        store_moves(generate_rook_moves(b, bits[i]), bits[i],
-                board->moves, &board->moves_count);
+        if ((b->rooks >> i) & 1)
+            store_moves(generate_rook_moves(b, i), i, board->moves,
+                    &board->moves_count);
 
-    get_set_bits(b->bishops, bits);
-    for (i = 0; bits[i] != -1; i++)
-        store_moves(generate_bishop_moves(b, bits[i]), bits[i],
-                board->moves, &board->moves_count);
+        if ((b->bishops >> i) & 1)
+            store_moves(generate_bishop_moves(b, i), i, board->moves,
+                    &board->moves_count);
 
-    get_set_bits(b->knights, bits);
-    for (i = 0; bits[i] != -1; i++) {
-        store_moves(generate_knight_moves(b, bits[i]), bits[i],
-                board->moves, &board->moves_count);
+        if ((b->knights >> i) & 1)
+            store_moves(generate_knight_moves(b, i), i, board->moves,
+                    &board->moves_count);
     }
 
     moves = generate_pawn_moves(b, bits[i], &attacks, board->turn);

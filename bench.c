@@ -163,7 +163,7 @@ int move_gen_bench(int argc, char **argv)
     diff = end - start;
 
     printf("%lu moves in %.1f seconds = %lu moves pr. second. w/ %d threads\n",
-            num_moves, diff, (uint64_t)((double)num_moves / (diff / 1000)), threads);
+            num_moves, diff / 1000, (uint64_t)((double)num_moves / (diff / 1000)), threads);
 
     return 0;
 }
