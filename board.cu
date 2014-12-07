@@ -118,7 +118,9 @@ void set_board(board_t *board, const char *_fen)
         _fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     char fen[strlen(_fen) + 1];
 
+    piece_t *tmp = board->cu_board;
     bzero(board, sizeof(board_t));
+    board->cu_board = tmp;
 
     for (i = 0; i < 8; i++)
         board->board_2d[i] = &board->_board[i * 8];
@@ -129,6 +131,7 @@ void set_board(board_t *board, const char *_fen)
     
     board->is_check = -1;
     board->moves_count = -1;
+    board->turn = WHITE;
 
     strcpy(fen, _fen);
     init_bitboards(fen, board);
@@ -149,7 +152,6 @@ board_t *new_board(const char *_fen)
 
     return board;
 }
-
 
 void free_board(board_t *b)
 {
