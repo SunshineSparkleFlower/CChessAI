@@ -78,11 +78,18 @@ int cu_do_best_move(AI_instance_t *ai, board_t *board) {
     int best_move;
 
     generate_all_moves(board);
-    if (is_checkmate(board))
+    if (is_checkmate(board)){
+        printf("checkmate");
         return -1;
+    }
     if (is_stalemate(board) || (best_move = cu_get_best_move(ai, board)) == -1) {
-        if (is_checkmate(board))
+        if (is_checkmate(board)){
+            print_board(board);
+            printf("matecheck");
+
             return -1;
+            
+        }
 
         return 0;
     }
@@ -111,7 +118,7 @@ void play_chess(void *arg) {
     board = new_board(NULL);
 
     //printf("starting game %d\n", game->game_id);
-    printf("playing %d\n", get_thread_id());
+   // printf("playing %d\n", get_thread_id());
     for (nr_games = 0; nr_games < games_to_play; nr_games++) {
         set_board(board, game->fen);
         for (moves = 0; moves < max_moves; moves++) {
@@ -128,6 +135,7 @@ void play_chess(void *arg) {
             if (ret == 0) {
                 break;
             } else if (ret == -1) {
+                printf("I won");
                 reward(ai);
                 break;
             }
@@ -139,7 +147,7 @@ void play_chess(void *arg) {
         //  }
     }
     free_board(board);
-    printf("done %d\n", get_thread_id());
+ //   printf("done %d\n", get_thread_id());
 
 }
 
@@ -357,7 +365,8 @@ int main(int argc, char *argv[]) {
         }
         if (selection_function == 1) {
             best = get_best_ai(games, nr_jobs, -1);
-            printf("best: %d\n", best);
+   printf("best ai%d (score %f, %d wins, %d games) \n",
+                            best, get_score(games[best].ai), games[best].ai->nr_wins,games[best].ai->nr_games_played);
 
             //tell everyone who the best is
             for (i = 0; i < nr_jobs; i++) {

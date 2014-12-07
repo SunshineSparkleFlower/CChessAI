@@ -36,7 +36,7 @@ AI_instance_t *ai_new(int mutation_rate, int brain_size)
 
     i = cudaMalloc(&ret->cu_brain, ret->nr_synapsis / (sizeof (int) * 8) *
             ret->nr_ports * ret->nr_brain_parts * sizeof (int));
-    printf("cu_brain: %d\n", i);
+    //printf("cu_brain: %d\n", i);
 
     ret->move_nr = 0;
     ret->nr_wins = ret->nr_losses = ret->nr_games_played = 0;
@@ -45,6 +45,7 @@ AI_instance_t *ai_new(int mutation_rate, int brain_size)
     cudaMalloc(&ret->r_state, 1);
     init_random << <1, 1 >> >((curandState *) ret->r_state);
     cudaStreamCreate ( &ret->stream);
+    cudaStreamCreate ( &ret->stream2);
 
     return ret;
 }
@@ -371,11 +372,12 @@ __global__ void gcu_mutate(AI_instance_t *a1) {
         int r = (int) curand_uniform((curandState *) a1->r_state) * max_rand;
         ClearBit(a1->cu_brain, r);
     }
-    cu_clear_score(a1);
 }
 
 void cu_mutate(AI_instance_t *a1) {
+    printf("I'm mutating\n");
     gcu_mutate << <a1->mutation_rate, 1 >> >(a1);
+    clear_score(a1);
 
 }
 

@@ -25,6 +25,7 @@ typedef struct AI_instance {
     int *best_brain;
     struct cudaPitchedPtr *pitch;
     struct CUstream_st* stream;
+    struct CUstream_st* stream2;
     void *r_state;
 } __attribute__((packed)) AI_instance_t;
 
