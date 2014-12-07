@@ -84,7 +84,7 @@ int cu_do_best_move(AI_instance_t *ai, board_t *board) {
     }
     if (is_stalemate(board) || (best_move = cu_get_best_move(ai, board)) == -1) {
         if (is_checkmate(board)){
-            print_board(board);
+            print_board(board->board);
             printf("matecheck");
 
             return -1;

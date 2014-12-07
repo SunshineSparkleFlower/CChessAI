@@ -118,6 +118,8 @@ void set_board(board_t *board, const char *_fen)
         _fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     char fen[strlen(_fen) + 1];
 
+    bzero(board, sizeof(board_t));
+
     for (i = 0; i < 8; i++)
         board->board_2d[i] = &board->_board[i * 8];
     board->board = board->_board; // backwards compatability
