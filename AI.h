@@ -5,9 +5,9 @@
 #include "common.h"
 #include "board.h"
 
-#define SetBit(A,k)     ((A)[((k)/32)] |= (1 << ((k)%32)))
-#define ClearBit(A,k)   ((A)[((k)/32)] &= ~(1 << ((k)%32)))
-#define TestBit(A,k)    ((A)[((k)/32)] & (1 << ((k)%32)))
+#define SetBit(A,k)     (((uint32_t *)(A))[((k)/32)] |= (1 << ((k)%32)))
+#define ClearBit(A,k)   (((uint32_t *)(A))[((k)/32)] &= ~(1 << ((k)%32)))
+#define TestBit(A,k)    (((uint32_t *)(A))[((k)/32)] & (1 << ((k)%32)))
 
 typedef struct AI_instance {
     int move_nr;

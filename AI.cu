@@ -12,7 +12,7 @@
 static unsigned char ai_mem_magic[] = "\x01\x02\x03\x04\x05\x06";
 
 __global__ void init_random(curandState *state) {
-    curand_init(1337, 0, 0, state);
+    curand_init(432, 0, 0, state);
 }
 
 AI_instance_t *ai_new(int mutation_rate, int brain_size)
@@ -33,11 +33,10 @@ AI_instance_t *ai_new(int mutation_rate, int brain_size)
 
     ret->brain = (int ***) malloc_3d(ret->nr_synapsis / (sizeof (int) * 8),
             ret->nr_ports, ret->nr_brain_parts, sizeof (int));
-
     i = cudaMalloc(&ret->cu_brain, ret->nr_synapsis / (sizeof (int) * 8) *
             ret->nr_ports * ret->nr_brain_parts * sizeof (int));
     //printf("cu_brain: %d\n", i);
-
+    ret->best_brain = ret->cu_brain;
     ret->move_nr = 0;
     ret->nr_wins = ret->nr_losses = ret->nr_games_played = 0;
     ret->generation = 0;
@@ -356,29 +355,28 @@ __device__ void cu_clear_score(AI_instance_t *ai) {
     ai->nr_losses = ai->nr_wins = ai->nr_games_played = ai->positive_reward = 0;
 }
 
-__global__ void gcu_mutate(AI_instance_t *a1) {
+__global__ void gcu_mutate(int *brain, int max_rand, void *r_state) {
 
     int j;
     //memcpy(a1, a2, sizeof(AI_instance_t));
 
-    memcpy(a1->cu_brain, a1->best_brain, a1->nr_brain_parts * a1->nr_ports * a1->nr_synapsis / 8);
 
-    int max_rand = a1->nr_synapsis * a1->nr_ports * a1->nr_brain_parts - 1;
-    int r = (int) curand_uniform((curandState *) a1->r_state) * max_rand;
-    SetBit(a1->cu_brain, r);
+    int r = (int) curand_uniform((curandState *) r_state) * max_rand;
+    SetBit(brain, r);
 
 
     for (j = 0; j < 100; j++) {
-        int r = (int) curand_uniform((curandState *) a1->r_state) * max_rand;
-        ClearBit(a1->cu_brain, r);
+        int r = (int) curand_uniform((curandState *) r_state) * max_rand;
+        ClearBit(brain, r);
     }
 }
 
 void cu_mutate(AI_instance_t *a1) {
     printf("I'm mutating\n");
-    gcu_mutate << <a1->mutation_rate, 1 >> >(a1);
+    cudaMemcpy(a1->cu_brain, a1->best_brain, a1->nr_brain_parts * a1->nr_ports * a1->nr_synapsis / 8, cudaMemcpyDeviceToDevice);
+    gcu_mutate <<<1, a1->mutation_rate, 0, a1->stream >>>(a1->cu_brain, a1->nr_synapsis * a1->nr_ports * a1->nr_brain_parts - 1, a1->r_state);
+     cudaStreamSynchronize ( a1->stream );
     clear_score(a1);
-
 }
 
 int crossover(AI_instance_t *a1, AI_instance_t *a2, AI_instance_t *a3) {
