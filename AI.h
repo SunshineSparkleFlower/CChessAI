@@ -14,12 +14,18 @@ typedef struct AI_instance {
     int nr_wins, nr_losses, nr_games_played;
     float positive_reward;
     int generation;
-    int ***brain;       
+    int ***brain;    
+    int ***brain_a; 
+    int ***brain_b;       
     int nr_ports;
     int nr_synapsis;
     int board_size;
     int mutation_rate;
     int nr_brain_parts;
+    int **port_type;
+    int **mutationrate;
+    int nr_porttypes;
+    int ***activation_count;
 } __attribute__((packed)) AI_instance_t;
 
 extern AI_instance_t *ai_new(int mutation_rate, int brain_size);
@@ -39,6 +45,6 @@ extern int do_pseudo_random_move(board_t *board);
 
 
 extern int score(AI_instance_t *ai, piece_t *board);
-extern int eval_curcuit(int *V, int **M,  int nr_ports, piece_t *board, int board_size);
+extern int eval_curcuit(int *V, int **M,  int nr_ports, piece_t *board, int board_size, int* port_type, int **brain_a, int **brain_b, int **activation_count);
 
 #endif

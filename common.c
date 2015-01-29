@@ -121,7 +121,11 @@ void **memdup_2d(void **mem)
 
     return (void **)ret;
 }
-
+/*
+ * 
+* 3D ARRAY START 
+ * 
+*/
 void ***malloc_3d(size_t x, size_t y, size_t z, size_t type_size)
 {
     int i, j;
@@ -217,8 +221,28 @@ void ***memdup_3d(void ***mem)
 
     return (void ***)ret;
 }
+
+void memset_3d(void ***mem, int byte)
+{
+    int x, y, z, ts;
+    char ***tmp;
+
+    if (mem == NULL)
+        return;
+
+    mem_3d_get_dims(mem, &x, &y, &z, &ts);
+    tmp = (char ***)mem;
+    memset(&tmp[0][0][0], byte, (x * y * z) * ts);
+}
+
+
 #undef _MALLOC_3D_BUFFER_SPACE
 #undef _MALLOC_2D_BUFFER_SPACE
+/*
+ * 
+* 3D ARRAY END 
+ * 
+*/
 
 int random_int(void)
 {

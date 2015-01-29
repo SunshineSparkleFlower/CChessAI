@@ -60,7 +60,11 @@ void play_chess(void *arg)
             if(ret == 0) {
                 break;
             } else if (ret == -1) {
+                
                 punish(ai);
+                //printf("AI lost\n");
+                //            print_board(board->board);
+
                 break;
             }
 
@@ -68,6 +72,10 @@ void play_chess(void *arg)
             if(ret == 0) {
                 break;
             } else if(ret == -1) {
+                
+                //printf("AI won\n");
+               //                             print_board(board->board);
+
                 reward(ai);
                 break;
             }
@@ -276,7 +284,7 @@ int main(int argc, char *argv[])
             exit(1);
         }
         games[i].games_to_play = games_to_play;
-        games[i].max_moves = 20;
+        games[i].max_moves = 50;
         //games[i].do_a_move = do_nonrandom_move;
         games[i].do_a_move = do_random_move;
         games[i].fen = DEFAULT_FEN;
@@ -314,9 +322,12 @@ int main(int argc, char *argv[])
                             i, get_score(games[i].ai), games[i].ai->nr_wins,games[i].ai->nr_games_played,  best, get_score(games[best].ai), games[best].ai->nr_wins);
                     mutate(games[i].ai, games[best].ai);
                 }
-                else
+                else if(get_score(games[i].ai) == 0){
                      printf("not ting ai%d (score %f, %d wins, %d games) from ai%d (score %f, %d wins)\n",
                             i, get_score(games[i].ai), games[i].ai->nr_wins,games[i].ai->nr_games_played,  best, get_score(games[best].ai), games[best].ai->nr_wins);
+                
+                    mutate(games[i].ai, games[i].ai);
+                }
 
             }
       
