@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -o2 -funroll-loops -msse4.1 -mavx2 -g
+CFLAGS=-Wall -O2 -funroll-loops -msse4.1 -mavx2 -g
 LDFLAGS=-lpthread -lm
 
 %.o: %.c

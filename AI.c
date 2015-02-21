@@ -275,7 +275,7 @@ int nor256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * b
         ad = _mm256_loadu_si256((__m256i *) (((int*) a) + i));
         bd = _mm256_loadu_si256((__m256i *) (((int*) b) + i));
         and_res = _mm256_and_si256(ad, bd);
-
+/*
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_a) + i));
         cd = _mm256_or_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_a) + i), cd);
@@ -283,7 +283,7 @@ int nor256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * b
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i));
         cd = _mm256_and_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i), cd);
-
+*/
 
         if (!_mm256_testz_si256(and_res, bd)) {
             return 0;
@@ -297,7 +297,7 @@ int nor256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * b
         ad = _mm256_loadu_si256((__m256i *) (((int*) board) + i));
         bd = _mm256_loadu_si256((__m256i *) ((int*) b + (i + (nr_ports / 32))));
         and_res = _mm256_and_si256(ad, bd);
-
+/*
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_a) + i + nr_ports / 32));
         cd = _mm256_or_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_a) + i + nr_ports / 32), cd);
@@ -305,7 +305,7 @@ int nor256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * b
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32));
         cd = _mm256_and_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32), cd);
-
+*/
         if (!_mm256_testz_si256(and_res, bd)) {
             return 0;
         }
@@ -319,7 +319,7 @@ int nor256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * b
         bd = _mm256_loadu_si256((__m256i *) ((int*) b + (i + (nr_ports / 32))));
         board_d = _mm256_loadu_si256((__m256i *) (((int*) board) + i + (board_size) / (32 * 2)));
         and_res = _mm256_and_si256(_mm256_xor_si256(ad, board_d), bd);
-
+/*
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_a) + i + nr_ports / 32));
         cd = _mm256_or_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_a) + i + nr_ports / 32), cd);
@@ -327,7 +327,7 @@ int nor256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * b
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32));
         cd = _mm256_and_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32), cd);
-
+*/
         if (!_mm256_testz_si256(and_res, bd)) {
             return 0;
         }
@@ -390,7 +390,7 @@ int nand256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * 
         ad = _mm256_loadu_si256((__m256i *) (((int*) a) + i));
         bd = _mm256_loadu_si256((__m256i *) (((int*) b) + i));
         and_res = _mm256_and_si256(ad, bd);
-
+/*
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_a) + i));
         cd = _mm256_or_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_a) + i), cd);
@@ -398,7 +398,7 @@ int nand256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * 
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i));
         cd = _mm256_and_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i), cd);
-
+*/
 
         if (!_mm256_testz_si256(_mm256_xor_si256(and_res, bd), bd)) {
             return 1;
@@ -411,7 +411,7 @@ int nand256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * 
         ad = _mm256_loadu_si256((__m256i *) (((int*) board) + i));
         bd = _mm256_loadu_si256((__m256i *) ((int*) b + (i + (nr_ports / 32))));
         and_res = _mm256_and_si256(ad, bd);
-
+/*
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_a) + i + nr_ports / 32));
         cd = _mm256_or_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_a) + i + nr_ports / 32), cd);
@@ -419,7 +419,7 @@ int nand256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * 
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32));
         cd = _mm256_and_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32), cd);
-
+*/
         if (!_mm256_testz_si256(_mm256_xor_si256(and_res, bd), bd)) {
             return 1;
         }
@@ -435,7 +435,7 @@ int nand256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * 
         board_d = _mm256_loadu_si256((__m256i *) (((int*) board) + i + (board_size) / (32 * 2)));
         and_res = _mm256_and_si256(_mm256_xor_si256(ad, board_d), bd);
 
-
+/*
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_a) + i + nr_ports / 32));
         cd = _mm256_or_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_a) + i + nr_ports / 32), cd);
@@ -443,7 +443,7 @@ int nand256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * 
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32));
         cd = _mm256_and_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32), cd);
-
+*/
         if (!_mm256_testz_si256(_mm256_xor_si256(and_res, bd), bd)) {
             return 1;
         }
@@ -516,7 +516,7 @@ int and256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * b
         ad = _mm256_loadu_si256((__m256i *) (((int*) a) + i));
         bd = _mm256_loadu_si256((__m256i *) (((int*) b) + i));
         and_res = _mm256_and_si256(ad, bd);
-
+/*
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_a) + i));
         cd = _mm256_or_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_a) + i), cd);
@@ -524,7 +524,7 @@ int and256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * b
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i));
         cd = _mm256_and_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i), cd);
-
+*/
         if (!_mm256_testz_si256(_mm256_xor_si256(and_res, bd), bd)) {
             return 0;
         }
@@ -536,7 +536,7 @@ int and256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * b
         ad = _mm256_loadu_si256((__m256i *) (((int*) board) + i));
         bd = _mm256_loadu_si256((__m256i *) ((int*) b + (i + (nr_ports / 32))));
         and_res = _mm256_and_si256(ad, bd);
-
+/*
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_a) + i + nr_ports / 32));
         cd = _mm256_or_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_a) + i + nr_ports / 32), cd);
@@ -544,7 +544,7 @@ int and256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * b
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32));
         cd = _mm256_and_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32), cd);
-
+*/
         if (!_mm256_testz_si256(_mm256_xor_si256(and_res, bd), bd)) {
             //  printf("here\n");
             return 0;
@@ -560,7 +560,7 @@ int and256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * b
         board_d = _mm256_loadu_si256((__m256i *) (((int*) board) + i + (board_size) / (32 * 2)));
         and_res = _mm256_and_si256(_mm256_xor_si256(ad, board_d), bd);
 
-
+/*
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_a) + i + nr_ports / 32));
         cd = _mm256_or_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_a) + i + nr_ports / 32), cd);
@@ -568,7 +568,7 @@ int and256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * b
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32));
         cd = _mm256_and_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32), cd);
-
+*/
         if (!_mm256_testz_si256(_mm256_xor_si256(and_res, bd), bd)) {
             //  printf("here\n");
             return 0;
@@ -631,7 +631,7 @@ int or256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * br
         ad = _mm256_loadu_si256((__m256i *) (((int*) a) + i));
         bd = _mm256_loadu_si256((__m256i *) (((int*) b) + i));
         and_res = _mm256_and_si256(ad, bd);
-
+/*
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_a) + i));
         cd = _mm256_or_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_a) + i), cd);
@@ -639,7 +639,7 @@ int or256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * br
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i));
         cd = _mm256_and_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i), cd);
-
+*/
         if (!_mm256_testz_si256(and_res, bd)) {
             return 1;
         }
@@ -652,7 +652,7 @@ int or256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * br
         ad = _mm256_loadu_si256((__m256i *) (((int*) board) + i));
         bd = _mm256_loadu_si256((__m256i *) ((int*) b + (i + (nr_ports / 32))));
         and_res = _mm256_and_si256(ad, bd);
-
+/*
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_a) + i + nr_ports / 32));
         cd = _mm256_or_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_a) + i + nr_ports / 32), cd);
@@ -660,7 +660,7 @@ int or256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * br
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32));
         cd = _mm256_and_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32), cd);
-
+*/
         if (!_mm256_testz_si256(and_res, bd)) {
             return 1;
         }
@@ -675,7 +675,7 @@ int or256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * br
         board_d = _mm256_loadu_si256((__m256i *) (((int*) board) + i + (board_size) / (32 * 2)));
         and_res = _mm256_and_si256(_mm256_xor_si256(ad, board_d), bd);
 
-
+/*
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_a) + i + nr_ports / 32));
         cd = _mm256_or_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_a) + i + nr_ports / 32), cd);
@@ -683,7 +683,7 @@ int or256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * br
         cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32));
         cd = _mm256_and_si256(and_res, cd);
         _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32), cd);
-
+*/
         if (!_mm256_testz_si256(and_res, bd)) {
             return 1;
         }
