@@ -138,7 +138,7 @@ void ***malloc_3d(size_t x, size_t y, size_t z, size_t type_size)
     if (x < 1 || y < 1 || z < 1)
         return NULL;
 
-    ret = malloc(alloc + _MALLOC_3D_BUFFER_SPACE);
+    ret = (void ***)malloc(alloc + _MALLOC_3D_BUFFER_SPACE);
     _3d = (int ***)ret;
 
     for (i = 0; i < z; i++) {

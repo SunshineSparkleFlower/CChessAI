@@ -57,6 +57,8 @@ void play_chess(void *arg)
 
         for (moves = 0; moves < max_moves; moves++) {
             ret = do_best_move(ai, board);
+//                    print_board(board->board);
+
             if(ret == 0) {
                 break;
             } else if (ret == -1) {
@@ -174,7 +176,7 @@ void natural_selection(void)
                 ai1, get_score(games[ai1].ai),
                 games[ai1].ai->nr_wins, games[ai1].ai->nr_losses);
 
-        mutate(games[ai2].ai, games[ai1].ai);
+        mutate(games[ai2].ai, games[ai1].ai, 0);
     }
     else if(score_ai2 > score_ai1){
         printf("mutating ai%d (score %f, %d wins, %d losses)",
@@ -184,7 +186,7 @@ void natural_selection(void)
                 ai2, get_score(games[ai2].ai),
                 games[ai2].ai->nr_wins, games[ai2].ai->nr_losses);
 
-        mutate(games[ai1].ai, games[ai2].ai);   
+        mutate(games[ai1].ai, games[ai2].ai, 0);   
     }
     
    
@@ -284,7 +286,9 @@ int main(int argc, char *argv[])
             exit(1);
         }
         games[i].games_to_play = games_to_play;
-        games[i].max_moves = 50;
+        games[i].max_moves = 15;
+        //        games[i].max_moves = 50;
+
         //games[i].do_a_move = do_nonrandom_move;
         games[i].do_a_move = do_random_move;
         games[i].fen = DEFAULT_FEN;
@@ -318,25 +322,23 @@ int main(int argc, char *argv[])
               if (i == best)
                     continue;
                 if (get_score(games[i].ai) < get_score(games[best].ai)){
-                    printf("mutating ai%d (score %f, %d wins, %d games) from ai%d (score %f, %d wins)\n",
-                            i, get_score(games[i].ai), games[i].ai->nr_wins,games[i].ai->nr_games_played,  best, get_score(games[best].ai), games[best].ai->nr_wins);
-                    mutate(games[i].ai, games[best].ai);
+                    // printf("mutating ai%d (score %f, %d wins, %d games) from ai%d (score %f, %d wins)\n",
+                    //        i, get_score(games[i].ai), games[i].ai->nr_wins,games[i].ai->nr_games_played,  best, get_score(games[best].ai), games[best].ai->nr_wins);
+                    
+                    mutate(games[i].ai, games[best].ai, 0);
+                   
                 }
                 else if(get_score(games[i].ai) == 0){
                      printf("not ting ai%d (score %f, %d wins, %d games) from ai%d (score %f, %d wins)\n",
                             i, get_score(games[i].ai), games[i].ai->nr_wins,games[i].ai->nr_games_played,  best, get_score(games[best].ai), games[best].ai->nr_wins);
                 
-                    mutate(games[i].ai, games[i].ai);
+                     mutate(games[i].ai, games[i].ai, 0);
+                    
                 }
 
             }
       
-            //clear_score(games[best].ai);
-           // games[best].ai->nr_wins/=2;
-            //games[best].ai->nr_losses/=2;
-           // games[best].ai->nr_games_played/=2;
-           // games[best].ai->positive_reward/=2;
-
+      
         }
     }
        dump_ai("ai.aidump", games[best].ai);

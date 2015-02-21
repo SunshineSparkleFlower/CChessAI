@@ -247,7 +247,7 @@ static inline u64 generate_king_moves(struct bitboard *b, int pos)
 }
 
 /* returns moves, initializes *attacks */
-static inline u64 generate_pawn_moves(struct bitboard *b, int pos,
+static inline u64 generate_pawn_moves(struct bitboard *b,
         u64 *attacks, int turn)
 {
     u64 ret;
@@ -480,7 +480,7 @@ int bb_calculate_check(board_t *board)
 {
     u64 attacks;
     struct bitboard *enemy, *self;
-    int bits[65], i, king_idx;
+    int i, king_idx;
 
     if (board->turn == WHITE) {
         enemy = &board->black_pieces;
@@ -490,8 +490,8 @@ int bb_calculate_check(board_t *board)
         self = &board->black_pieces;
     }
     king_idx = lsb_to_index(self->king);
-
-    generate_pawn_moves(enemy, bits[i], &attacks, -board->turn);
+    
+    generate_pawn_moves(enemy, &attacks, -board->turn);
     if (bb_can_attack(attacks, king_idx))
         goto yes;
 
@@ -554,7 +554,7 @@ void bb_generate_all_legal_moves(board_t *board)
                     &board->moves_count);
     }
 
-    moves = generate_pawn_moves(b, bits[i], &attacks, board->turn);
+    moves = generate_pawn_moves(b, &attacks, board->turn);
     store_pawn_moves(b, moves, attacks, board->moves,
             &board->moves_count, board->turn);
 }

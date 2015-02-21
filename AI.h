@@ -26,6 +26,23 @@ typedef struct AI_instance {
     int **mutationrate;
     int nr_porttypes;
     int ***activation_count;
+    int ***correlations;
+    int **invert;
+    int nr_outputs;
+    int ***separation;
+    int **separation_count;
+    int ***state_separation;
+    int **state_separation_count;
+    int **output_tag;
+    int zero_rate;
+    int one_rate;
+    int port_type_rate;
+    int unused_rate; 
+    int output_rate;
+    int r_output_rate;
+    int separation_rate;
+    int state_separation_rate
+
 } __attribute__((packed)) AI_instance_t;
 
 extern AI_instance_t *ai_new(int mutation_rate, int brain_size);
@@ -36,8 +53,9 @@ extern AI_instance_t *copy_ai(AI_instance_t *ai);
 extern int do_best_move(AI_instance_t *ai, board_t *board);
 extern void punish(AI_instance_t *ai);
 extern void reward(AI_instance_t *ai);
+extern void draw(AI_instance_t *ai, board_t * board);
 extern float get_score(AI_instance_t *ai);
-extern int mutate(AI_instance_t *a1, AI_instance_t *a2);
+extern int mutate(AI_instance_t *a1, AI_instance_t *a2, int print);
 extern void clear_score(AI_instance_t *ai);
 extern int do_nonrandom_move(board_t *board);
 extern int do_random_move(board_t *board);
@@ -45,6 +63,6 @@ extern int do_pseudo_random_move(board_t *board);
 
 
 extern int score(AI_instance_t *ai, piece_t *board);
-extern int eval_curcuit(int *V, int **M,  int nr_ports, piece_t *board, int board_size, int* port_type, int **brain_a, int **brain_b, int **activation_count);
+extern int eval_curcuit(int *V, int **M,  int nr_ports, piece_t *board, int board_size, int* port_type, int **brain_a, int **brain_b, int **activation_count,int **state_separation, int *invert, int nr_outputs, int*output_tag);
 
 #endif
