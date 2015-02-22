@@ -251,7 +251,8 @@ int random_int(void)
     if (urandom == NULL)
         urandom = fopen("/dev/urandom", "r");
 
-    fread(&ret, 1, sizeof(ret), urandom);
+    if (fread(&ret, 1, sizeof(ret), urandom) != sizeof(ret))
+        perror("fread");
 
     return ret;
 }
@@ -263,7 +264,8 @@ unsigned random_uint(void)
     if (urandom == NULL)
         urandom = fopen("/dev/urandom", "r");
 
-    fread(&ret, 1, sizeof(ret), urandom);
+    if (fread(&ret, 1, sizeof(ret), urandom) != sizeof(ret))
+        perror("fread");
 
     return ret;
 }
@@ -275,7 +277,8 @@ float random_float_nr(void)
     if (urandom == NULL)
         urandom = fopen("/dev/urandom", "r");
 
-    fread(&ret, 1, sizeof(ret), urandom);
+    if (fread(&ret, 1, sizeof(ret), urandom) != sizeof(ret))
+        perror("fread");
 
     return ret;
 }

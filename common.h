@@ -76,6 +76,7 @@ extern int mem_2d_get_dims(void **mem, int *x, int *y, int *type_size);
 extern void **memdup_2d(void **mem);
 extern void ***malloc_3d(size_t x, size_t y, size_t z, size_t type_size);
 extern void ***memdup_3d(void ***mem);
+extern void memset_3d(void ***mem, int byte);
 extern int mem_3d_get_dims(void ***mem, int *x, int *y, int *z, int *type_size);
 extern int random_int(void);
 extern unsigned random_uint(void);

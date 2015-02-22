@@ -528,7 +528,7 @@ void bb_generate_all_legal_moves(board_t *board)
 {
     u64 moves, attacks;
     struct bitboard *b;
-    int bits[65], i;
+    int i;
 
     b = board->turn == WHITE ? &board->white_pieces : &board->black_pieces;
 

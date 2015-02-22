@@ -447,7 +447,7 @@ int main(int argc, char *argv[])
 
     unsigned long start, end;
     double diff;
-    int i, rounds, threads, count;
+    int rounds, threads, count;
     uint64_t num_trekk;
 
     start = now();

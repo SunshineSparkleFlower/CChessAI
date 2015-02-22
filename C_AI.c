@@ -7,6 +7,7 @@
 #include <time.h>
 #include <ctype.h>
 #include <string.h>
+#include <getopt.h>
 
 #include "common.h"
 #include "board.h"
@@ -25,6 +26,16 @@ struct game_struct {
 int nr_threads = 2, nr_jobs = 2, i, best, iteration;
 struct game_struct *games = NULL;
 struct job *jobs = NULL;
+
+char *ai_file = NULL;
+int mutation_rate = 1000;
+int games_to_play = 100;
+int max_iterations = 100;
+int brain_size = 1;
+int selection_function = 1;
+int nr_selections = 1;
+int games_pr_iteration = 50;
+int nr_ports = 256;
 
 void print_ai_stats(int tid, AI_instance_t *ai, int ite, int rndwins)
 {
@@ -51,7 +62,7 @@ void play_chess(void *arg)
 
     //printf("starting game %d\n", game->game_id);
 
-    for (nr_games = 0; nr_games < 50; nr_games++) {
+    for (nr_games = 0; nr_games < games_to_play; nr_games++) {
         board = new_board(game->fen);
         //board_t *board = new_board("rnbqkbnr/qqqqqqqq/8/8/8/8/qqqqqqqq/qqqqKqqq w - - 0 1");
 
@@ -117,7 +128,8 @@ void sighandler(int sig)
     strftime(file, 64, "ai_save-%d%m%y-%H%M", tm);
 
     fprintf(stderr, "Are you sure you want to quit? (Y/n): [default: n] ");
-    fgets(buffer, sizeof(buffer), stdin);
+    if (fgets(buffer, sizeof(buffer), stdin) == NULL)
+        return;
     if (tolower(buffer[0]) == 'c') //exit without any further questions
         exit(0);
 
@@ -126,13 +138,15 @@ void sighandler(int sig)
     
     
     fprintf(stderr, "Save N best AIs to file? (Y/n): [default: y] ");
-    fgets(buffer, sizeof(buffer), stdin);
+    if (fgets(buffer, sizeof(buffer), stdin) == NULL)
+        exit(0);
     if (tolower(buffer[0]) == 'n')
         n = 0;
 
     if (n) {
         fprintf(stderr, "N (0-%d): [default: %d] ", nr_jobs, n);
-        fgets(buffer, sizeof(buffer), stdin);
+        if (fgets(buffer, sizeof(buffer), stdin) == NULL)
+            return;
         buffer[127] = 0;
         if (buffer[0] != '\n')
             n = atoi(buffer);
@@ -142,7 +156,8 @@ void sighandler(int sig)
         }
 
         fprintf(stderr, "File prefix (<= 64 chars): [default: %s] ", file);
-        fgets(buffer, 64, stdin);
+        if (fgets(buffer, 64, stdin) == NULL)
+            return;
         if (buffer[0] != '\n') {
             strncpy(file, buffer, 64);
             if (file[strlen(file) - 1] == '\n')
@@ -160,6 +175,69 @@ void sighandler(int sig)
     }
 
     exit(0);
+}
+
+void usage(char **argv, struct option *options)
+{
+    int i;
+    printf("USAGE: %s <options>\n", argv[0]);
+    printf("Available options:\n");
+    for (i = 0; options[i].name; i++)
+        printf("    -%c, --%s %s\n", options[i].val, options[i].name,
+                options[i].has_arg == required_argument ? "<argument>" : "");
+}
+
+void parse_arguments(int argc, char **argv)
+{
+    int c;
+    int option_index = 0;
+    static struct option long_options[] = {
+        {"threads", required_argument, NULL, 't'},
+        {"jobs", required_argument, NULL, 'j'},
+        {"file", required_argument, NULL, 'f'},
+        {"games-to-play", required_argument, NULL, 'g'},
+        {"iterations", required_argument, NULL, 'i'},
+        {"games-pr-iteration", required_argument, NULL, 'n'},
+        {"ports", required_argument, NULL, 'p'},
+        {"help", no_argument, NULL, 'h'},
+        {NULL, 0, NULL, 0},
+    };
+
+    while ((c = getopt_long(argc, argv, "t:j:f:g:i:n:p:h", long_options,
+                    &option_index)) != -1)
+        switch (c) {
+            case 't':
+                nr_threads = atoi(optarg);
+                break;
+            case 'j':
+                nr_jobs = atoi(optarg);
+                break;
+            case 'f':
+                ai_file = optarg;
+                break;
+            case 'g':
+                games_to_play = atoi(optarg);
+                break;
+            case 'i':
+                max_iterations = atoi(optarg);
+                break;
+            case 'n':
+                games_pr_iteration = atoi(optarg);
+                break;
+            case 'p':
+                nr_ports = atoi(optarg);
+                break;
+            case 'h':
+            default:
+                usage(argv, long_options);
+                exit(0);
+        }
+
+    if (nr_threads == 0 || nr_jobs == 0) {
+        printf("threads or jobs cannot be 0\n");
+        usage(argv, long_options);
+        exit(1);
+    }
 }
 
 void natural_selection(void)
@@ -188,84 +266,23 @@ void natural_selection(void)
 
         mutate(games[ai1].ai, games[ai2].ai, 0);   
     }
-    
-   
- //   best = get_best_ai(games, nr_jobs, -1);
-    
- // printf("BEST: ai%d (score %f, %d wins, %d losses, wlr: %f\n)",
-//                best, get_score(games[best].ai),
- //               games[best].ai->nr_wins, games[best].ai->nr_losses, games[best].ai->nr_wins/(float)games[best].ai->nr_losses);
-  
-}
 
+
+    //   best = get_best_ai(games, nr_jobs, -1);
+
+    // printf("BEST: ai%d (score %f, %d wins, %d losses, wlr: %f\n)",
+    //                best, get_score(games[best].ai),
+    //               games[best].ai->nr_wins, games[best].ai->nr_losses, games[best].ai->nr_wins/(float)games[best].ai->nr_losses);
+
+}
 
 int main(int argc, char *argv[])
 {
-    char *ai_file = NULL;
+    int j;
 
-  int j;
-  int mutation_rate = 1000;
-  int games_to_play = 100;
-  int c;
-  int max_iterations = 100;
-  int brain_size = 3;
-  int selection_function = 0;
-  int nr_selections = 1;
-  opterr = 0;
-  while ((c = getopt (argc, argv, "t:j:f:m:g:i:b:s:r:")) != -1)
-    switch (c)
-      {
-      case 't':
-        nr_threads = atoi(optarg);
-        break;
-      case 'j':
-        nr_jobs = atoi(optarg);
-        break;
-      case 'f':
-        ai_file = optarg;
-        break;
-      case 'm':
-        mutation_rate = atoi(optarg);
-        break;
-      case 'g':
-        games_to_play = atoi(optarg);
-        break;
-      case 'i':
-        max_iterations = atoi(optarg);
-        break;
-     case 'b':
-        brain_size = atoi(optarg);
-        break;
-     case 's':
-       selection_function = atoi(optarg);
-        break;
-     case 'r':
-        nr_selections = atoi(optarg);
-        break;
-      case '?':
-        if (optopt == 'f')
-          fprintf (stderr, "Option -%c requires an file name.\n", optopt);
-        else if (isprint (optopt))
-          fprintf (stderr, "Unknown option `-%c'.\n", optopt);
-        else
-          fprintf (stderr,
-                   "Unknown option character `\\x%x'.\n",
-                   optopt);
-        printf("USAGE: %s -t <nr threads> -j <nr jobs> -f <ai_filename> -m <mutation rate>\n", argv[0]);
-
-        return 1;
-      default:
-        abort ();
-      }
-
+    parse_arguments(argc, argv);
 
     srand(100);
-
-    if (nr_threads == 0 || nr_jobs == 0) {
-        printf("threads or jobs cannot be 0\n");
-        printf("USAGE: %s -t <nr threads> -j <nr jobs> -f <ai_filename> -m <mutation rate>\n", argv[0]);
-        return 1;
-    }
 
     init_threadpool(nr_threads);
     init_magicmoves();
@@ -280,12 +297,12 @@ int main(int argc, char *argv[])
             games[i].ai = load_ai(ai_file, mutation_rate);
             clear_score(games[i].ai);
         } else
-            games[i].ai = ai_new(mutation_rate, brain_size); // mutation rate = 5000
+            games[i].ai = ai_new(mutation_rate, brain_size, nr_ports); // mutation rate = 5000
         if (games[i].ai == NULL) {
             perror("ai creation");
             exit(1);
         }
-        games[i].games_to_play = games_to_play;
+        games[i].games_to_play = games_pr_iteration;
         games[i].max_moves = 15;
         //        games[i].max_moves = 50;
 
@@ -317,32 +334,32 @@ int main(int argc, char *argv[])
             best = get_best_ai(games, nr_jobs, -1);
             printf("best: %d\n", best);
             for (i = 0; i < nr_jobs; i++) {
-              if( games[best].games_to_play > games[best].ai->nr_games_played)
-                break;          
-              if (i == best)
+                if( games[best].games_to_play > games[best].ai->nr_games_played)
+                    break;          
+                if (i == best)
                     continue;
                 if (get_score(games[i].ai) < get_score(games[best].ai)){
                     // printf("mutating ai%d (score %f, %d wins, %d games) from ai%d (score %f, %d wins)\n",
                     //        i, get_score(games[i].ai), games[i].ai->nr_wins,games[i].ai->nr_games_played,  best, get_score(games[best].ai), games[best].ai->nr_wins);
-                    
+
                     mutate(games[i].ai, games[best].ai, 0);
-                   
+
                 }
                 else if(get_score(games[i].ai) == 0){
-                     printf("not ting ai%d (score %f, %d wins, %d games) from ai%d (score %f, %d wins)\n",
+                    printf("not ting ai%d (score %f, %d wins, %d games) from ai%d (score %f, %d wins)\n",
                             i, get_score(games[i].ai), games[i].ai->nr_wins,games[i].ai->nr_games_played,  best, get_score(games[best].ai), games[best].ai->nr_wins);
-                
-                     mutate(games[i].ai, games[i].ai, 0);
-                    
+
+                    mutate(games[i].ai, games[i].ai, 0);
+
                 }
 
             }
-      
-      
+
+
         }
     }
-       dump_ai("ai.aidump", games[best].ai);
-        clear_score(games[best].ai);
+    dump_ai("ai.aidump", games[best].ai);
+    clear_score(games[best].ai);
 
     return 0;
 }
