@@ -242,7 +242,7 @@ AI_instance_t * load_ai(char *file, int mutation_rate) {
         return NULL;
     }
     ret->used_port = malloc(sizeof (int) * ret->nr_ports / 32);
-    if (fread(&ret->output_tag[0][0], 1, sizeof (int) * ret->nr_ports / 32, in) !=
+    if (fread(&ret->used_port[0], 1, sizeof (int) * ret->nr_ports / 32, in) !=
             sizeof (int) * ret->nr_ports / 32) {
         printf("Failed to read\n");
         perror("fread");
@@ -1213,14 +1213,14 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print) {
     __m128i ad, bd;
     if (print)
         printf("unused ports: \n");
-    for (i = 0; i < (a2->nr_ports) / 32; i += 4) {
+    for (i = 0; i < (a1->nr_ports) / 32; i += 4) {
 
-        bd = _mm_loadu_si128((__m128i *) (((int*) a2->brain[0][0]) + i));
-        for (j = 0; j < a2->nr_ports; j++) {
-            ad = _mm_loadu_si128((__m128i *) (((int*) a2->brain[0][j]) + i));
+        bd = _mm_loadu_si128((__m128i *) (((int*) a1->brain[0][0]) + i));
+        for (j = 0; j < a1->nr_ports; j++) {
+            ad = _mm_loadu_si128((__m128i *) (((int*) a1->brain[0][j]) + i));
             bd = _mm_or_si128(ad, bd);
         }
-        _mm_storeu_si128((__m128i *) (((int*) a1->used_port)), bd);
+        _mm_storeu_si128((__m128i *) (((int*) a1->used_port + i)), bd);
     }
 
 

@@ -50,13 +50,12 @@ void print_ai_stats(int tid, AI_instance_t *ai, int ite, int rndwins)
 void play_chess(void *arg)
 {
     struct game_struct *game = (struct game_struct *)arg;
-    int games_to_play, nr_games, max_moves, moves, ret = -1;
+    int  nr_games, max_moves, moves, ret = -1;
     int (*do_a_move)(board_t *);
     AI_instance_t *ai;
     board_t *board;
 
     ai = game->ai;
-    games_to_play = game->games_to_play;
     max_moves = game->max_moves;
     do_a_move = game->do_a_move;
 
