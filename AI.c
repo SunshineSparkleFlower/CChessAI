@@ -32,7 +32,7 @@ AI_instance_t *ai_new(int mutation_rate, int brain_size, int nr_ports) {
     ret->brain_b = (int ***) malloc_3d(ret->nr_synapsis / (sizeof (int) * 8),
             ret->nr_ports, ret->nr_brain_parts, sizeof (int));
 
-    memset_3d((void ***)ret->brain_b, 0xff);
+    memset_3d((void ***) ret->brain_b, 0xff);
 
     //ret->correlations = (int ***) malloc_2d(2,ret->nr_ports, ret->nr_ports, sizeof (int));
 
@@ -145,6 +145,7 @@ int dump_ai(char *file, AI_instance_t * ai) {
     fwrite(&ai->port_type[0][0], 1, ai->nr_ports * sizeof (int)*ai->nr_brain_parts, out);
     fwrite(&ai->mutationrate[0][0], 1, ai->nr_porttypes * 2 * sizeof (int), out);
     fwrite(&ai->output_tag[0][0], 1, sizeof (int)* ai->nr_ports * ai->nr_brain_parts, out);
+    fwrite(&ai->used_port[0], 1, sizeof (int) * ai->nr_ports / 32, out);
 
     fclose(out);
 
@@ -176,7 +177,7 @@ AI_instance_t * load_ai(char *file, int mutation_rate) {
         return NULL;
     }
 
-    if (fread(ret, 1, sizeof(AI_instance_t), in) != sizeof(AI_instance_t)) {
+    if (fread(ret, 1, sizeof (AI_instance_t), in) != sizeof (AI_instance_t)) {
         printf("Failed to read\n");
         perror("fread");
         return NULL;
@@ -189,7 +190,7 @@ AI_instance_t * load_ai(char *file, int mutation_rate) {
 
     ret->brain_b = (int ***) malloc_3d(ret->nr_synapsis / (sizeof (int) * 8),
             ret->nr_ports, ret->nr_brain_parts, sizeof (int));
-    memset_3d((void ***)ret->brain_b, 0xff);
+    memset_3d((void ***) ret->brain_b, 0xff);
 
     brain_size = (ret->nr_synapsis / (sizeof (int) * 8)) *
             ret->nr_ports * sizeof (int)*ret->nr_brain_parts;
@@ -205,7 +206,7 @@ AI_instance_t * load_ai(char *file, int mutation_rate) {
         perror("fread");
         return NULL;
     }
-    if (fread(&ret->invert[0][0], 1, sizeof(int) * ret->nr_ports * ret->nr_brain_parts, in) != 
+    if (fread(&ret->invert[0][0], 1, sizeof (int) * ret->nr_ports * ret->nr_brain_parts, in) !=
             sizeof (int) * ret->nr_ports * ret->nr_brain_parts) {
         printf("Failed to read\n");
         perror("fread");
@@ -213,8 +214,8 @@ AI_instance_t * load_ai(char *file, int mutation_rate) {
     }
 
     ret->port_type = (int**) malloc_2d(ret->nr_ports, ret->nr_brain_parts, sizeof (int));
-    if (fread(&ret->port_type[0][0], 1, ret->nr_ports * sizeof (int)*ret->nr_brain_parts, in) != 
-            ret->nr_ports * sizeof(int)*ret->nr_brain_parts) {
+    if (fread(&ret->port_type[0][0], 1, ret->nr_ports * sizeof (int)*ret->nr_brain_parts, in) !=
+            ret->nr_ports * sizeof (int)*ret->nr_brain_parts) {
         printf("Failed to read\n");
         perror("fread");
         return NULL;
@@ -222,7 +223,7 @@ AI_instance_t * load_ai(char *file, int mutation_rate) {
 
     ret->mutationrate = (int**) malloc_2d(ret->nr_porttypes, 2, sizeof (int));
     printf("nr_porttypes: %d\n", ret->nr_porttypes);
-    if (fread(&ret->mutationrate[0][0], 1, ret->nr_porttypes * 2 * sizeof (int), in) != 
+    if (fread(&ret->mutationrate[0][0], 1, ret->nr_porttypes * 2 * sizeof (int), in) !=
             ret->nr_porttypes * 2 * sizeof (int)) {
         printf("Failed to read\n");
         perror("fread");
@@ -234,8 +235,15 @@ AI_instance_t * load_ai(char *file, int mutation_rate) {
     ret->activation_count = (int***) malloc_3d(2, ret->nr_ports, ret->nr_brain_parts, sizeof (int));
 
     ret->output_tag = (int**) malloc_2d(ret->nr_ports, ret->nr_brain_parts, sizeof (int));
-    if (fread(&ret->output_tag[0][0], 1, sizeof (int) * ret->nr_ports * ret->nr_brain_parts, in) != 
+    if (fread(&ret->output_tag[0][0], 1, sizeof (int) * ret->nr_ports * ret->nr_brain_parts, in) !=
             sizeof (int) * ret->nr_ports * ret->nr_brain_parts) {
+        printf("Failed to read\n");
+        perror("fread");
+        return NULL;
+    }
+    ret->used_port = malloc(sizeof (int) * ret->nr_ports / 32);
+    if (fread(&ret->output_tag[0][0], 1, sizeof (int) * ret->nr_ports / 32, in) !=
+            sizeof (int) * ret->nr_ports / 32) {
         printf("Failed to read\n");
         perror("fread");
         return NULL;
@@ -313,7 +321,7 @@ int nor256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * b
            cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i));
            cd = _mm256_and_si256(and_res, cd);
            _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i), cd);
-           */
+         */
 
         if (!_mm256_testz_si256(and_res, bd)) {
             return 0;
@@ -335,7 +343,7 @@ int nor256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * b
            cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32));
            cd = _mm256_and_si256(and_res, cd);
            _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32), cd);
-           */
+         */
         if (!_mm256_testz_si256(and_res, bd)) {
             return 0;
         }
@@ -357,7 +365,7 @@ int nor256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * b
            cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32));
            cd = _mm256_and_si256(and_res, cd);
            _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32), cd);
-           */
+         */
         if (!_mm256_testz_si256(and_res, bd)) {
             return 0;
         }
@@ -428,7 +436,7 @@ int nand256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * 
            cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i));
            cd = _mm256_and_si256(and_res, cd);
            _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i), cd);
-           */
+         */
 
         if (!_mm256_testz_si256(_mm256_xor_si256(and_res, bd), bd)) {
             return 1;
@@ -449,7 +457,7 @@ int nand256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * 
            cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32));
            cd = _mm256_and_si256(and_res, cd);
            _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32), cd);
-           */
+         */
         if (!_mm256_testz_si256(_mm256_xor_si256(and_res, bd), bd)) {
             return 1;
         }
@@ -473,7 +481,7 @@ int nand256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * 
            cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32));
            cd = _mm256_and_si256(and_res, cd);
            _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32), cd);
-           */
+         */
         if (!_mm256_testz_si256(_mm256_xor_si256(and_res, bd), bd)) {
             return 1;
         }
@@ -554,7 +562,7 @@ int and256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * b
            cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i));
            cd = _mm256_and_si256(and_res, cd);
            _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i), cd);
-           */
+         */
         if (!_mm256_testz_si256(_mm256_xor_si256(and_res, bd), bd)) {
             return 0;
         }
@@ -574,7 +582,7 @@ int and256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * b
            cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32));
            cd = _mm256_and_si256(and_res, cd);
            _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32), cd);
-           */
+         */
         if (!_mm256_testz_si256(_mm256_xor_si256(and_res, bd), bd)) {
             //  printf("here\n");
             return 0;
@@ -598,7 +606,7 @@ int and256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * b
            cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32));
            cd = _mm256_and_si256(and_res, cd);
            _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32), cd);
-           */
+         */
         if (!_mm256_testz_si256(_mm256_xor_si256(and_res, bd), bd)) {
             //  printf("here\n");
             return 0;
@@ -669,7 +677,7 @@ int or256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * br
            cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i));
            cd = _mm256_and_si256(and_res, cd);
            _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i), cd);
-           */
+         */
         if (!_mm256_testz_si256(and_res, bd)) {
             return 1;
         }
@@ -690,7 +698,7 @@ int or256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * br
            cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32));
            cd = _mm256_and_si256(and_res, cd);
            _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32), cd);
-           */
+         */
         if (!_mm256_testz_si256(and_res, bd)) {
             return 1;
         }
@@ -713,7 +721,7 @@ int or256(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * br
            cd = _mm256_loadu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32));
            cd = _mm256_and_si256(and_res, cd);
            _mm256_storeu_si256((__m256i *) (((int*) brain_b) + i + nr_ports / 32), cd);
-           */
+         */
         if (!_mm256_testz_si256(and_res, bd)) {
             return 1;
         }
@@ -745,20 +753,22 @@ int eval_curcuit(int *V, int **M, int nr_ports, piece_t *board, int board_size,
 
     int i;
     for (i = 0; i < nr_ports; i++) {
-        if (port_type[i] == 1) {
-            if (nand256(V, M[i], nr_ports, board, board_size, brain_a[i], brain_b[i], i > (nr_ports / 2), i < (nr_ports / 4)))
-                SetBit(V, i);
-        } else if (port_type[i] == 3) {
-            if (or256(V, M[i], nr_ports, board, board_size, brain_a[i], brain_b[i], i > (nr_ports / 2), i < (nr_ports / 4)))
-                SetBit(V, i);
-        } else if (port_type[i] == 2) {
-            if (nor256(V, M[i], nr_ports, board, board_size, brain_a[i], brain_b[i], i > (nr_ports / 2), i < (nr_ports / 4)))
-                SetBit(V, i);
-        } else if (port_type[i] == 4) {
-            if (and256(V, M[i], nr_ports, board, board_size, brain_a[i], brain_b[i], i > (nr_ports / 2), i < (nr_ports / 4)))
-                SetBit(V, i);
-        } else
-            printf("ERROR: port type error(%d)", port_type[i]);
+        if (TestBit(used_port, i) || output_tag[i]) {
+            if (port_type[i] == 1) {
+                if (nand256(V, M[i], nr_ports, board, board_size, brain_a[i], brain_b[i], i > (nr_ports / 2), i < (nr_ports / 4)))
+                    SetBit(V, i);
+            } else if (port_type[i] == 3) {
+                if (or256(V, M[i], nr_ports, board, board_size, brain_a[i], brain_b[i], i > (nr_ports / 2), i < (nr_ports / 4)))
+                    SetBit(V, i);
+            } else if (port_type[i] == 2) {
+                if (nor256(V, M[i], nr_ports, board, board_size, brain_a[i], brain_b[i], i > (nr_ports / 2), i < (nr_ports / 4)))
+                    SetBit(V, i);
+            } else if (port_type[i] == 4) {
+                if (and256(V, M[i], nr_ports, board, board_size, brain_a[i], brain_b[i], i > (nr_ports / 2), i < (nr_ports / 4)))
+                    SetBit(V, i);
+            } else
+                printf("ERROR: port type error(%d)", port_type[i]);
+        }
     }
     //log the output of each ports
     for (i = 0; i < nr_ports; i++) {
@@ -842,7 +852,7 @@ static int _get_best_move(AI_instance_t *ai, board_t * board) {
       }
       }
       return best_i;
-      */
+     */
 
 
     for (i = 0; i < board->moves_count; i++) {
@@ -1090,10 +1100,10 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print) {
                     printf("%d(r), ", j);
             } else
                 if (print)
-                    printf("%d, ", j);
+                printf("%d, ", j);
         } else
             if (print)
-                printf("%d(u), ", j);
+            printf("%d(u), ", j);
     }
 
     //check for constant ports and reset them

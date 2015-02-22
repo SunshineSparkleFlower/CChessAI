@@ -36,7 +36,7 @@ int selection_function = 1;
 int nr_selections = 1;
 int games_pr_iteration = 50;
 int nr_ports = 256;
-
+int max_moves = 20;
 void print_ai_stats(int tid, AI_instance_t *ai, int ite, int rndwins)
 {
     printf("thread %d: iteration %d\n", tid, ite);
@@ -62,7 +62,7 @@ void play_chess(void *arg)
 
     //printf("starting game %d\n", game->game_id);
 
-    for (nr_games = 0; nr_games < games_to_play; nr_games++) {
+    for (nr_games = 0; nr_games < games_pr_iteration; nr_games++) {
         board = new_board(game->fen);
         //board_t *board = new_board("rnbqkbnr/qqqqqqqq/8/8/8/8/qqqqqqqq/qqqqKqqq w - - 0 1");
 
@@ -199,11 +199,12 @@ void parse_arguments(int argc, char **argv)
         {"iterations", required_argument, NULL, 'i'},
         {"games-pr-iteration", required_argument, NULL, 'n'},
         {"ports", required_argument, NULL, 'p'},
+        {"moves", required_argument, NULL, 'm'},
         {"help", no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0},
     };
 
-    while ((c = getopt_long(argc, argv, "t:j:f:g:i:n:p:h", long_options,
+    while ((c = getopt_long(argc, argv, "t:j:f:g:i:n:p:m:h", long_options,
                     &option_index)) != -1)
         switch (c) {
             case 't':
@@ -226,6 +227,9 @@ void parse_arguments(int argc, char **argv)
                 break;
             case 'p':
                 nr_ports = atoi(optarg);
+                break;
+            case 'm':
+                max_moves = atoi(optarg);
                 break;
             case 'h':
             default:
@@ -302,8 +306,8 @@ int main(int argc, char *argv[])
             perror("ai creation");
             exit(1);
         }
-        games[i].games_to_play = games_pr_iteration;
-        games[i].max_moves = 15;
+        games[i].games_to_play = games_to_play;
+        games[i].max_moves = max_moves;
         //        games[i].max_moves = 50;
 
         //games[i].do_a_move = do_nonrandom_move;
@@ -334,7 +338,7 @@ int main(int argc, char *argv[])
             best = get_best_ai(games, nr_jobs, -1);
             printf("best: %d\n", best);
             for (i = 0; i < nr_jobs; i++) {
-                if( games[best].games_to_play > games[best].ai->nr_games_played)
+                if( games_to_play > games[best].ai->nr_games_played)
                     break;          
                 if (i == best)
                     continue;
