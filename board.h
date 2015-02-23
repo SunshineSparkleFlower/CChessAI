@@ -60,6 +60,7 @@ extern char *get_fen(board_t *board);
 extern void print_board(piece_t *board);
 extern void print_move(board_t *board, int n);
 extern void print_legal_moves(board_t *board);
+extern const char *piece_to_str(piece_t p);
 
 extern void init_magicmoves(void);
 
