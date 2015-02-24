@@ -342,7 +342,24 @@ int choice_3d(uint16_t *samples, int n, uint16_t ***out)
 
     return 1;
 }
+//return a if a is larger than b, else returns b
+int max(int a, int b){
+    if(a > b)
+        return a;
+    return b;   
+}
 
+//return a if a is smaller than b, else returns b
+int min(int a, int b){
+    if(a < b)
+        return a;
+    return b;   
+}
+
+//makes sure val is larger than min_val and smaller than max_val
+int keep_in_range(int val, int min_val, int max_val){
+    return min(max(val, min_val), max_val);
+}
 int color(uint16_t p)
 {
     if (p & P_EMPTY)

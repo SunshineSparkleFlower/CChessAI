@@ -105,21 +105,21 @@ AI_instance_t *ai_new(int mutation_rate, int brain_size, int nr_ports) {
      */
     ret->zero_rate = 1;
     ret->one_rate = 1;
-    ret->port_type_rate = 10;
-    ret->unused_rate = 5;
-    ret->output_rate = 10;
-    ret->r_output_rate = 10;
-    ret->separation_rate = 10;
-    ret->state_separation_rate = 10;
-    ret->separation_threshold = 10;
-    ret->state_separation_threshold = 10;
+    ret->port_type_rate = 1;
+    ret->unused_rate = 50;
+    ret->output_rate = 50;
+    ret->r_output_rate = 50;
+    ret->separation_rate = 50;
+    ret->state_separation_rate = 50;
+    ret->separation_threshold = 15;
+    ret->state_separation_threshold = 15;
     printf("ret->brain %d\n", ret->nr_synapsis);
     dump(ret->brain[0][ret->nr_ports - 1], ret->nr_synapsis / 8);
     printf("ret->brain_b: %p\n", ret->brain_b[0][0]);
     return ret;
 }
 
-AI_instance_t *copy_ai(AI_instance_t * ai) {
+/*AI_instance_t *copy_ai(AI_instance_t * ai) {
     AI_instance_t *ret = calloc(1, sizeof (AI_instance_t));
 
     memcpy(ret, ai, sizeof (AI_instance_t));
@@ -128,7 +128,7 @@ AI_instance_t *copy_ai(AI_instance_t * ai) {
     clear_score(ret);
     return ret;
 }
-
+*/
 int dump_ai(char *file, AI_instance_t * ai) {
     FILE *out;
     long brain_size = (ai->nr_synapsis / (sizeof (int) * 8)) *
@@ -802,7 +802,6 @@ int score(AI_instance_t *ai, piece_t * board) {
                 ai->port_type[i], ai->brain_a[i], ai->brain_b[i],
                 ai->separation[i], ai->state_separation[i], ai->invert[i], ai->nr_outputs, ai->output_tag[i], ai->used_port);
     }
-
     return score_sum;
 }
 
@@ -819,6 +818,11 @@ static int _get_best_move(AI_instance_t *ai, board_t * board) {
 
 
         moveret = move(board, i);
+        if(i == board->moves_count){
+         //   print_board(&board->board[64]);
+         //   print_board(&board->board[0]);
+        }
+            
         /* move returns 1 on success */
         if (moveret == 1) {
             //score the move
@@ -866,7 +870,7 @@ static int _get_best_move(AI_instance_t *ai, board_t * board) {
     x = random_float() * cumdist[board->moves_count - 1];
     if (bisect(cumdist, x, board->moves_count) >= board->moves_count)
         printf("INVALID MOVE RETURNED\n");
-    // printf("ret: %d\n", bisect(cumdist, x, board->moves_count));
+    //printf("ret: %d, moves_count: %d\n", bisect(cumdist, x, board->moves_count), board->moves_count);
     return bisect(cumdist, x, board->moves_count);
 }
 
@@ -988,38 +992,89 @@ void draw(AI_instance_t *ai, board_t * board) {
     ai->nr_games_played++;
 
 }
+void copy_ai(AI_instance_t *from_ai, AI_instance_t * to_ai){
+      //copy a2 over to a1
+    memcpy(&to_ai->brain[0][0][0], &from_ai->brain[0][0][0], to_ai->nr_brain_parts * to_ai->nr_ports * to_ai->nr_synapsis / 8);
+    memcpy(&to_ai->port_type[0][0], &from_ai->port_type[0][0], to_ai->nr_ports * to_ai->nr_brain_parts * sizeof (int));
+    memcpy(&to_ai->output_tag[0][0], &from_ai->output_tag[0][0], to_ai->nr_brain_parts * to_ai->nr_ports * sizeof (int));
+    
+    //copy mutation rates
+    to_ai->output_rate = from_ai->output_rate;
+    to_ai->r_output_rate = from_ai->r_output_rate;
+    to_ai->unused_rate = from_ai->unused_rate;
+    to_ai->zero_rate = from_ai->zero_rate;
+    to_ai->one_rate = from_ai->one_rate;
+    to_ai->port_type_rate = from_ai->port_type_rate;
+    to_ai->separation_rate = from_ai->separation_rate;
+    to_ai->state_separation_rate = from_ai->state_separation_rate;
+    to_ai->separation_threshold = from_ai->separation_threshold;
+    to_ai->state_separation_threshold = from_ai->state_separation_threshold;
+}
+void mutate_mutation_rates (AI_instance_t *ai){
+    int max_val = 100;
+    int min_val = 0;
+    
+    ai->output_rate -= random_int_r(0, 1);
+    ai->output_rate += random_int_r(0, 1);
+    ai->output_rate = keep_in_range(ai->output_rate, min_val, max_val);
+
+    
+    ai->r_output_rate -= random_int_r(0, 1);
+    ai->r_output_rate += random_int_r(0, 1);
+    ai->r_output_rate = keep_in_range(ai->r_output_rate, min_val, max_val);
+    
+    ai->unused_rate -= random_int_r(0, 1);
+    ai->unused_rate += random_int_r(0, 1);    
+    ai->unused_rate = keep_in_range(ai->unused_rate, min_val, max_val);
+
+    ai->state_separation_rate -= random_int_r(0, 1);
+    ai->state_separation_rate += random_int_r(0, 1);
+    ai->state_separation_rate = keep_in_range(ai->state_separation_rate, min_val, max_val);
+
+    ai->separation_rate -= random_int_r(0, 1);
+    ai->separation_rate += random_int_r(0, 1);
+    ai->separation_rate = keep_in_range(ai->separation_rate, min_val, max_val);
+
+    ai->state_separation_threshold -= random_int_r(0, 1);
+    ai->state_separation_threshold += random_int_r(0, 1);
+    ai->state_separation_threshold = keep_in_range(ai->state_separation_threshold, min_val, max_val);
+
+    ai->separation_threshold -= random_int_r(0, 1);
+    ai->separation_threshold += random_int_r(0, 1);
+    ai->separation_threshold = keep_in_range(ai->separation_threshold, min_val, max_val);
+
+    ai->port_type_rate -= random_int_r(0, 1);
+    ai->port_type_rate += random_int_r(0, 1);
+    ai->port_type_rate = keep_in_range(ai->port_type_rate, min_val, max_val);
+
+    ai->zero_rate -= random_int_r(0, 1);
+    ai->zero_rate += random_int_r(0, 1);
+    ai->zero_rate = keep_in_range(ai->zero_rate, min_val, max_val);
+
+    ai->one_rate -= random_int_r(0, 1);
+    ai->one_rate += random_int_r(0, 1);
+    ai->one_rate = keep_in_range(ai->one_rate, min_val, max_val);
+
+
+}
 
 //brain in a a1 is replaced with brain from a2 pluss a mutation
 
 int mutate(AI_instance_t *a1, AI_instance_t * a2, int print) {
     int i, j;
-
-    //copy a2 over to a1
-    memcpy(&a1->brain[0][0][0], &a2->brain[0][0][0], a1->nr_brain_parts * a1->nr_ports * a1->nr_synapsis / 8);
-    memcpy(&a1->port_type[0][0], &a2->port_type[0][0], a1->nr_ports * a1->nr_brain_parts * sizeof (int));
-    memcpy(&a1->mutationrate[0][0], &a2->mutationrate[0][0], 4 * 2 * sizeof (int));
-    memcpy(&a1->invert[0][0], &a2->invert[0][0], a1->nr_brain_parts * a1->nr_ports * sizeof (int));
-    memcpy(&a1->output_tag[0][0], &a2->output_tag[0][0], a1->nr_brain_parts * a1->nr_ports * sizeof (int));
-
-    //memcpy(&a1->activation_count[0][0][0], &a2->activation_count[0][0][0], 2 * a1->nr_ports * a1->nr_brain_parts * sizeof (int));
-
-    a1->output_rate = a2->output_rate;
-    a1->output_rate -= random_int_r(0, 1);
-    a1->output_rate += random_int_r(0, 1);
-    if (a1->output_rate < 0)
-        a1->output_rate = 0;
-    //chance to set one of the 10 last ports as an output port
-    if (!random_int_r(0, a1->output_rate)) {
+    int max_val = 100;
+    int min_val = 0;
+    copy_ai(a2, a1);
+    mutate_mutation_rates(a1);
+    
+    //chance to set one of the n last ports as an output port
+    if (random_int_r(min_val, max_val) > a1->output_rate) {
         a1->output_tag[0][random_int_r(a1->nr_ports - 20, a1->nr_ports - 1)] = 1;
     }
 
-    a1->r_output_rate = a2->r_output_rate;
-    a1->r_output_rate -= random_int_r(0, 1);
-    a1->r_output_rate += random_int_r(0, 1);
-    if (a1->r_output_rate < 0)
-        a1->r_output_rate = 0;
+ 
     //chance to remove the output tag
-    if (!random_int_r(0, a1->r_output_rate)) {
+    if (random_int_r(min_val, max_val) > a1->r_output_rate) {
         a1->output_tag[0][random_int_r(a1->nr_ports - 20, a1->nr_ports - 1)] = 0;
     }
 
@@ -1032,69 +1087,14 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print) {
             }
         }
     }
-    a1->unused_rate = a2->unused_rate;
-    a1->unused_rate -= random_int_r(0, 1);
-    a1->unused_rate += random_int_r(0, 1);
-    if (a1->unused_rate < 0)
-        a1->unused_rate = 0;
-
     if (print)
         printf("\n");
 
-    //mutate mutation rate for the various type of ports
-    for (i = 0; i < 2; i++) {
-        for (j = 0; j < 4; j++) {
-            a1->mutationrate[i][j] -= random_int_r(0, 5);
-            a1->mutationrate[i][j] += random_int_r(0, 5);
-            if (a1->mutationrate[i][j] < 0)
-                a1->mutationrate[i][j] = 0;
-        }
-    }
 
-    //copy mutation rates
-    a1->zero_rate = a2->zero_rate;
-    a1->one_rate = a2->one_rate;
-    a1->port_type_rate = a2->port_type_rate;
-    a1->separation_rate = a2->separation_rate;
-    a1->state_separation_rate = a2->separation_rate;
-    a1->separation_threshold = a2->separation_threshold;
-    a1->state_separation_threshold = a2->state_separation_threshold;
-
-    //mutate mutation rates
-    a1->state_separation_rate -= random_int_r(0, 1);
-    a1->state_separation_rate += random_int_r(0, 1);
-    a1->separation_rate -= random_int_r(0, 1);
-    a1->separation_rate += random_int_r(0, 1);
-    a1->state_separation_threshold -= random_int_r(0, 1);
-    a1->state_separation_threshold += random_int_r(0, 1);
-    a1->separation_threshold -= random_int_r(0, 1);
-    a1->separation_threshold += random_int_r(0, 1);
-    a1->port_type_rate -= random_int_r(0, 1);
-    a1->port_type_rate += random_int_r(0, 1);
-    a1->zero_rate -= random_int_r(0, 1);
-    a1->zero_rate += random_int_r(0, 1);
-    a1->one_rate -= random_int_r(0, 1);
-    a1->one_rate += random_int_r(0, 1);
-    if (a1->state_separation_rate < 1)
-        a1->state_separation_rate = 1;
-    if (a1->separation_rate < 1)
-        a1->separation_rate = 1;
-    if (a1->state_separation_threshold < 0)
-        a1->state_separation_threshold = 0;
-    if (a1->separation_threshold < 0)
-        a1->separation_threshold = 0;
-
-    if (a1->zero_rate < 1)
-        a1->zero_rate = 1;
-    if (a1->one_rate < 1)
-        a1->one_rate = 1;
-    if (a1->port_type_rate < 1)
-        a1->port_type_rate = 1;
-
+    //find and mutate unused ports
     for (j = 0; j < a1->nr_ports; j++) {
-
-        if (!TestBit(a2->used_port, j) && !a2->output_tag[0][j]) {
-            if (!random_int_r(0, a1->unused_rate)) {
+        if (!TestBit(a2->used_port, j) && !a1->output_tag[0][j]) {
+            if (random_int_r(min_val, max_val) > a1->unused_rate) {
 
                 //reset port
                 bzero(a1->brain[0][j], a1->nr_synapsis / 8);
@@ -1124,7 +1124,7 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print) {
     for (i = 0; i < a1->nr_brain_parts; i++) {
         for (j = a1->nr_ports / 4; j < a1->nr_ports; j++) {
             if (((a1->separation_threshold * a2->separation_count[i][j]) / (1 + a2->nr_games_played)) == 0) {
-                if (!random_int_r(0, a1->separation_rate)) {
+                if (random_int_r(min_val, max_val) > a1->separation_rate) {
                     if (print)
                         printf("r_port: %d, ", j);
                     bzero(a1->brain[i][j], a1->nr_synapsis / 8);
@@ -1154,7 +1154,7 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print) {
     for (i = 0; i < a1->nr_brain_parts; i++) {
         for (j = 0; j < a1->nr_ports / 4; j++) {
             if (((a1->state_separation_threshold * a2->state_separation_count[i][j]) / (1 + a2->nr_games_played)) == 0) {
-                if (!random_int_r(0, a1->state_separation_rate)) {
+                if (random_int_r(min_val, max_val) > a1->state_separation_rate) {
                     if (print)
                         printf("r_port: %d, ", j);
                     bzero(a1->brain[i][j], a1->nr_synapsis / 8);
@@ -1212,11 +1212,7 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print) {
         int r_brain = random_int_r(0, a1->nr_brain_parts - 1);
         int r_port = random_int_r(0, a1->nr_ports - 1);
         int r_synaps = 0;
-
-        if (r_port > a1->nr_ports / 2)
-            r_synaps = random_int_r(0, a1->nr_ports - 1);
-        else
-            r_synaps = random_int_r(0, a1->nr_synapsis - 1); // if (r_port >= a1->nr_ports - 1 - 9 && r_synaps > a1->nr_ports - 1 - 9)
+        r_synaps = random_int_r(0, a1->nr_synapsis - 1); // if (r_port >= a1->nr_ports - 1 - 9 && r_synaps > a1->nr_ports - 1 - 9)
 
         ClearBit(a1->brain[r_brain][r_port], r_synaps);
     }
@@ -1250,9 +1246,8 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print) {
         }
         _mm_storeu_si128((__m128i *) (((int*) a1->used_port + i)), bd);
     }
-    //dump(a1->used_port, a1->nr_ports / 32);
     int k;
-    for (k = 0; k < 10; k++) {
+    for (k = 0; k < 7; k++) {
         for (i = 0; i < (a1->nr_ports) / 32; i += 4) {
 
             bd = _mm_loadu_si128((__m128i *) (((int*) a1->brain[0][0]) + i));
@@ -1269,19 +1264,12 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print) {
 
 
     //reset the new AI
-    bzero(a1->brain_a[0][0], a1->nr_brain_parts * a1->nr_ports * a1->nr_synapsis / 8);
     bzero(a1->separation_count[0], a1->nr_brain_parts * a1->nr_ports * sizeof (int));
     bzero(a1->state_separation_count[0], a1->nr_brain_parts * a1->nr_ports * sizeof (int));
     bzero(a1->activation_count[0][0], 2 * a1->nr_ports * a1->nr_brain_parts * sizeof (int));
-    memset(a1->brain_b[0][0], 0xff, a1->nr_synapsis / (sizeof (int) * 8) *
-            a1->nr_ports * a1->nr_brain_parts * sizeof (int));
-
     printf("score %f, %d w, %d games from score %f, %d w, %d games, one_rate: %d, zero_rate: %d, p_type_rate: %d, unused_rate: %d, o_rate: %d, r_o_rate: %d, separation_threshold: %d, state_separation_threshold: %d, separation_rate: %d, state_separation_rate: %d\n",
             get_score(a1), a1->nr_wins, a1->nr_games_played, get_score(a2), a2->nr_wins, a2->nr_games_played, a2->one_rate, a2->zero_rate, a2->port_type_rate, a2->unused_rate, a2->output_rate, a2->r_output_rate, a2->separation_threshold, a2->state_separation_threshold, a2->separation_rate, a2->state_separation_rate);
     clear_score(a1);
-    //_dump(a2->brain_a[0][a1->nr_ports-1], a1->nr_synapsis / 8);
-
-
 
 
     return 1;

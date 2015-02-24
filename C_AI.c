@@ -15,11 +15,10 @@
 #include "threadpool.h"
 
 struct game_struct {
-    AI_instance_t *ai;
+    AI_instance_t **ais;
     int games_to_play, max_moves;
     int (*do_a_move)(board_t *);
     char *fen;
-
     int game_id;
 };
 
@@ -37,6 +36,8 @@ int nr_selections = 1;
 int games_pr_iteration = 50;
 int nr_ports = 256;
 int max_moves = 20;
+int ai_vs_ai = 0;
+AI_instance_t **ais;
 
 void print_ai_stats(int tid, AI_instance_t *ai, int ite, int rndwins) {
     printf("thread %d: iteration %d\n", tid, ite);
@@ -49,15 +50,13 @@ void print_ai_stats(int tid, AI_instance_t *ai, int ite, int rndwins) {
 
 void play_chess(void *arg) {
     struct game_struct *game = (struct game_struct *) arg;
-    int nr_games, max_moves, moves, ret = -1;
-    int (*do_a_move)(board_t *);
+    int nr_games, moves, ret = -1;
     AI_instance_t *ai;
+
     board_t *board;
 
-    ai = game->ai;
-    max_moves = game->max_moves;
-    do_a_move = game->do_a_move;
-
+    ai = game->ais[game->game_id];
+    //printf("game_id: %d\n", game->game_id);
     //printf("starting game %d\n", game->game_id);
 
     for (nr_games = 0; nr_games < games_pr_iteration; nr_games++) {
@@ -75,18 +74,15 @@ void play_chess(void *arg) {
                 punish(ai);
                 //printf("AI lost\n");
                 //            print_board(board->board);
-
                 break;
             }
 
-            ret = do_a_move(board);
+            ret = do_random_move(board);
             if (ret == 0) {
                 break;
             } else if (ret == -1) {
-
                 //printf("AI won\n");
                 //                             print_board(board->board);
-
                 reward(ai);
                 break;
             }
@@ -100,13 +96,73 @@ void play_chess(void *arg) {
     }
 }
 
-int get_best_ai(struct game_struct *g, int n, int lim) {
+void play_chess_aivsai(void *arg) {
+    struct game_struct *game = (struct game_struct *) arg;
+    int nr_games, moves, ret = -1;
+    AI_instance_t *ai;
+    AI_instance_t *ai_b;
+
+    board_t *board;
+    if (game->game_id % 2)
+        return;
+    ai = game->ais[game->game_id];
+    ai_b = game->ais[game->game_id + 1];
+
+    //printf("game_id: %d\n", game->game_id);
+    //printf("starting game %d\n", game->game_id);
+
+    for (nr_games = 0; nr_games < games_pr_iteration; nr_games++) {
+        board = new_board(game->fen);
+        //board_t *board = new_board("rnbqkbnr/qqqqqqqq/8/8/8/8/qqqqqqqq/qqqqKqqq w - - 0 1");
+
+        for (moves = 0; moves < max_moves; moves++) {
+              ret = do_random_move(board);
+
+            //          ret = do_best_move(ai, board);
+            //                    print_board(board->board);
+
+            if (ret == 0) {
+                break;
+            } else if (ret == -1) {
+                reward(ai_b);
+
+                punish(ai);
+                //printf("AI lost\n");
+                //            print_board(board->board);
+                break;
+            }
+            ret = do_random_move(board);
+
+//            ret = do_best_move(ai_b, board);
+            if (ret == 0) {
+                break;
+            } else if (ret == -1) {
+                //printf("AI won\n");
+                //                             print_board(board->board);
+                reward(ai);
+                punish(ai_b);
+
+                break;
+            }
+        }
+        if (ret == 0 || moves == max_moves)
+            draw(ai, board);
+        draw(ai_b, board);
+
+        //  if (ret >= 0){
+        //          small_reward(ai,score_board(board->board));            
+        //  }
+        free_board(board);
+    }
+}
+
+int get_best_ai(AI_instance_t **ais, int n, int lim) {
     int i, best = lim ? 0 : 1;
     float best_val = -1000000.0;
     for (i = 0; i < n; i++) {
-        if (get_score(g[i].ai) > best_val && lim != i && g[i].games_to_play <= g[i].ai->nr_games_played) {
+        if (get_score(ais[i]) > best_val && lim != i && games_to_play <= ais[i]->nr_games_played) {
             best = i;
-            best_val = get_score(g[i].ai);
+            best_val = get_score(ais[i]);
         }
     }
 
@@ -163,11 +219,11 @@ void sighandler(int sig) {
     }
 
     for (i = 0; i < n; i++) {
-        best = get_best_ai(games, nr_jobs, -1);
+        best = get_best_ai(ais, nr_jobs, -1);
         sprintf(buffer, "%s-%d.aidump", file, i + 1);
         fprintf(stderr, "saving ai to file '%s'\n", buffer);
-        dump_ai(buffer, games[best].ai);
-        clear_score(games[best].ai);
+        dump_ai(buffer, ais[best]);
+        clear_score(ais[best]);
     }
 
     exit(0);
@@ -239,6 +295,7 @@ void parse_arguments(int argc, char **argv) {
 }
 
 void natural_selection(void) {
+    /*
     int ai1 = random_int_r(0, nr_jobs - 1);
     int ai2 = random_int_r(0, nr_jobs - 1);
     float score_ai1 = get_score(games[ai1].ai);
@@ -262,7 +319,7 @@ void natural_selection(void) {
 
         mutate(games[ai1].ai, games[ai2].ai, 0);
     }
-
+     */
 
     //   best = get_best_ai(games, nr_jobs, -1);
 
@@ -288,7 +345,9 @@ void natural_selection(void) {
 int print_brain(AI_instance_t *a1) {
     int i, j;
 
-    FILE *f = fopen("brain.dot", "w");
+    char filename[0x100];
+    snprintf(filename, sizeof (filename), "brain_%f_%d_%d.dot", get_score(a1), max_moves, a1->nr_ports);
+    FILE *f = fopen(filename, "w");
     if (f == NULL) {
         printf("Error opening file!\n");
         exit(1);
@@ -296,6 +355,7 @@ int print_brain(AI_instance_t *a1) {
     /* print some text */
     const char *text = "brain";
     fprintf(f, "digraph %s{\n", text);
+
     //print_board(board->board);
     //i/8*16;
     //i%(8*16);
@@ -331,19 +391,19 @@ int print_brain(AI_instance_t *a1) {
             "<TR>"
             " <TD COLSPAN=\"2\"><B>Legend</B></TD>"
             "</TR>"
-            
+
             "<TR>"
             "<TD>AI attributes</TD>"
             "<TD>score: %f, max_moves: %d, ports: %d</TD>"
             "</TR>"
-            
+
             "<TR>"
             "<TD>Output</TD>"
             "<TD BGCOLOR=\"gold\"></TD>"
             "</TR>"
 
 
-            
+
             "<TR>"
             "<TD>AND</TD>"
             "<TD BGCOLOR=\"deeppink3\"></TD>"
@@ -358,19 +418,21 @@ int print_brain(AI_instance_t *a1) {
             "<TD>NAND</TD>"
             "<TD BGCOLOR=\"red\"></TD>"
             "</TR>"
-            
+
             "<TR>"
             "<TD>NOR</TD>"
             "<TD BGCOLOR=\"green\"></TD>"
             "</TR>"
-            
-            
+
+
             "</TABLE>"
             ">];"
             "}", get_score(a1), max_moves, a1->nr_ports);
     fprintf(f, "}");
 
     fclose(f);
+
+    printf("brain written to %s", filename);
     return 1;
 }
 
@@ -385,31 +447,36 @@ int main(int argc, char *argv[]) {
     init_magicmoves();
 
     signal(SIGINT, sighandler);
-
+    ais = malloc(nr_jobs * sizeof (struct AI_instance*));
     jobs = malloc(nr_jobs * sizeof (struct job));
     games = malloc(nr_jobs * sizeof (struct game_struct));
 
     for (i = 0; i < nr_jobs; i++) {
         if (ai_file) {
-            games[i].ai = load_ai(ai_file, mutation_rate);
-            clear_score(games[i].ai);
+            ais[i] = load_ai(ai_file, mutation_rate);
+            clear_score(ais[i]);
         } else
-            games[i].ai = ai_new(mutation_rate, brain_size, nr_ports); // mutation rate = 5000
-        if (games[i].ai == NULL) {
+            ais[i] = ai_new(mutation_rate, brain_size, nr_ports); // mutation rate = 5000
+        if (ais[i] == NULL) {
             perror("ai creation");
             exit(1);
         }
-        games[i].games_to_play = games_to_play;
-        games[i].max_moves = max_moves;
+
+        games[i].ais = ais;
+        //games[i].max_moves = max_moves;
         //        games[i].max_moves = 50;
 
         //games[i].do_a_move = do_nonrandom_move;
-        games[i].do_a_move = do_random_move;
-        games[i].fen = DEFAULT_FEN;
-        games[i].game_id = i + 1;
+        //games[i].do_a_move = do_random_move;
+        //games[i].fen = DEFAULT_FEN;
+        games[i].game_id = i;
 
         jobs[i].data = games + i;
-        jobs[i].task = play_chess;
+        if (ai_vs_ai)
+            jobs[i].task = play_chess_aivsai;
+        else
+            jobs[i].task = play_chess;
+
     }
 
     iteration = 0;
@@ -427,36 +494,54 @@ int main(int argc, char *argv[]) {
             for (j = 0; j < nr_selections; j++)
                 natural_selection();
         }
-        if (selection_function == 1) {
-            best = get_best_ai(games, nr_jobs, -1);
+        if (ai_vs_ai) {
+            printf("FIRST HALF: \n");
+            best = get_best_ai(ais, nr_jobs / 2, -1);
             printf("best: %d\n", best);
-            for (i = 0; i < nr_jobs; i++) {
-                if (games_to_play > games[best].ai->nr_games_played)
+            for (i = 0; i < nr_jobs / 2; i++) {
+                if (games_to_play > ais[best]->nr_games_played)
                     break;
                 if (i == best)
                     continue;
-                if (get_score(games[i].ai) < get_score(games[best].ai)) {
-                    // printf("mutating ai%d (score %f, %d wins, %d games) from ai%d (score %f, %d wins)\n",
-                    //        i, get_score(games[i].ai), games[i].ai->nr_wins,games[i].ai->nr_games_played,  best, get_score(games[best].ai), games[best].ai->nr_wins);
-
-                    mutate(games[i].ai, games[best].ai, 0);
-
-                } else if (get_score(games[i].ai) == 0) {
-                    printf("not ting ai%d (score %f, %d wins, %d games) from ai%d (score %f, %d wins)\n",
-                            i, get_score(games[i].ai), games[i].ai->nr_wins, games[i].ai->nr_games_played, best, get_score(games[best].ai), games[best].ai->nr_wins);
-
-                    mutate(games[i].ai, games[i].ai, 0);
-
+                if (get_score(ais[i]) < get_score(ais[best])) {
+                    mutate(ais[i], ais[best], 0);
                 }
-
+            }
+            printf("SECOND HALF: \n");
+            best = get_best_ai(&ais[(nr_jobs / 2)], nr_jobs / 2, -1) + nr_jobs / 2;
+            printf("best: %d\n", best);
+            for (i = nr_jobs / 2; i < nr_jobs; i++) {
+                if (games_to_play > ais[best]->nr_games_played)
+                    break;
+                if (i == best)
+                    continue;
+                if (get_score(ais[i]) < get_score(ais[best])) {
+                    mutate(ais[i], ais[best], 0);
+                }
             }
 
+        } else {
+         
+            best = get_best_ai(ais, nr_jobs, -1);
+            printf("best AI VS RANDOM: %d\n", best);
+            printf("nr played %d\n", ais[best]->nr_games_played);
+            for (i = 0; i < nr_jobs; i++) {
+                if (games_to_play > ais[best]->nr_games_played)
+                    break;
+                if (i == best)
+                    continue;
+                if (get_score(ais[i]) < get_score(ais[best])) {
+                    printf("mutating\n");
+                    mutate(ais[i], ais[best], 0);
+                }
+            }
 
         }
     }
-    print_brain(games[best].ai);
-    dump_ai("ai.aidump", games[best].ai);
-    clear_score(games[best].ai);
+    best = get_best_ai(ais, nr_jobs / 2, -1);
+    print_brain(ais[best]);
+    dump_ai("ai.aidump", ais[best]);
+    clear_score(ais[best]);
 
     return 0;
 }
