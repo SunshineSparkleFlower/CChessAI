@@ -229,6 +229,37 @@ int undo_move(board_t *b, int n)
     return 1;
 }
 
+/* should only be called from UCI mode. It does not verify that the move did not
+ * put the player in check */
+int do_actual_move(board_t *b, struct move *m)
+{
+    int tx, fx;
+
+    b->is_check = -1;
+    if (bb_do_actual_move(b, m) != 1) {
+        printf("FATAL FUCKING ERROR: %s: SOMETHING WENT WRONG\n", __FUNCTION__);
+        printf("%s: HALTING EXECUTION!!1\n", __FUNCTION__);
+        asm("int3");
+        return 0;
+    }
+
+    debug_print("moving from %d, %d to %d, %d\n", m->frm.y, ~m->frm.x & 0x7,
+            m->to.y, ~m->to.x & 0x7);
+
+    tx = ~m->to.x & 0x7;
+    fx = ~m->frm.x & 0x7;
+    b->backup.piece = PIECE(b->board, m->to.y, tx);
+    PIECE(b->board, m->to.y, tx) = PIECE(b->board, m->frm.y, fx);
+    PIECE(b->board, m->frm.y, fx) = P_EMPTY;
+
+    if (b->backup.promotion) {
+        PIECE(b->board, m->to.y, tx) = b->turn == WHITE
+            ? WHITE_QUEEN : BLACK_QUEEN;
+    }
+
+    return 1;
+}
+
 /* call this if you are totally sure the move is a legal one */
 int do_move(board_t *b, int n)
 {
@@ -237,7 +268,6 @@ int do_move(board_t *b, int n)
 
     if (n >= b->moves_count)
         return 0;
-
 
     b->is_check = -1;
     if (bb_do_move(b, n) != 1) {

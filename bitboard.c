@@ -344,20 +344,12 @@ static inline u64 *find_board(struct bitboard *b, int pos)
     return NULL;
 }
 
-int bb_do_move(board_t *board, int index)
+int bb_do_actual_move(board_t *board, struct move *m)
 {
     struct bitboard *enemy, *self;
-    struct move *m;
     int to, from;
     u64 *move_board, *capture_board;
 
-    if (index > board->moves_count || index < 0) {
-        debug_print("error: index (%d) > board->moves_count || %d < 0\n",
-                index, index);
-        return 0;
-    }
-
-    m = &board->moves[index];
     to = coord_to_index(m->to.y, m->to.x);
     from = coord_to_index(m->frm.y, m->frm.x);
 
@@ -415,6 +407,20 @@ int bb_do_move(board_t *board, int index)
     self->apieces = enemy->apieces = self->pieces | enemy->pieces;
 
     return 1;
+}
+
+int bb_do_move(board_t *board, int index)
+{
+    struct move *m;
+
+    if (index > board->moves_count || index < 0) {
+        debug_print("error: index (%d) > board->moves_count || %d < 0\n",
+                index, index);
+        return 0;
+    }
+
+    m = &board->moves[index];
+    return bb_do_actual_move(board, m);
 }
 
 int bb_undo_move(board_t *board, int index)

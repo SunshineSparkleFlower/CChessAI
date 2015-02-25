@@ -52,6 +52,7 @@ extern AI_instance_t *ai_new(int mutation_rate, int brain_size, int nr_ports);
 extern AI_instance_t *load_ai(char *file, int mutation_rate);
 extern int dump_ai(char *file, AI_instance_t *ai);
 extern void ai_free(AI_instance_t *ai);
+extern int _get_best_move(AI_instance_t *ai, board_t * board);
 extern int do_best_move(AI_instance_t *ai, board_t *board);
 extern void punish(AI_instance_t *ai);
 extern void reward(AI_instance_t *ai);

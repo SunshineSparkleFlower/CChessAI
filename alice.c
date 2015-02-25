@@ -1,5 +1,11 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "threadpool.h"
 #include "AI.h"
@@ -11,21 +17,29 @@ struct command {
     int (*callback)(char *params[], int num_params);
 };
 
+struct search {
+    AI_instance_t *ai;
+    int finished;
+    struct move m;
+};
+
 static struct {
     char *name, *code;
     int debug;
 
     // options that can be set with the "setoption" command
-    int num_threads;
+    int num_threads, num_jobs;
 } settings;
 
-static board_t *board;
+static volatile board_t *board;
+static volatile struct search *searches; // each AI thread should have its own structure
+static struct job *jobs;
 
 static int uci_uci(char *params[], int num_params)
 {
-    printf("name %s\n", ENGINE_NAME);
-    printf("author %s\n", ENGINE_AUTHOR);
-    printf("uciok\n");
+    printf("id name %s\n", ENGINE_NAME);
+    printf("id author %s\n", ENGINE_AUTHOR);
+    printf("id uciok\n");
 
     return 0;
 }
@@ -107,11 +121,28 @@ static int uci_newgame(char *params[], int num_params)
     return 0;
 }
 
+/* convert from UCI move notation to internal move struct */
+static void notation_to_move(char *move_notation, struct move *m)
+{
+    coord_t *to, *from;
+
+    from = &m->frm;
+    to = &m->to;
+
+    from->y = tolower(move_notation[0]) - 'a';
+    from->x = move_notation[1] - '1';
+
+    to->y = tolower(move_notation[2]) - 'a';
+    to->x = move_notation[3] - '1';
+}
+
 static int uci_position(char *params[], int num_params)
 {
     int i;
     char *fen;
+    struct move m;
 
+    // initialize fen string
     if (!strcmp(params[0], "startpos"))
         fen = DEFAULT_FEN;
     else {
@@ -128,43 +159,92 @@ static int uci_position(char *params[], int num_params)
         strcpy(fen, buffer);
     }
 
+    // initialize board
     if (board)
-        free_board(board);
-
+        free_board((board_t *)board);
     board = new_board(fen);
 
+    // find the index of the moves parameters
     for (i = 2; i < num_params; i++)
         if (!strcmp(params[i], "moves"))
             break;
+
     if (strcmp(params[i], "moves"))
         return 1;
 
-    // TODO execute moves in list starting at params[i + 1]
+    // to the moves
+    for (; params[i]; i++) {
+        notation_to_move(params[i], &m);
+        do_actual_move((board_t *)board, &m);
+    }
 
     return 1;
 }
 
+void AI_search(void *arg)
+{
+    int index;
+    struct search *s = (struct search *)arg;
+
+    fprintf(stderr, "searching\n");
+
+    s->finished = 0;
+    index = _get_best_move(s->ai, (board_t *)board);
+    fprintf(stderr, "%d is the best move\n", index);
+    memcpy((void *)&s->m, (void *)&board->moves[index], sizeof(struct move));
+    s->finished = 1;
+    fprintf(stderr, "search finished\n");
+}
+
 static int uci_go(char *params[], int num_params)
 {
+    int i;
+
+    for (i = 0; i < settings.num_jobs; i++) {
+        jobs[i].task = AI_search;
+        jobs[i].data = (struct search *)&searches[i];
+        fprintf(stderr, "putting job. task = %p, data = %p\n", jobs[i].task, jobs[i].data);
+        put_new_job(&jobs[i]);
+    }
 
     return 0;
 }
 
+/* convert from internal move struct to UCI notation */
+static void move_to_notation(char *move_notation, struct move *m)
+{
+    coord_t *to, *from;
+
+    from = &m->frm;
+    to = &m->to;
+
+    move_notation[0] = from->y + 'a';
+    move_notation[1] = from->x + '1';
+
+    move_notation[2] = to->y + 'a';
+    move_notation[3] = to->x + '1';
+}
+
 static int uci_stop(char *params[], int num_params)
 {
+    char tmp[32];
+    while (!searches[0].finished);
+
+    move_to_notation(tmp, (struct move *)&searches[0].m);
+    printf("bestmove %s\n", tmp);
 
     return 0;
 }
 
 static int uci_ponderhit(char *params[], int num_params)
 {
-
+    // TODO
     return 0;
 }
 
 static int uci_quit(char *params[], int num_params)
 {
-
+    exit(0);
     return 0;
 }
 
@@ -185,6 +265,11 @@ int process_command(char *params[], int num_params)
         {"quit", uci_quit},
         {NULL, NULL},
     };
+
+    fprintf(stderr, "parameters:\n");
+    for (i = 0; params[i]; i++) {
+        fprintf(stderr, "   %s\n", params[i]);
+    }
 
     for (i = 0; commands[i].name; i++)
         if (!strcmp(commands[i].name, params[0]))
@@ -213,12 +298,40 @@ static int parse_input(char *line, char *params[])
 
 static void init(int argc, char **argv)
 {
+    int i;
+
+    dup2(open("/tmp/alice.out", O_RDWR), 2);
+
+    fprintf(stderr, "Alice is running\n");
+
+    if (argc != 2) {
+        fprintf(stderr, "USAGE: %s <ai-file>\n", argv[0]);
+        fprintf(stderr, "argc = %d. %s, %s\n", argc, argv[0], argv[1]);
+        exit(0);
+    }
+
     // TODO parse command line arguments
 
     memset(&settings, 0, sizeof(settings));
-    settings.num_threads = 1;
+    settings.num_jobs = settings.num_threads = 1;
 
     init_threadpool(settings.num_threads);
+    jobs = malloc(settings.num_jobs * sizeof(struct job));
+
+    searches = malloc(settings.num_jobs * sizeof(struct search));
+
+    fprintf(stderr, "initializing ai with file %s. pwd = %s\n", argv[1], get_current_dir_name());
+    for (i = 0; i < settings.num_jobs; i++) {
+        searches[i].ai = load_ai(argv[1], 1000);
+        if (searches[i].ai == NULL) {
+            exit(0);
+        }
+    }
+    fprintf(stderr, "initializing board\n");
+    board = new_board(DEFAULT_FEN);
+    fprintf(stderr, "calling uci_go\n");
+    uci_go(NULL, 0);
+    fprintf(stderr, "ok\n");
 }
 
 int main(int argc, char *argv[])

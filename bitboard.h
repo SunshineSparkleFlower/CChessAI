@@ -24,5 +24,6 @@ extern int bb_calculate_check(board_t *board);
 extern void bb_generate_all_legal_moves(board_t *board);
 extern int bb_do_move(board_t *b, int index);
 extern int bb_undo_move(board_t *b, int index);
+extern int bb_do_actual_move(board_t *board, struct move *m);
 
 #endif
