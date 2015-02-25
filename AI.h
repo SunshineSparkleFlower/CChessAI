@@ -45,6 +45,7 @@ typedef struct AI_instance {
     int separation_threshold;
     int state_separation_threshold;
     int *used_port;
+    int output_exponent;
 
 } __attribute__((packed)) AI_instance_t;
 

@@ -103,10 +103,10 @@ void play_chess_aivsai(void *arg) {
     AI_instance_t *ai_b;
 
     board_t *board;
-    if (game->game_id % 2)
+    if (game->game_id >= nr_jobs / 2)
         return;
     ai = game->ais[game->game_id];
-    ai_b = game->ais[game->game_id + 1];
+    ai_b = game->ais[game->game_id + nr_jobs / 2];
 
     //printf("game_id: %d\n", game->game_id);
     //printf("starting game %d\n", game->game_id);
@@ -116,7 +116,7 @@ void play_chess_aivsai(void *arg) {
         //board_t *board = new_board("rnbqkbnr/qqqqqqqq/8/8/8/8/qqqqqqqq/qqqqKqqq w - - 0 1");
 
         for (moves = 0; moves < max_moves; moves++) {
-              ret = do_random_move(board);
+            ret = do_best_move(ai, board);
 
             //          ret = do_best_move(ai, board);
             //                    print_board(board->board);
@@ -131,9 +131,10 @@ void play_chess_aivsai(void *arg) {
                 //            print_board(board->board);
                 break;
             }
-            ret = do_random_move(board);
+            ret = do_best_move(ai_b, board);
 
-//            ret = do_best_move(ai_b, board);
+
+            //            ret = do_best_move(ai_b, board);
             if (ret == 0) {
                 break;
             } else if (ret == -1) {
@@ -145,10 +146,10 @@ void play_chess_aivsai(void *arg) {
                 break;
             }
         }
-        if (ret == 0 || moves == max_moves)
+        if (ret == 0 || moves == max_moves) {
             draw(ai, board);
-        draw(ai_b, board);
-
+            draw(ai_b, board);
+        }
         //  if (ret >= 0){
         //          small_reward(ai,score_board(board->board));            
         //  }
@@ -346,11 +347,11 @@ void natural_selection(void) {
                 if (and256(V, M[i], nr_ports, board, board_size, brain_a[i], brain_b[i], i > (nr_ports / 2), i < (nr_ports / 4)))
                     SetBit(V, i);
  */
-int print_brain(AI_instance_t *a1) {
+int print_brain(AI_instance_t *a1, int tmp) {
     int i, j;
 
     char filename[0x100];
-    snprintf(filename, sizeof (filename), "brain_%f_%d_%d.dot", get_score(a1), max_moves, a1->nr_ports);
+    snprintf(filename, sizeof (filename), tmp ? "brain.dot" : "brain_%f_%d_%d.dot", get_score(a1), max_moves, a1->nr_ports);
     FILE *f = fopen(filename, "w");
     if (f == NULL) {
         printf("Error opening file!\n");
@@ -482,17 +483,19 @@ int main(int argc, char *argv[]) {
             jobs[i].task = play_chess;
 
     }
-
+    for (i = 0; i < nr_jobs; i++) {
+        put_new_job(jobs + i);
+    }
     iteration = 0;
     while (iteration < max_iterations) {
         printf("iteration %d\n", ++iteration);
-        for (i = 0; i < nr_jobs; i++) {
-            put_new_job(jobs + i);
-        }
+
+
+
 
         /* wait for jobs to finish */
         while (get_jobs_left() > 0 || get_jobs_in_progess() > 0)
-            usleep(1000 * 10); // sleep 10 ms
+            usleep(1000 * 1); // sleep 10 ms
 
         if (selection_function == 0) {
             for (j = 0; j < nr_selections; j++)
@@ -525,25 +528,39 @@ int main(int argc, char *argv[]) {
             }
 
         } else {
-         
+
             best = get_best_ai(ais, nr_jobs, -1);
             printf("best AI VS RANDOM: %d\n", best);
+            if (!(iteration % 100)) {
+                printf("print tmp brain\n");
+                print_brain(ais[best], 1);
+            }
             printf("nr played %d\n", ais[best]->nr_games_played);
             for (i = 0; i < nr_jobs; i++) {
-                if (games_to_play > ais[best]->nr_games_played)
-                    break;
-                if (i == best)
+                if (games_to_play > ais[best]->nr_games_played){
+                    put_new_job(jobs + i);
                     continue;
+                }
+                if (i == best){
+                    put_new_job(jobs + i);
+                    continue;
+                }
                 if (get_score(ais[i]) < get_score(ais[best])) {
                     printf("mutating\n");
                     mutate(ais[i], ais[best], 0);
                 }
+                put_new_job(jobs + i);
+
             }
 
         }
     }
-    best = get_best_ai(ais, nr_jobs / 2, -1);
-    print_brain(ais[best]);
+    if (ai_vs_ai)
+        best = get_best_ai(ais, nr_jobs / 2, -1);
+    else
+        best = get_best_ai(ais, nr_jobs, -1);
+
+    print_brain(ais[best], 0);
     dump_ai("ai.aidump", ais[best]);
     clear_score(ais[best]);
 
