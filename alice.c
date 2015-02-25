@@ -27,8 +27,9 @@ static struct {
     char *name, *code;
     int debug;
 
-    // options that can be set with the "setoption" command
     int num_threads, num_jobs;
+// setoption command options
+    int ponder;
 } settings;
 
 static volatile board_t *board;
@@ -39,7 +40,7 @@ static int uci_uci(char *params[], int num_params)
 {
     printf("id name %s\n", ENGINE_NAME);
     printf("id author %s\n", ENGINE_AUTHOR);
-    printf("id uciok\n");
+    printf("uciok\n");
 
     return 0;
 }
@@ -54,25 +55,11 @@ static int uci_debug(char *params[], int num_params)
     return 0;
 }
 
-/* this is used to synchronize the engine with the GUI. When the GUI has sent a command or
- * multiple commands that can take some time to complete,
- * this command can be used to wait for the engine to be ready again or
- * to ping the engine to find out if it is still alive.
- * E.g. this should be sent after setting the path to the tablebases as this can take some time.
- * This command is also required once before the engine is asked to do any search
- * to wait for the engine to finish initializing.
- * This command must always be answered with "readyok" and can be sent also when the engine is calculating
- * in which case the engine should also immediately answer with "readyok" without stopping the search. */
-static int uci_isready(char *params[], int num_params)
-{
-    printf("readyok\n");
-
-    return 0;
-}
-
 static int uci_setoption(char *params[], int num_params)
 {
-    // TODO
+    if (!strcmp(params[1], "Ponder")) {
+        settings.ponder = !strcmp(params[3], "false") ? 0 : 1;
+    }
     return 0;
 }
 
@@ -129,11 +116,28 @@ static void notation_to_move(char *move_notation, struct move *m)
     from = &m->frm;
     to = &m->to;
 
-    from->y = tolower(move_notation[0]) - 'a';
-    from->x = move_notation[1] - '1';
+    from->x = tolower(move_notation[0]) - 'a';
+    from->y = move_notation[1] - '1';
 
-    to->y = tolower(move_notation[2]) - 'a';
-    to->x = move_notation[3] - '1';
+    to->x = tolower(move_notation[2]) - 'a';
+    to->y = move_notation[3] - '1';
+}
+
+/* convert from internal move struct to UCI notation */
+static void move_to_notation(char *move_notation, struct move *m)
+{
+    coord_t *to, *from;
+
+    from = &m->frm;
+    to = &m->to;
+
+    move_notation[0] = from->x + 'a';
+    move_notation[1] = from->y + '1';
+
+    move_notation[2] = to->x + 'a';
+    move_notation[3] = to->y + '1';
+
+    move_notation[4] = 0;
 }
 
 static int uci_position(char *params[], int num_params)
@@ -184,54 +188,67 @@ static int uci_position(char *params[], int num_params)
 void AI_search(void *arg)
 {
     int index;
+    char buffer[16];
     struct search *s = (struct search *)arg;
 
-    fprintf(stderr, "searching\n");
+    fprintf(stderr, "starting search ai @ %p, board @ %p\n", s->ai, board);
 
     s->finished = 0;
     index = _get_best_move(s->ai, (board_t *)board);
-    fprintf(stderr, "%d is the best move\n", index);
     memcpy((void *)&s->m, (void *)&board->moves[index], sizeof(struct move));
     s->finished = 1;
-    fprintf(stderr, "search finished\n");
+
+    fprintf(stderr, "from: %d, %d, to: %d, %d\n",
+            board->moves[index].frm.y, board->moves[index].frm.x,
+            board->moves[index].to.y, board->moves[index].to.x);
+
+    move_to_notation(buffer, &s->m);
+    printf("bestmove %s\n", buffer);
+    fprintf(stderr, "bestmove %s\n", buffer);
 }
 
 static int uci_go(char *params[], int num_params)
 {
     int i;
 
+    generate_all_moves((board_t *)board);
     for (i = 0; i < settings.num_jobs; i++) {
         jobs[i].task = AI_search;
         jobs[i].data = (struct search *)&searches[i];
-        fprintf(stderr, "putting job. task = %p, data = %p\n", jobs[i].task, jobs[i].data);
         put_new_job(&jobs[i]);
     }
 
     return 0;
 }
 
-/* convert from internal move struct to UCI notation */
-static void move_to_notation(char *move_notation, struct move *m)
-{
-    coord_t *to, *from;
-
-    from = &m->frm;
-    to = &m->to;
-
-    move_notation[0] = from->y + 'a';
-    move_notation[1] = from->x + '1';
-
-    move_notation[2] = to->y + 'a';
-    move_notation[3] = to->x + '1';
-}
-
 static int uci_stop(char *params[], int num_params)
 {
     char tmp[32];
+    /*
     while (!searches[0].finished);
 
     move_to_notation(tmp, (struct move *)&searches[0].m);
     printf("bestmove %s\n", tmp);
+    */
+
+    free_board(board);
+    board = new_board(DEFAULT_FEN);
+
+    return 0;
+}
+
+/* this is used to synchronize the engine with the GUI. When the GUI has sent a command or
+ * multiple commands that can take some time to complete,
+ * this command can be used to wait for the engine to be ready again or
+ * to ping the engine to find out if it is still alive.
+ * E.g. this should be sent after setting the path to the tablebases as this can take some time.
+ * This command is also required once before the engine is asked to do any search
+ * to wait for the engine to finish initializing.
+ * This command must always be answered with "readyok" and can be sent also when the engine is calculating
+ * in which case the engine should also immediately answer with "readyok" without stopping the search. */
+static int uci_isready(char *params[], int num_params)
+{
+    printf("readyok\n");
 
     return 0;
 }
@@ -266,11 +283,14 @@ int process_command(char *params[], int num_params)
         {NULL, NULL},
     };
 
-    fprintf(stderr, "parameters:\n");
-    for (i = 0; params[i]; i++) {
-        fprintf(stderr, "   %s\n", params[i]);
-    }
+    fprintf(stderr, "got command. parameters:\n");
+    for (i = 0; params[i]; i++)
+        fprintf(stderr, "   %d. %s\n", i, params[i]);
 
+    if (!params[0])
+        return 1;
+
+    fprintf(stderr, "executing %s\n", params[0]);
     for (i = 0; commands[i].name; i++)
         if (!strcmp(commands[i].name, params[0]))
             return commands[i].callback(params + 1, num_params - 1);
@@ -329,9 +349,6 @@ static void init(int argc, char **argv)
     }
     fprintf(stderr, "initializing board\n");
     board = new_board(DEFAULT_FEN);
-    fprintf(stderr, "calling uci_go\n");
-    uci_go(NULL, 0);
-    fprintf(stderr, "ok\n");
 }
 
 int main(int argc, char *argv[])
