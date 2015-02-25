@@ -250,11 +250,12 @@ void parse_arguments(int argc, char **argv) {
         {"games-pr-iteration", required_argument, NULL, 'n'},
         {"ports", required_argument, NULL, 'p'},
         {"moves", required_argument, NULL, 'm'},
+        {"training-mode", required_argument, NULL, 'a'},
         {"help", no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0},
     };
 
-    while ((c = getopt_long(argc, argv, "t:j:f:g:i:n:p:m:h", long_options,
+    while ((c = getopt_long(argc, argv, "t:j:f:g:i:n:p:m:a:h", long_options,
             &option_index)) != -1)
         switch (c) {
             case 't':
@@ -280,6 +281,9 @@ void parse_arguments(int argc, char **argv) {
                 break;
             case 'm':
                 max_moves = atoi(optarg);
+                break;
+            case 'a':
+                ai_vs_ai = atoi(optarg);
                 break;
             case 'h':
             default:
