@@ -103,10 +103,10 @@ void play_chess_aivsai(void *arg) {
     AI_instance_t *ai_b;
 
     board_t *board;
-    if (game->game_id >= nr_jobs/2)
+    if (game->game_id >= nr_jobs / 2)
         return;
     ai = game->ais[game->game_id];
-    ai_b = game->ais[game->game_id + nr_jobs/2];
+    ai_b = game->ais[game->game_id + nr_jobs / 2];
 
     //printf("game_id: %d\n", game->game_id);
     //printf("starting game %d\n", game->game_id);
@@ -116,7 +116,7 @@ void play_chess_aivsai(void *arg) {
         //board_t *board = new_board("rnbqkbnr/qqqqqqqq/8/8/8/8/qqqqqqqq/qqqqKqqq w - - 0 1");
 
         for (moves = 0; moves < max_moves; moves++) {
-              ret = do_best_move(ai, board);
+            ret = do_best_move(ai, board);
 
             //          ret = do_best_move(ai, board);
             //                    print_board(board->board);
@@ -131,9 +131,10 @@ void play_chess_aivsai(void *arg) {
                 //            print_board(board->board);
                 break;
             }
-            ret = do_best_move(ai_b, board);;
+            ret = do_best_move(ai_b, board);
 
-//            ret = do_best_move(ai_b, board);
+
+            //            ret = do_best_move(ai_b, board);
             if (ret == 0) {
                 break;
             } else if (ret == -1) {
@@ -145,10 +146,10 @@ void play_chess_aivsai(void *arg) {
                 break;
             }
         }
-        if (ret == 0 || moves == max_moves)
+        if (ret == 0 || moves == max_moves) {
             draw(ai, board);
-        draw(ai_b, board);
-
+            draw(ai_b, board);
+        }
         //  if (ret >= 0){
         //          small_reward(ai,score_board(board->board));            
         //  }
@@ -525,7 +526,7 @@ int main(int argc, char *argv[]) {
             }
 
         } else {
-         
+
             best = get_best_ai(ais, nr_jobs, -1);
             printf("best AI VS RANDOM: %d\n", best);
             printf("nr played %d\n", ais[best]->nr_games_played);
@@ -542,7 +543,11 @@ int main(int argc, char *argv[]) {
 
         }
     }
-    best = get_best_ai(ais, nr_jobs / 2, -1);
+    if (ai_vs_ai)
+        best = get_best_ai(ais, nr_jobs / 2, -1);
+    else
+        best = get_best_ai(ais, nr_jobs, -1);
+
     print_brain(ais[best]);
     dump_ai("ai.aidump", ais[best]);
     clear_score(ais[best]);
