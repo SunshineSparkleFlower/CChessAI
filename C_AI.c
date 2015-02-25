@@ -103,10 +103,10 @@ void play_chess_aivsai(void *arg) {
     AI_instance_t *ai_b;
 
     board_t *board;
-    if (game->game_id % 2)
+    if (game->game_id >= nr_jobs/2)
         return;
     ai = game->ais[game->game_id];
-    ai_b = game->ais[game->game_id + 1];
+    ai_b = game->ais[game->game_id + nr_jobs/2];
 
     //printf("game_id: %d\n", game->game_id);
     //printf("starting game %d\n", game->game_id);
@@ -116,7 +116,7 @@ void play_chess_aivsai(void *arg) {
         //board_t *board = new_board("rnbqkbnr/qqqqqqqq/8/8/8/8/qqqqqqqq/qqqqKqqq w - - 0 1");
 
         for (moves = 0; moves < max_moves; moves++) {
-              ret = do_random_move(board);
+              ret = do_best_move(ai, board);
 
             //          ret = do_best_move(ai, board);
             //                    print_board(board->board);
@@ -131,7 +131,7 @@ void play_chess_aivsai(void *arg) {
                 //            print_board(board->board);
                 break;
             }
-            ret = do_random_move(board);
+            ret = do_best_move(ai_b, board);;
 
 //            ret = do_best_move(ai_b, board);
             if (ret == 0) {
