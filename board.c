@@ -311,7 +311,7 @@ int do_move(board_t *b, int n)
 
 /* call this if you are _NOT_ sure the move is a legal one.
  * This is a wrapper function for do_move.
- * returns -1 if there is no more legal moves to do
+ * returns -1 if there are no more legal moves to do
  * returns 0 if n > b->moves_count
  * returns 1 if a move was successfully taken */
 int move(board_t *b, int n)

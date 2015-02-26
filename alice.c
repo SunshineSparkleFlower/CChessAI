@@ -1,366 +1,234 @@
-#define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
-#include <ctype.h>
 #include <unistd.h>
+#include <getopt.h>
 #include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
+#include <sys/socket.h>
+#include <sys/fcntl.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 
-#include "threadpool.h"
-#include "AI.h"
-#include "common.h"
 #include "board.h"
+#include "AI.h"
 
-struct command {
-    char *name;
-    int (*callback)(char *params[], int num_params);
-};
+#define AI_NAME ENGINE_NAME
 
-struct search {
-    AI_instance_t *ai;
-    int finished;
-    struct move m;
-};
+static int white = 1;
+static char ai_file[256] = "./ai_save.aidump";
+static char gui_ip[256] = "0";
+static int verbose = 0;
 
-static struct {
-    char *name, *code;
-    int debug;
-
-    int num_threads, num_jobs;
-// setoption command options
-    int ponder;
-} settings;
-
-static volatile board_t *board;
-static volatile struct search *searches; // each AI thread should have its own structure
-static struct job *jobs;
-
-static int uci_uci(char *params[], int num_params)
+static int setup_socket(int port)
 {
-    printf("id name %s\n", ENGINE_NAME);
-    printf("id author %s\n", ENGINE_AUTHOR);
-    printf("uciok\n");
+    int sd, tmp;
+    struct sockaddr_in serv_addr;
 
-    return 0;
+    sd = socket(AF_INET, SOCK_STREAM, 0);
+    memset(&serv_addr, 0, sizeof(serv_addr));
+
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    serv_addr.sin_port = htons(port);
+
+    tmp = 1;
+    setsockopt(sd, SOL_SOCKET, SO_REUSEADDR,(const char *)&tmp, sizeof(int));
+    bind(sd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+
+    listen(sd, 1);
+
+    return sd;
 }
 
-static int uci_debug(char *params[], int num_params)
-{
-    if (!strcmp(params[0], "on"))
-        settings.debug = 1;
-    else if (!strcmp(params[0], "off"))
-        settings.debug = 0;
+static int wait_for_node(int sd)                              
+{                                                      
+    struct sockaddr_in addr;                           
+    socklen_t size = sizeof(struct sockaddr_in);       
 
-    return 0;
+    return accept(sd, (struct sockaddr *)&addr, &size);
+}                                                      
+
+int node_connect(char *host, int port)
+{
+    int sd;
+    struct hostent *h;
+    struct sockaddr_in addr;
+
+    sd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (sd == -1)
+        return -1;
+
+    h = gethostbyname(host);
+
+    memset(&addr, 0, sizeof(addr));
+    memcpy(&addr.sin_addr.s_addr, h->h_addr_list[0], h->h_length);
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+
+    if (connect(sd, (struct sockaddr *)&addr, sizeof(addr)) == -1)
+        return -1;
+
+    return sd;
 }
 
-static int uci_setoption(char *params[], int num_params)
+static void parse_input(char *line, struct move *m)
 {
-    if (!strcmp(params[1], "Ponder")) {
-        settings.ponder = !strcmp(params[3], "false") ? 0 : 1;
-    }
-    return 0;
+    static int lookup[] = {7, 6, 5, 4, 3, 2, 1, 0};
+
+    m->frm.y = line[2] - '0';
+    m->frm.x = line[5] - '0';
+
+    m->to.y = line[10] - '0';
+    m->to.x = line[13] - '0';
+
+    m->frm.y = lookup[m->frm.y];
+    m->frm.x = lookup[m->frm.x];
+    m->to.y = lookup[m->to.y];
+    m->to.x = lookup[m->to.x];
 }
 
-static int uci_register(char *params[], int num_params)
+static void move_to_json(char *buffer, struct move *m)
 {
-    int i = 0;
-    char buffer[512] = "";
-
-    if (!strcmp(params[0], "later"))
-        return 1;
-
-    if (!strcmp(params[0], "name")) {
-        if (settings.name)
-            free(settings.name);
-        for (i = 1; params[i] && !strcmp(params[i], "code"); i++) {
-            strncat(buffer, params[i], sizeof(buffer) - strlen(buffer) - 1);
-            strncat(buffer, " ", sizeof(buffer) - strlen(buffer) - 1);
-        }
-        settings.name = strdup(buffer);
-    }
-    
-    if (!strcmp(params[i], "code")) {
-        if (settings.name)
-            free(settings.name);
-        for (i = 1; params[i] && !strcmp(params[i], "name"); i++) {
-            strncat(buffer, params[i], sizeof(buffer) - strlen(buffer) - 1);
-            strncat(buffer, " ", sizeof(buffer) - strlen(buffer) - 1);
-        }
-        settings.code = strdup(buffer);
-    }
-
-    return 1;
+    static int lookup[] = {7, 6, 5, 4, 3, 2, 1, 0};
+    sprintf(buffer, "[[%d, %d], [%d, %d]]",
+        lookup[m->frm.y], lookup[m->frm.x], lookup[m->to.y], lookup[m->to.x]);
 }
 
-/* this is sent to the engine when the next search (started with "position" and "go") will be from
- * a different game. This can be a new game the engine should play or a new game it should analyse but
- * also the next position from a testsuite with positions only.
- * If the GUI hasn't sent a "ucinewgame" before the first "position" command, the engine shouldn't
- * expect any further ucinewgame commands as the GUI is probably not supporting the ucinewgame command.
- * So the engine should not rely on this command even though all new GUIs should support it.
- * As the engine's reaction to "ucinewgame" can take some time the GUI should always send "isready"
- * after "ucinewgame" to wait for the engine to finish its operation. */
-static int uci_newgame(char *params[], int num_params)
-{
-    // WHAT?
-    return 0;
-}
-
-/* convert from UCI move notation to internal move struct */
-static void notation_to_move(char *move_notation, struct move *m)
-{
-    coord_t *to, *from;
-
-    from = &m->frm;
-    to = &m->to;
-
-    from->x = tolower(move_notation[0]) - 'a';
-    from->y = move_notation[1] - '1';
-
-    to->x = tolower(move_notation[2]) - 'a';
-    to->y = move_notation[3] - '1';
-}
-
-/* convert from internal move struct to UCI notation */
-static void move_to_notation(char *move_notation, struct move *m)
-{
-    coord_t *to, *from;
-
-    from = &m->frm;
-    to = &m->to;
-
-    move_notation[0] = from->x + 'a';
-    move_notation[1] = from->y + '1';
-
-    move_notation[2] = to->x + 'a';
-    move_notation[3] = to->y + '1';
-
-    move_notation[4] = 0;
-}
-
-static int uci_position(char *params[], int num_params)
-{
-    int i;
-    char *fen;
-    struct move m;
-
-    // initialize fen string
-    if (!strcmp(params[0], "startpos"))
-        fen = DEFAULT_FEN;
-    else {
-        char buffer[512] = "";
-
-        for (i = 1; params[i]; i++) {
-            if (!strcmp(params[i], "moves"))
-                break;
-            strncat(buffer, params[i], sizeof(buffer) - strlen(buffer) - 1);
-            strncat(buffer, " ", sizeof(buffer) - strlen(buffer) - 1);
-        }
-
-        fen = alloca(strlen(buffer) + 1);
-        strcpy(fen, buffer);
-    }
-
-    // initialize board
-    if (board)
-        free_board((board_t *)board);
-    board = new_board(fen);
-
-    // find the index of the moves parameters
-    for (i = 2; i < num_params; i++)
-        if (!strcmp(params[i], "moves"))
-            break;
-
-    if (strcmp(params[i], "moves"))
-        return 1;
-
-    // to the moves
-    for (; params[i]; i++) {
-        notation_to_move(params[i], &m);
-        do_actual_move((board_t *)board, &m);
-    }
-
-    return 1;
-}
-
-void AI_search(void *arg)
+static int find_best_move(AI_instance_t *ai, board_t *board, struct move *m)
 {
     int index;
-    char buffer[16];
-    struct search *s = (struct search *)arg;
 
-    fprintf(stderr, "starting search ai @ %p, board @ %p\n", s->ai, board);
+    // generate and find best move
+    generate_all_moves(board);
+    index = _get_best_move(ai, board);
 
-    s->finished = 0;
-    index = _get_best_move(s->ai, (board_t *)board);
-    memcpy((void *)&s->m, (void *)&board->moves[index], sizeof(struct move));
-    s->finished = 1;
+    memcpy(m, &board->moves[index], sizeof(struct move));
 
-    fprintf(stderr, "from: %d, %d, to: %d, %d\n",
-            board->moves[index].frm.y, board->moves[index].frm.x,
-            board->moves[index].to.y, board->moves[index].to.x);
-
-    move_to_notation(buffer, &s->m);
-    printf("bestmove %s\n", buffer);
-    fprintf(stderr, "bestmove %s\n", buffer);
+    return index;
 }
 
-static int uci_go(char *params[], int num_params)
+void usage(char **argv, struct option *options)
 {
     int i;
-
-    generate_all_moves((board_t *)board);
-    for (i = 0; i < settings.num_jobs; i++) {
-        jobs[i].task = AI_search;
-        jobs[i].data = (struct search *)&searches[i];
-        put_new_job(&jobs[i]);
-    }
-
-    return 0;
+    printf("USAGE: %s <options>\n", argv[0]);
+    printf("Available options:\n");
+    for (i = 0; options[i].name; i++)
+        printf("    -%c, --%s %s\n", options[i].val, options[i].name,
+                options[i].has_arg == required_argument ? "<argument>" : "");
 }
 
-static int uci_stop(char *params[], int num_params)
+void parse_arguments(int argc, char **argv)
 {
-    char tmp[32];
-    /*
-    while (!searches[0].finished);
-
-    move_to_notation(tmp, (struct move *)&searches[0].m);
-    printf("bestmove %s\n", tmp);
-    */
-
-    free_board(board);
-    board = new_board(DEFAULT_FEN);
-
-    return 0;
-}
-
-/* this is used to synchronize the engine with the GUI. When the GUI has sent a command or
- * multiple commands that can take some time to complete,
- * this command can be used to wait for the engine to be ready again or
- * to ping the engine to find out if it is still alive.
- * E.g. this should be sent after setting the path to the tablebases as this can take some time.
- * This command is also required once before the engine is asked to do any search
- * to wait for the engine to finish initializing.
- * This command must always be answered with "readyok" and can be sent also when the engine is calculating
- * in which case the engine should also immediately answer with "readyok" without stopping the search. */
-static int uci_isready(char *params[], int num_params)
-{
-    printf("readyok\n");
-
-    return 0;
-}
-
-static int uci_ponderhit(char *params[], int num_params)
-{
-    // TODO
-    return 0;
-}
-
-static int uci_quit(char *params[], int num_params)
-{
-    exit(0);
-    return 0;
-}
-
-int process_command(char *params[], int num_params)
-{
-    int i;
-    static struct command commands[] = {
-        {"uci", uci_uci},
-        {"debug", uci_debug},
-        {"isready", uci_isready},
-        {"setoption", uci_setoption},
-        {"register", uci_register},
-        {"ucinewgame", uci_newgame},
-        {"position", uci_position},
-        {"go", uci_go},
-        {"stop", uci_stop},
-        {"ponderhit", uci_ponderhit},
-        {"quit", uci_quit},
-        {NULL, NULL},
+    int c;
+    int option_index = 0;
+    static struct option long_options[] = {
+        {"ai", required_argument, NULL, 'a'},
+        {"gui-ip", required_argument, NULL, 'i'},
+        {"white", no_argument, NULL, 'w'},
+        {"black", no_argument, NULL, 'b'},
+        {"verbose", no_argument, NULL, 'v'},
+        {"help", no_argument, NULL, 'h'},
+        {NULL, 0, NULL, 0},
     };
 
-    fprintf(stderr, "got command. parameters:\n");
-    for (i = 0; params[i]; i++)
-        fprintf(stderr, "   %d. %s\n", i, params[i]);
-
-    if (!params[0])
-        return 1;
-
-    fprintf(stderr, "executing %s\n", params[0]);
-    for (i = 0; commands[i].name; i++)
-        if (!strcmp(commands[i].name, params[0]))
-            return commands[i].callback(params + 1, num_params - 1);
-    return 0;
-}
-
-static int parse_input(char *line, char *params[])
-{
-    int i;
-    char *str1, *token, *saveptr1;
-
-    if (line[strlen(line) - 1] == '\n')
-        line[strlen(line) - 1] = 0;
-
-    for (i = 0, str1 = line; i < 15; i++, str1 = NULL) {
-        token = strtok_r(str1, " ", &saveptr1);
-        if (token == NULL)
-            break;
-        params[i] = token;
-    }
-    params[i] = NULL;
-
-    return i;
-}
-
-static void init(int argc, char **argv)
-{
-    int i;
-
-    dup2(open("/tmp/alice.out", O_RDWR), 2);
-
-    fprintf(stderr, "Alice is running\n");
-
-    if (argc != 2) {
-        fprintf(stderr, "USAGE: %s <ai-file>\n", argv[0]);
-        fprintf(stderr, "argc = %d. %s, %s\n", argc, argv[0], argv[1]);
-        exit(0);
-    }
-
-    // TODO parse command line arguments
-
-    memset(&settings, 0, sizeof(settings));
-    settings.num_jobs = settings.num_threads = 1;
-
-    init_threadpool(settings.num_threads);
-    jobs = malloc(settings.num_jobs * sizeof(struct job));
-
-    searches = malloc(settings.num_jobs * sizeof(struct search));
-
-    fprintf(stderr, "initializing ai with file %s. pwd = %s\n", argv[1], get_current_dir_name());
-    for (i = 0; i < settings.num_jobs; i++) {
-        searches[i].ai = load_ai(argv[1], 1000);
-        if (searches[i].ai == NULL) {
-            exit(0);
+    while ((c = getopt_long(argc, argv, "a:i:wbvh", long_options,
+                    &option_index)) != -1)
+        switch (c) {
+            case 'a':
+                strncpy(ai_file, optarg, sizeof(ai_file));
+                break;
+            case 'i':
+                strncpy(gui_ip, optarg, sizeof(ai_file));
+                break;
+            case 'w':
+                white = 1;
+                break;
+            case 'b':
+                white = 0;
+                break;
+            case 'v':
+                ++verbose;
+                break;
+            case 'h':
+            default:
+                usage(argv, long_options);
+                exit(0);
         }
-    }
-    fprintf(stderr, "initializing board\n");
-    board = new_board(DEFAULT_FEN);
 }
 
 int main(int argc, char *argv[])
 {
-    int num_params;
-    char buffer[512], *params[16];
+    int sd, gui, count = 0;
+    char buffer[512];
+    board_t *board;
+    AI_instance_t *ai;
+    struct move m;
 
-    init(argc, argv);
+    parse_arguments(argc, argv);
 
-    while (fgets(buffer, sizeof buffer, stdin)) {
-        num_params = parse_input(buffer, params);
-        process_command(params, num_params);
+    init_magicmoves();
+
+    // connect to GUI
+    printf("Connecting..\n");
+    if (white) {
+        sd = setup_socket(4444);
+        gui = wait_for_node(sd);
+        close(sd);
+        white = 1;
+    } else {
+        while ((gui = node_connect(gui_ip, 4444)) == -1)
+            usleep(1000 * 100);
     }
+
+    // initialize board and AI
+    board = new_board(DEFAULT_FEN);
+    ai = load_ai(ai_file, 1000);
+    if (!ai) {
+        printf("failed to load ai\n");
+        return 1;
+    }
+
+    // get player name and send AI's player name
+    memset(buffer, 0, sizeof(buffer));
+    if (read(gui, buffer, sizeof(buffer)) <= 0)
+        return 1;
+    if (write(gui, AI_NAME, strlen(AI_NAME) + 1) <= 0)
+        return 1;
+
+    if (verbose > 0)
+        print_board(board->board);
+
+    memset(buffer, 0, sizeof(buffer));
+    if (white)
+        goto this_is_so_dirty_it_is_sexy;
+
+    // game loop
+    while (read(gui, buffer, sizeof buffer) > 0) {
+        // do remote move
+        parse_input(buffer, &m);
+        do_actual_move(board, &m);
+        swapturn(board);
+
+        if (verbose > 0) {
+            printf("%d:\n", ++count);
+            print_board(board->board);
+        }
+
+this_is_so_dirty_it_is_sexy:
+        // find and do AI move
+        find_best_move(ai, board, &m);
+        do_actual_move(board, &m);
+        swapturn(board);
+
+        // send the move to the remote GUI
+        move_to_json(buffer, &m);
+        if (write(gui, buffer, strlen(buffer)) <= 0)
+            break;
+
+        if (verbose > 0)
+            print_board(board->board);
+    }
+
+    close(gui);
+
     return 0;
 }
