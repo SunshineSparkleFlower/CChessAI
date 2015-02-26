@@ -848,25 +848,32 @@ static int _get_best_move(AI_instance_t *ai, board_t * board) {
     }
     //printf("separation_count: %d\n", ai->separation_count[0][ai->nr_ports-1]);
     fcount = 0;
-    /*int best_i = 0;
-      int best_val = 0;
-      for (i = 0; i < board->moves_count; i++) {
-      if (best_val == ai->nr_outputs)
-      break;
-      if (scores[i] > best_val) {
-      best_val = scores[i];
-      best_i = i;
-      }
-      }
-      return best_i;
-     */
+    int best_i = 0;
+    int best_val = 0;
+    for (i = 0; i < board->moves_count; i++) {
+    //                  printf("%d, ", scores[i]);
+
+        //if (best_val == ai->nr_outputs)
+        //    break;
+        if (scores[i] > best_val) {
+            best_val = scores[i];
+            best_i = i;
+        }
+    }
+    if(best_i == 0 && board->moves_count > 1 && best_val == scores[1])
+        return random_int_r(0, board->moves_count - 1);
+    //printf("best_i: %d", best_i);
+    //    printf("\n");
+
+    return best_i;
+
 
 
     for (i = 0; i < board->moves_count; i++) {
         //      printf("%d, ", scores[i]);
         int sum = scores[i];
         for (j = 0; j < ai->output_exponent; j++)
-            sum*= scores[i];
+            sum *= scores[i];
         fcount += sum;
         cumdist[i] = fcount;
     }
@@ -887,12 +894,14 @@ int do_best_move(AI_instance_t *ai, board_t * board) {
     if (is_checkmate(board))
         return -1;
     if (is_stalemate(board) || (best_move = _get_best_move(ai, board)) == -1) {
+
         if (is_checkmate(board))
             return -1;
 
         return 0;
     }
-
+    if (best_move < 0)
+        printf("best move: %d\n", best_move);
     int ret = do_move(board, best_move);
     if (!ret)
         printf("ret %d\n", ret);
@@ -1061,7 +1070,7 @@ void mutate_mutation_rates(AI_instance_t *ai) {
     ai->one_rate -= random_int_r(0, 1);
     ai->one_rate += random_int_r(0, 1);
     ai->one_rate = keep_in_range(ai->one_rate, min_val, max_val);
-    
+
     ai->output_exponent -= random_int_r(0, 1);
     ai->output_exponent += random_int_r(0, 1);
     ai->output_exponent = keep_in_range(ai->output_exponent, min_val, max_val);
@@ -1103,7 +1112,7 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print) {
 
     //find and mutate unused ports
     for (j = 0; j < a1->nr_ports; j++) {
-        if (!TestBit(a2->used_port, j) && !a1->output_tag[0][j]) {
+        if ((!TestBit(a2->used_port, j)) && (!a2->output_tag[0][j])) {
             if (random_int_r(min_val, max_val) > a1->unused_rate) {
 
                 //reset port
