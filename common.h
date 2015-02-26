@@ -95,6 +95,6 @@ extern int bitwise_or_3d(void ***a, void ***b, void ***res);
 #define dump(arr, n) _dump((char *)(arr), (n))
 extern void _dump(char *arr, int n);
 extern int choice_3d(uint16_t *samples, int n, uint16_t ***out);
-extern void shutdown(void);
+extern void _shutdown(void);
 
 #endif /* end of include guard: __COMMON_H */
