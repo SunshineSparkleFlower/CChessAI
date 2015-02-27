@@ -59,7 +59,7 @@ extern void punish(AI_instance_t *ai);
 extern void reward(AI_instance_t *ai);
 extern void draw(AI_instance_t *ai, board_t * board);
 extern float get_score(AI_instance_t *ai);
-extern int mutate(AI_instance_t *a1, AI_instance_t *a2, int print);
+extern int mutate(AI_instance_t *a1, AI_instance_t *a2, int print, int print_stats);
 extern void clear_score(AI_instance_t *ai);
 extern int do_nonrandom_move(board_t *board);
 extern int do_random_move(board_t *board);
