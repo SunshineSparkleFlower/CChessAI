@@ -17,7 +17,7 @@ alice: alice.o AI.o board.o bitboard.o magicmoves.o common.o
 ai_debug: ai_debug.o board.o AI.o common.o bitboard.o magicmoves.o
 
 debug: CFLAGS += -DDEBUG -g
-debug: remote
+debug: test
 
 test: unit_test_ai.o board.o AI.o common.o bitboard.o magicmoves.o
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@

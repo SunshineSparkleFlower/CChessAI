@@ -16,6 +16,9 @@ typedef struct move {
 
 #include "common.h"
 struct bitboard {
+    u8 king_has_moved :1;
+    u8 long_rook_moved :1;
+    u8 short_rook_moved :1;
     u64 pieces, apieces;
     u64 pawns;
     u64 rooks;
@@ -36,6 +39,11 @@ typedef struct board {
         u64 capture_mask;
         int promotion;
         piece_t piece;
+
+        u8 castling :2; // 0 = no castling, 1 short, 2 long
+        u8 king_had_moved :1;
+        u8 long_rook_had_moved :1;
+        u8 short_rook_had_moved :1;
     } backup;
 
     struct move moves[20*16];

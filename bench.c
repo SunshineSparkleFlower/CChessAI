@@ -44,7 +44,7 @@ void *ai_bench(void *arg)
     int mutation_rate = 1000;
     int brain_size = 3;
 
-    ai = ai_new(mutation_rate, brain_size);
+    ai = ai_new(mutation_rate, brain_size, 256);
 
     for (i = 0; i < nr_games; i++) {
         board = new_board(NULL);

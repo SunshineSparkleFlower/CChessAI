@@ -918,7 +918,7 @@ int do_random_move(board_t * board) {
         }
         rndmove = random_int_r(0, board->moves_count - 1);
 
-    } while (!do_move(board, rndmove));
+    } while (do_move(board, rndmove) != 1);
 
     swapturn(board);
 

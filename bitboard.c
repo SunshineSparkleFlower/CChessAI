@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
+#include <math.h>
 
 #include "bitboard.h"
 #include "magicmoves.h"
@@ -344,14 +345,49 @@ static inline u64 *find_board(struct bitboard *b, int pos)
     return NULL;
 }
 
+// check if any pieces can attack a given square
+static int any_can_attack(struct bitboard *enemy, u64 pawn_attacks, int square_index)
+{
+    int i;
+
+    if (bb_can_attack(pawn_attacks, square_index))
+        return 1;
+
+    for (i = 0; i < 64; i++) {
+        if ((enemy->king >> i) & 1)
+            if (bb_can_attack(generate_king_moves(enemy, i), square_index))
+                return 1;
+
+        if ((enemy->queens >> i) & 1)
+            if (bb_can_attack(generate_queen_moves(enemy, i), square_index))
+                return 1;
+
+        if ((enemy->rooks >> i) & 1)
+            if (bb_can_attack(generate_rook_moves(enemy, i), square_index))
+                return 1;
+
+        if ((enemy->bishops >> i) & 1)
+            if (bb_can_attack(generate_bishop_moves(enemy, i), square_index))
+                return 1;
+
+        if ((enemy->knights >> i) & 1)
+            if (bb_can_attack(generate_knight_moves(enemy, i), square_index))
+                return 1;
+    }
+    return 0;
+}
+
 int bb_do_actual_move(board_t *board, struct move *m)
 {
     struct bitboard *enemy, *self;
-    int to, from;
-    u64 *move_board, *capture_board;
+    int to, from, i, ret = 1;
+    u64 *move_board, *capture_board, pawn_attacks;
+
 
     to = coord_to_index(m->to.y, m->to.x);
     from = coord_to_index(m->frm.y, m->frm.x);
+
+    debug_print("%s moving from %d to %d\n", __func__, from, to);
 
     if (board->turn == WHITE) {
         enemy = &board->black_pieces;
@@ -367,37 +403,112 @@ int bb_do_actual_move(board_t *board, struct move *m)
         return 0;
     }
 
-    board->backup.capture_board = capture_board = find_board(enemy, to);
-    if (capture_board != NULL) {
-#ifdef DEBUG
-        printf("before capture:\n");
-        bb_print(*capture_board);
-#endif
-        board->backup.capture_mask = isolate_bit(*capture_board, to);
-        clear_bit(*capture_board, to);
-#ifdef DEBUG
-        printf("after capture:\n");
-        bb_print(*capture_board);
-        printf("capture mask:\n");
-        bb_print(board->backup.capture_mask);
-#endif
-    } else {
-        board->backup.capture_mask = 0;
-    }
+    board->backup.castling = board->backup.promotion = 0;
+    // if self->[short|long]_rook_moved is not set; do so
+    if (&self->rooks == move_board) {
+        board->backup.short_rook_had_moved = self->short_rook_moved;
+        board->backup.long_rook_had_moved = self->long_rook_moved;
+        debug_print("%s: doing rook move:\n", __func__);
 
-    clear_bit(*move_board, from);
-    set_bit(*move_board, to);
-
-    // check for pawn promotion
-    if (&self->pawns == move_board) {
+        if (board->turn == WHITE) {
+            debug_print("white moving from index %d\n", from);
+            if (from == H1) {
+                debug_print("white moving from %d == %d H1\n", from, H1);
+                self->short_rook_moved = 1;
+            } else if (from == A1) {
+                debug_print("white moving from %d == %d A1\n", from, A1);
+                self->long_rook_moved = 1;
+            }
+        } else {
+            debug_print("black moving from index %d\n", from);
+            if (from == H8) {
+                debug_print("black moving from %d == %d H8\n", from, H8);
+                self->short_rook_moved = 1;
+            } else if (from == A8) {
+                debug_print("black moving from %d == %d A8\n", from, A8);
+                self->long_rook_moved = 1;
+            }
+        }
+    } else if (&self->pawns == move_board) {
+        // check for pawn promotion
         if ((board->turn == WHITE && m->to.y == 7) ||
                 (board->turn == BLACK && m->to.y == 0)) {
             board->backup.promotion = 1;
             clear_bit(*move_board, to);
             set_bit(self->queens, to);
         }
+    } else if (&self->king == move_board) {
+        debug_print("moving king. dist = %d\n", abs(from - to));
+        if (abs(from - to) == 2) {
+            if (is_check(board)) { // castling is illegal if king is under attack
+                debug_print("king is in check. will not castle\n");
+                return 2;
+            }
+
+            debug_print("not in check. has king moved?: %s\n", self->king_has_moved ? "yes" : "no");
+            if (!self->king_has_moved) {
+                int short_target, r_short_from, r_long_from,
+                    r_short_to, r_long_to;
+                if (board->turn == WHITE) {
+                    debug_print("wites turn\n");
+                    short_target = G1;
+                    r_short_from = H1;
+                    r_long_from = A1;
+                    r_short_to = F1;
+                    r_long_to = D1;
+                    ret = 3;
+                } else {
+                    debug_print("blacks turn\n");
+                    short_target = G8;
+                    r_short_from = H8;
+                    r_long_from = A8;
+                    r_short_to = F8;
+                    r_long_to = D8;
+                    ret = 5;
+                }
+
+                generate_pawn_moves(enemy, &pawn_attacks, board->turn);
+                if (to == short_target) { // short castling
+                    debug_print("short castling\n");
+                    // check if any of the squares can be attacked
+                    for (i = 1; i < 3; i++)
+                        if (any_can_attack(enemy, pawn_attacks, from - i)) {
+                            debug_print("SOMEONE CAN ATTACK %d\n", from - i);
+                            return 2;
+                        }
+
+                    clear_bit(self->rooks, r_short_from);
+                    set_bit(self->rooks, r_short_to);
+                    board->backup.castling = 1;
+                } else { // long castling
+                    debug_print("long castling\n");
+                    // check if any of the squares can be attacked
+                    for (i = 1; i < 4; i++)
+                        if (any_can_attack(enemy, pawn_attacks, from + i)) {
+                            debug_print("SOMEONE CAN ATTACK %d\n", from + i);
+                            return 2;
+                        }
+                    clear_bit(self->rooks, r_long_from);
+                    set_bit(self->rooks, r_long_to);
+                    board->backup.castling = 2;
+                    ret++;
+                }
+            } else
+                return 2;
+        }
+        board->backup.king_had_moved = self->king_has_moved;
+        self->king_has_moved = 1;
+    }
+
+    board->backup.capture_board = capture_board = find_board(enemy, to);
+    if (capture_board != NULL) {
+        board->backup.capture_mask = isolate_bit(*capture_board, to);
+        clear_bit(*capture_board, to);
     } else
-        board->backup.promotion = 0;
+        board->backup.capture_mask = 0;
+
+    clear_bit(*move_board, from);
+    set_bit(*move_board, to);
 
     // update friends and "all pieces"-board
     self->pieces = self->pawns | self->rooks | self->knights
@@ -406,7 +517,7 @@ int bb_do_actual_move(board_t *board, struct move *m)
         | enemy->bishops | enemy->queens | enemy->king;
     self->apieces = enemy->apieces = self->pieces | enemy->pieces;
 
-    return 1;
+    return ret;
 }
 
 int bb_do_move(board_t *board, int index)
@@ -427,7 +538,7 @@ int bb_undo_move(board_t *board, int index)
 {
     struct bitboard *enemy, *self;
     struct move *m;
-    int to, from;
+    int to, from, ret = 1;
     u64 *move_board, *capture_board, mask;
 
     if (index > board->moves_count)
@@ -469,6 +580,32 @@ int bb_undo_move(board_t *board, int index)
     // check for pawn promotion
     if (board->backup.promotion)
         clear_bit(self->queens, to);
+    else if (board->backup.castling) {
+        int row;
+        if (board->turn == WHITE) {
+            row = 0;
+            ret = 3;
+        } else {
+            row = 7;
+            ret = 5;
+        }
+        if (board->backup.castling == 1) {
+            clear_bit(self->rooks, coord_to_index(row, 2));
+            set_bit(self->rooks, coord_to_index(row, 0));
+            self->short_rook_moved = 0;
+        } else if (board->backup.castling == 2) {
+            clear_bit(self->rooks, coord_to_index(row, 4));
+            set_bit(self->rooks, coord_to_index(row, 7));
+            self->long_rook_moved = 0;
+            ret++;
+        }
+        self->king_has_moved = board->backup.castling = 0;
+    } else if (move_board == &self->king) {
+        self->king_has_moved = board->backup.king_had_moved;
+    } else if (move_board == &self->rooks) {
+        self->short_rook_moved = board->backup.short_rook_had_moved;
+        self->long_rook_moved = board->backup.long_rook_had_moved;
+    }
 
     // update friends and "all pieces"-board
     self->pieces = self->pawns | self->rooks | self->knights
@@ -477,7 +614,7 @@ int bb_undo_move(board_t *board, int index)
         | enemy->bishops | enemy->queens | enemy->king;
     self->apieces = enemy->apieces = self->pieces | enemy->pieces;
 
-    return 1;
+    return ret;
 }
 
 /* checks if current player is in check.
@@ -486,7 +623,7 @@ int bb_calculate_check(board_t *board)
 {
     u64 attacks;
     struct bitboard *enemy, *self;
-    int i, king_idx;
+    int king_idx;
 
     if (board->turn == WHITE) {
         enemy = &board->black_pieces;
@@ -496,38 +633,49 @@ int bb_calculate_check(board_t *board)
         self = &board->black_pieces;
     }
     king_idx = lsb_to_index(self->king);
-    
+
     generate_pawn_moves(enemy, &attacks, -board->turn);
-    if (bb_can_attack(attacks, king_idx))
-        goto yes;
+    board->is_check = any_can_attack(enemy, attacks, king_idx);
 
-    for (i = 0; i < 64; i++) {
-        if ((enemy->king >> i) & 1)
-            if (bb_can_attack(generate_king_moves(enemy, i), king_idx))
-                goto yes;
+    return board->is_check;
+}
 
-        if ((enemy->queens >> i) & 1)
-            if (bb_can_attack(generate_queen_moves(enemy, i), king_idx))
-                goto yes;
+static void generate_castling_moves(board_t *b, struct bitboard *self)
+{
+    int king_pos;
+    u64 tmp;
 
-        if ((enemy->rooks >> i) & 1)
-            if (bb_can_attack(generate_rook_moves(enemy, i), king_idx))
-                goto yes;
-
-        if ((enemy->bishops >> i) & 1)
-            if (bb_can_attack(generate_bishop_moves(enemy, i), king_idx))
-                goto yes;
-
-        if ((enemy->knights >> i) & 1)
-            if (bb_can_attack(generate_knight_moves(enemy, i), king_idx))
-                goto yes;
+    if (self->king_has_moved) {
+        debug_print("%s: king has moved, so no castling possible\n", __func__);
+        return;
     }
 
-    board->is_check = 0;
-    return 0;
-yes:
-    board->is_check = 1;
-    return 1;
+    for (king_pos = 0; king_pos < 64; king_pos++)
+        if ((self->king >> king_pos) & 1)
+            break;
+
+    // if tmp is 0 the path is clear
+    tmp = (self->apieces & (1lu << (king_pos - 1))) |
+        (self->apieces & (1lu << (king_pos - 2)));
+    debug_print("%s: path clear for short castling? : %s\n", __func__, tmp ? "no" : "yes");
+    debug_print("%s: short rook has moved? : %s\n",  __func__, self->short_rook_moved ? "yes" : "no");
+    if (!self->short_rook_moved && tmp == 0) {
+        index_to_coords(&b->moves[b->moves_count].frm, king_pos);
+        index_to_coords(&b->moves[b->moves_count].to, king_pos - 2);
+        b->moves_count++;
+    }
+
+    // if tmp is 0 the path is clear
+    tmp = (self->apieces & (1lu << (king_pos + 1))) |
+        (self->apieces & (1lu << (king_pos + 2))) |
+        (self->apieces & (1lu << (king_pos + 3)));
+    debug_print("%s: path clear for long castling? : %s\n", __func__, tmp ? "no" : "yes");
+    debug_print("%s: long rook has moved? : %s\n",  __func__, self->long_rook_moved ? "yes" : "no");
+    if (!self->long_rook_moved && tmp == 0) {
+        index_to_coords(&b->moves[b->moves_count].frm, king_pos);
+        index_to_coords(&b->moves[b->moves_count].to, king_pos + 2);
+        b->moves_count++;
+    }
 }
 
 void bb_generate_all_legal_moves(board_t *board)
@@ -563,4 +711,7 @@ void bb_generate_all_legal_moves(board_t *board)
     moves = generate_pawn_moves(b, &attacks, board->turn);
     store_pawn_moves(b, moves, attacks, board->moves,
             &board->moves_count, board->turn);
+
+    generate_castling_moves(board, b);
+
 }
