@@ -103,17 +103,17 @@ AI_instance_t *ai_new(int mutation_rate, int brain_size, int nr_ports) {
 
         }
      */
-    ret->zero_rate = 1;
-    ret->one_rate = 1;
-    ret->port_type_rate = 1;
-    ret->unused_rate = 50;
-    ret->output_rate = 50;
-    ret->r_output_rate = 50;
-    ret->separation_rate = 50;
-    ret->state_separation_rate = 50;
-    ret->separation_threshold = 15;
-    ret->output_exponent = 1;
-    ret->state_separation_threshold = 15;
+    ret->zero_rate = 5;
+    ret->one_rate = 5;
+    ret->port_type_rate = 3;
+    ret->unused_rate = 80;
+    ret->output_rate = 30;
+    ret->r_output_rate = 70;
+    ret->separation_rate = 40;
+    ret->state_separation_rate = 70;
+    ret->separation_threshold = 35;
+    ret->output_exponent = 5;
+    ret->state_separation_threshold = 35;
     fprintf(stderr, "ret->brain %d\n", ret->nr_synapsis);
     dump(ret->brain[0][ret->nr_ports - 1], ret->nr_synapsis / 8);
     fprintf(stderr, "ret->brain_b: %p\n", ret->brain_b[0][0]);
@@ -249,7 +249,7 @@ AI_instance_t * load_ai(char *file, int mutation_rate) {
     ret->used_port = malloc(sizeof (int) * ret->nr_ports / 32);
     if ((tmp = fread(&ret->used_port[0], 1, sizeof (int) * ret->nr_ports / 32, in)) !=
             sizeof (int) * ret->nr_ports / 32) {
-        fprintf(stderr, "Failed to read used port %d/%lu\n", tmp, sizeof(int) * ret->nr_ports / 32);
+        fprintf(stderr, "Failed to read used port %d/%lu\n", tmp, sizeof (int) * ret->nr_ports / 32);
         perror("fread");
         return NULL;
     }
@@ -850,25 +850,32 @@ int _get_best_move(AI_instance_t *ai, board_t * board) {
     }
     //printf("separation_count: %d\n", ai->separation_count[0][ai->nr_ports-1]);
     fcount = 0;
-    /*int best_i = 0;
-      int best_val = 0;
-      for (i = 0; i < board->moves_count; i++) {
-      if (best_val == ai->nr_outputs)
-      break;
-      if (scores[i] > best_val) {
-      best_val = scores[i];
-      best_i = i;
-      }
-      }
-      return best_i;
-     */
+    int best_i = 0;
+    int best_val = 0;
+    for (i = 0; i < board->moves_count; i++) {
+        //                  printf("%d, ", scores[i]);
+
+        //if (best_val == ai->nr_outputs)
+        //    break;
+        if (scores[i] > best_val) {
+            best_val = scores[i];
+            best_i = i;
+        }
+    }
+    if (best_i == 0 && board->moves_count > 1 && best_val == scores[1])
+        return random_int_r(0, board->moves_count - 1);
+    //printf("best_i: %d", best_i);
+    //    printf("\n");
+
+    //return best_i;
+
 
 
     for (i = 0; i < board->moves_count; i++) {
         //      printf("%d, ", scores[i]);
         int sum = scores[i];
         for (j = 0; j < ai->output_exponent; j++)
-            sum*= scores[i];
+            sum *= scores[i];
         fcount += sum;
         cumdist[i] = fcount;
     }
@@ -889,12 +896,14 @@ int do_best_move(AI_instance_t *ai, board_t * board) {
     if (is_checkmate(board))
         return -1;
     if (is_stalemate(board) || (best_move = _get_best_move(ai, board)) == -1) {
+
         if (is_checkmate(board))
             return -1;
 
         return 0;
     }
-
+    if (best_move < 0)
+        printf("best move: %d\n", best_move);
     int ret = do_move(board, best_move);
     if (!ret)
         fprintf(stderr, "ret %d\n", ret);
@@ -1063,7 +1072,7 @@ void mutate_mutation_rates(AI_instance_t *ai) {
     ai->one_rate -= random_int_r(0, 1);
     ai->one_rate += random_int_r(0, 1);
     ai->one_rate = keep_in_range(ai->one_rate, min_val, max_val);
-    
+
     ai->output_exponent -= random_int_r(0, 1);
     ai->output_exponent += random_int_r(0, 1);
     ai->output_exponent = keep_in_range(ai->output_exponent, min_val, max_val);
@@ -1072,7 +1081,7 @@ void mutate_mutation_rates(AI_instance_t *ai) {
 
 //brain in a a1 is replaced with brain from a2 pluss a mutation
 
-int mutate(AI_instance_t *a1, AI_instance_t * a2, int print) {
+int mutate(AI_instance_t *a1, AI_instance_t * a2, int print, int print_stats) {
     int i, j;
     int max_val = 100;
     int min_val = 0;
@@ -1081,13 +1090,13 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print) {
 
     //chance to set one of the n last ports as an output port
     if (random_int_r(min_val, max_val) > a1->output_rate) {
-        a1->output_tag[0][random_int_r(a1->nr_ports - 20, a1->nr_ports - 1)] = 1;
+        a1->output_tag[0][random_int_r(a1->nr_ports - 50, a1->nr_ports - 1)] = 1;
     }
 
 
     //chance to remove the output tag
     if (random_int_r(min_val, max_val) > a1->r_output_rate) {
-        a1->output_tag[0][random_int_r(a1->nr_ports - 20, a1->nr_ports - 1)] = 0;
+        a1->output_tag[0][random_int_r(a1->nr_ports - 50, a1->nr_ports - 1)] = 0;
     }
 
     a1->mutation_rate = a2->mutation_rate;
@@ -1105,7 +1114,7 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print) {
 
     //find and mutate unused ports
     for (j = 0; j < a1->nr_ports; j++) {
-        if (!TestBit(a2->used_port, j) && !a1->output_tag[0][j]) {
+        if ((!TestBit(a2->used_port, j)) && (!a2->output_tag[0][j])) {
             if (random_int_r(min_val, max_val) > a1->unused_rate) {
 
                 //reset port
@@ -1279,8 +1288,9 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print) {
     bzero(a1->separation_count[0], a1->nr_brain_parts * a1->nr_ports * sizeof (int));
     bzero(a1->state_separation_count[0], a1->nr_brain_parts * a1->nr_ports * sizeof (int));
     bzero(a1->activation_count[0][0], 2 * a1->nr_ports * a1->nr_brain_parts * sizeof (int));
-    fprintf(stderr, "score %f, %d w, %d games from score %f, %d w, %d games, one_rate: %d, zero_rate: %d, p_type_rate: %d, unused_rate: %d, o_rate: %d, r_o_rate: %d, separation_threshold: %d, state_separation_threshold: %d, separation_rate: %d, state_separation_rate: %d\n",
-            get_score(a1), a1->nr_wins, a1->nr_games_played, get_score(a2), a2->nr_wins, a2->nr_games_played, a2->one_rate, a2->zero_rate, a2->port_type_rate, a2->unused_rate, a2->output_rate, a2->r_output_rate, a2->separation_threshold, a2->state_separation_threshold, a2->separation_rate, a2->state_separation_rate);
+    if (print_stats)
+        fprintf(stderr, "score %f, %d w, %d games from score %f, %d w, %d games, one_rate: %d, zero_rate: %d, p_type_rate: %d, unused_rate: %d, o_rate: %d, r_o_rate: %d, separation_threshold: %d, state_separation_threshold: %d, separation_rate: %d, state_separation_rate: %d, exponent: %d\n",
+            get_score(a1), a1->nr_wins, a1->nr_games_played, get_score(a2), a2->nr_wins, a2->nr_games_played, a2->one_rate, a2->zero_rate, a2->port_type_rate, a2->unused_rate, a2->output_rate, a2->r_output_rate, a2->separation_threshold, a2->state_separation_threshold, a2->separation_rate, a2->state_separation_rate, a2->output_exponent);
     clear_score(a1);
 
 
