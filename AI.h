@@ -58,6 +58,8 @@ extern int mutate(AI_instance_t *a1, AI_instance_t *a2, int print, int print_sta
 extern void clear_score(AI_instance_t *ai);
 extern int do_nonrandom_move(board_t *board);
 extern int do_random_move(board_t *board);
+extern int do_move_random_piece(board_t *board);
+extern int do_move_piece(board_t *board, enum moves_index piece_type);
 extern int do_pseudo_random_move(board_t *board);
 extern int do_piece_random_move(board_t *board);
 

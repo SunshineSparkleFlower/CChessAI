@@ -209,13 +209,14 @@ static inline void del_move(board_t *b, int n)
 int undo_move(board_t *b, int n)
 {
     struct move *m;
-    int tx, fx;
+    int tx, fx, ret;
 
     b->is_check = -1;
 
-    bb_undo_move(b, n);
+    ret = bb_undo_move(b, n);
 
     m = &b->moves[n];
+    // convert coordinates from bitboard coords (0->7, 1->6, ..., 7->0)
     tx = ~m->to.x & 0x7;
     fx = ~m->frm.x & 0x7;
     PIECE(b->board, m->frm.y, fx) = PIECE(b->board, m->to.y, tx);
@@ -226,6 +227,32 @@ int undo_move(board_t *b, int n)
             ? WHITE_PAWN : BLACK_PAWN;
     }
 
+    debug_print("%s: ret = %d\n", __func__, ret);
+    switch (ret) {
+        case 3: // move was white short castling
+            PIECE(b->board, 0, 7) = PIECE(b->board, 0, 5);
+            PIECE(b->board, 0, 5) = P_EMPTY;
+            break;
+        case 4: // move was white long castling
+            PIECE(b->board, 0, 0) = PIECE(b->board, 0, 3);
+            PIECE(b->board, 0, 3) = P_EMPTY;
+            break;
+        case 5: // move was black short castling
+            PIECE(b->board, 7, 7) = PIECE(b->board, 7, 5);
+            PIECE(b->board, 7, 5) = P_EMPTY;
+            break;
+        case 6: // move was black long castling
+            PIECE(b->board, 7, 0) = PIECE(b->board, 7, 3);
+            PIECE(b->board, 7, 3) = P_EMPTY;
+            break;
+        case 7: // move was en passant
+            PIECE(b->board, m->to.y, tx) = P_EMPTY;
+            PIECE(b->board, m->to.y - 1 * b->turn, tx) = b->backup.piece;
+            break;
+        default:
+            break;
+    }
+
     return 1;
 }
 
@@ -233,24 +260,56 @@ int undo_move(board_t *b, int n)
  * put the player in check */
 int do_actual_move(board_t *b, struct move *m)
 {
-    int tx, fx;
+    int tx, fx, ret;
+
+    printf("in %s\n", __func__);
+    getchar();
 
     b->is_check = -1;
-    if (bb_do_actual_move(b, m) != 1) {
+    ret = bb_do_actual_move(b, m);
+    if (ret == 1) {
         printf("FATAL FUCKING ERROR: %s: SOMETHING WENT WRONG\n", __FUNCTION__);
         printf("%s: HALTING EXECUTION!!1\n", __FUNCTION__);
         asm("int3");
         return 0;
-    }
+    } else if (ret == 2) // attempted castling move was illegal
+        return 0;
 
     debug_print("moving from %d, %d to %d, %d\n", m->frm.y, ~m->frm.x & 0x7,
             m->to.y, ~m->to.x & 0x7);
 
+    // convert coordinates from bitboard coords (0->7, 1->6, ..., 7->0)
     tx = ~m->to.x & 0x7;
     fx = ~m->frm.x & 0x7;
     b->backup.piece = PIECE(b->board, m->to.y, tx);
     PIECE(b->board, m->to.y, tx) = PIECE(b->board, m->frm.y, fx);
     PIECE(b->board, m->frm.y, fx) = P_EMPTY;
+
+    debug_print("%s: ret = %d\n", __func__, ret);
+    switch (ret) {
+        case 3: // move was white short castling
+            PIECE(b->board, 0, 5) = PIECE(b->board, 0, 7);
+            PIECE(b->board, 0, 7) = P_EMPTY;
+            break;
+        case 4: // move was white long castling
+            PIECE(b->board, 0, 3) = PIECE(b->board, 0, 0);
+            PIECE(b->board, 0, 0) = P_EMPTY;
+            break;
+        case 5: // move was black short castling
+            PIECE(b->board, 7, 5) = PIECE(b->board, 7, 7);
+            PIECE(b->board, 7, 7) = P_EMPTY;
+            break;
+        case 6: // move was black long castling
+            PIECE(b->board, 7, 3) = PIECE(b->board, 7, 0);
+            PIECE(b->board, 7, 0) = P_EMPTY;
+            break;
+        case 7: // en passant
+            b->backup.piece = PIECE(b->board, m->to.y - 1 * b->turn, tx);
+            PIECE(b->board, m->to.y - 1 * b->turn, tx) = P_EMPTY;
+            break;
+        default:
+            break;
+    }
 
     if (b->backup.promotion) {
         PIECE(b->board, m->to.y, tx) = b->turn == WHITE
@@ -264,18 +323,22 @@ int do_actual_move(board_t *b, struct move *m)
 int do_move(board_t *b, int n)
 {
     struct move *m;
-    int tx, fx;
+    int tx, fx, ret;
 
     if (n >= b->moves_count)
         return 0;
 
     b->is_check = -1;
-    if (bb_do_move(b, n) != 1) {
+    ret = bb_do_move(b, n);
+    if (ret == 0) {
         printf("FATAL FUCKING ERROR: %s: SOMETHING WENT WRONG\n", __FUNCTION__);
         printf("%s: HALTING EXECUTION!!1\n", __FUNCTION__);
         printf("b = %p, n = %d, moves_count = %d\n",
                 b, n, b->moves_count);
         asm("int3");
+        return 0;
+    } else if (ret == 2) {
+        del_move(b, n);
         return 0;
     }
 
@@ -295,11 +358,37 @@ int do_move(board_t *b, int n)
     debug_print("moving from %d, %d to %d, %d\n", m->frm.y, ~m->frm.x & 0x7,
             m->to.y, ~m->to.x & 0x7);
 
+    // convert coordinates from bitboard coords (0->7, 1->6, ..., 7->0)
     tx = ~m->to.x & 0x7;
     fx = ~m->frm.x & 0x7;
     b->backup.piece = PIECE(b->board, m->to.y, tx);
     PIECE(b->board, m->to.y, tx) = PIECE(b->board, m->frm.y, fx);
     PIECE(b->board, m->frm.y, fx) = P_EMPTY;
+
+    switch (ret) {
+        case 3: // move was white short castling
+            PIECE(b->board, 0, 5) = PIECE(b->board, 0, 7);
+            PIECE(b->board, 0, 7) = P_EMPTY;
+            break;
+        case 4: // move was white long castling
+            PIECE(b->board, 0, 3) = PIECE(b->board, 0, 0);
+            PIECE(b->board, 0, 0) = P_EMPTY;
+            break;
+        case 5: // move was black short castling
+            PIECE(b->board, 7, 5) = PIECE(b->board, 7, 7);
+            PIECE(b->board, 7, 7) = P_EMPTY;
+            break;
+        case 6: // move was black long castling
+            PIECE(b->board, 7, 3) = PIECE(b->board, 7, 0);
+            PIECE(b->board, 7, 0) = P_EMPTY;
+            break;
+        case 7: // en passant
+            b->backup.piece = PIECE(b->board, m->to.y - 1 * b->turn, tx);
+            PIECE(b->board, m->to.y - 1 * b->turn, tx) = P_EMPTY;
+            break;
+        default:
+            break;
+    }
 
     if (b->backup.promotion) {
         PIECE(b->board, m->to.y, tx) = b->turn == WHITE
@@ -321,7 +410,7 @@ int move(board_t *b, int n)
             return -1;
         if (n >= b->moves_count)
             return 0;
-    } while (!do_move(b, n));
+    } while (do_move(b, n) != 1);
 
     return 1;
 }

@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 typedef uint64_t u64;
+typedef uint8_t u8;
 
 enum moves_index {
     PAWN = 0,

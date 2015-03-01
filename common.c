@@ -377,5 +377,6 @@ enum moves_index get_piece_type(piece_t piece)
 
 void _shutdown(void)
 {
-    fclose(urandom);
+    if (urandom)
+        fclose(urandom);
 }

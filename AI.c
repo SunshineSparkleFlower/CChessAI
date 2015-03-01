@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "common.h"
 #include "AI.h"
+#include "bitboard.h"
 
 #define MAGIC_LENGTH 6
 #define MIN_VAL 0
@@ -739,11 +740,51 @@ int do_random_move(board_t * board) {
         }
         rndmove = random_int_r(0, board->moves_count - 1);
 
-    } while (!do_move(board, rndmove));
+    } while (do_move(board, rndmove) != 1);
 
     swapturn(board);
 
     return 1;
+}
+
+/* generate moves for a pice and make a move.
+ * piece_type must be one of the values defined in enum_moves index. if EMPTY is
+ * passed, a random piece is choosed */
+int do_move_piece(board_t *board, enum moves_index piece_type) {
+    int rnd, i;
+    static void (*move_gen_callbacks[6])(board_t *board) = {
+            generate_pawn_moves_only,
+            generate_rook_moves_only,
+            generate_knight_moves_only,
+            generate_bishop_moves_only,
+            generate_queen_moves_only,
+            generate_king_moves_only,
+    };
+
+    if (piece_type == EMPTY) {
+        // pick a random piece and generate moves for it. pick another piece if
+        // the current one has no possible moves
+        rnd = random_int_r(0, 5);
+        for (i = (rnd + 1) % 6; i != rnd; i = (i + 1) % 6){
+            move_gen_callbacks[i](board);
+            if (board->moves_count > 0)
+                break;
+        }
+    } else if (piece_type >= 0 && piece_type < 6)
+        move_gen_callbacks[piece_type](board);
+    else
+        return -2; // user passed invalid value in piece_type
+
+    // the stalemate (if EMPTY was passed) or no possible moves for piece the user specified
+    if (board->moves_count <= 0)
+        return 0;
+
+    // will return a random move from the list of moves created in this function
+    return do_random_move(board);
+}
+
+int do_move_random_piece(board_t *board) {
+    return do_move_piece(board, EMPTY);
 }
 
 //perform a nonrandom move return 0 if stalemate, -1 if check mate 1 of success

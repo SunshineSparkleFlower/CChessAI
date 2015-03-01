@@ -25,5 +25,10 @@ extern void bb_generate_all_legal_moves(board_t *board);
 extern int bb_do_move(board_t *b, int index);
 extern int bb_undo_move(board_t *b, int index);
 extern int bb_do_actual_move(board_t *board, struct move *m);
-
+extern void generate_king_moves_only(board_t *board);
+extern void generate_queen_moves_only(board_t *board);
+extern void generate_rook_moves_only(board_t *board);
+extern void generate_bishop_moves_only(board_t *board);
+extern void generate_knight_moves_only(board_t *board);
+extern void generate_pawn_moves_only(board_t *board);
 #endif

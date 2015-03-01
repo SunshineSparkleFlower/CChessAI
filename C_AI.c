@@ -62,6 +62,10 @@ void play_chess(void *arg) {
     for (nr_games = 0; nr_games < games_pr_iteration; nr_games++) {
         // printf("__________________NEW GAME_________________\n");
         board = new_board(game->fen);
+        if (board == NULL) {
+            fprintf(stderr, "BOARD = NULL!!!\n");
+            exit(1);
+        }
         //board_t *board = new_board("rnbqkbnr/qqqqqqqq/8/8/8/8/qqqqqqqq/qqqqKqqq w - - 0 1");
         int pseudo_r = random_int_r(0, 10);
 
@@ -81,11 +85,7 @@ void play_chess(void *arg) {
             /* if (pseudo_r)
                  ret = do_random_move(board);
 
-             else
-                 ret = do_nonrandom_move(board);
-             */
-
-            ret = do_piece_random_move(board);
+            ret = do_move_random_piece(board);
             if (ret == 0) {
                 break;
             } else if (ret == -1) {
@@ -485,7 +485,7 @@ int main(int argc, char *argv[]) {
 
         //games[i].do_a_move = do_nonrandom_move;
         //games[i].do_a_move = do_random_move;
-        //games[i].fen = DEFAULT_FEN;
+        games[i].fen = DEFAULT_FEN;
         games[i].game_id = i;
 
         jobs[i].data = games + i;
