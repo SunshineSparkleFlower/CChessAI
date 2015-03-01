@@ -63,11 +63,11 @@ void play_chess(void *arg) {
         // printf("__________________NEW GAME_________________\n");
         board = new_board(game->fen);
         if (board == NULL) {
-            fprintf(stderr, "BOARD = NULL!!!\n");
+            fprintf(stderr, "ERROR: BOARD = NULL!!!\n");
             exit(1);
         }
         //board_t *board = new_board("rnbqkbnr/qqqqqqqq/8/8/8/8/qqqqqqqq/qqqqKqqq w - - 0 1");
-        int pseudo_r = random_int_r(0, 10);
+       // int pseudo_r = random_int_r(0, 10);
 
         for (moves = 0; moves < max_moves; moves++) {
             ret = do_best_move(ai, board);
@@ -84,13 +84,13 @@ void play_chess(void *arg) {
             }
             /* if (pseudo_r)
                  ret = do_random_move(board);
-
+*/
             ret = do_move_random_piece(board);
             if (ret == 0) {
                 break;
             } else if (ret == -1) {
-                //     printf("AI won\n");
-                //    print_board(board->board);
+                     printf("AI won\n");
+                    print_board(board->board);
                 reward(ai);
                 break;
             }

@@ -181,7 +181,7 @@ int main(int argc, char *argv[])
 
     // initialize board and AI
     board = new_board(DEFAULT_FEN);
-    ai = load_ai(ai_file, 1000);
+    ai = load_ai(ai_file);
     if (!ai) {
         printf("failed to load ai\n");
         return 1;
@@ -200,7 +200,7 @@ int main(int argc, char *argv[])
     memset(buffer, 0, sizeof(buffer));
     if (white)
         goto this_is_so_dirty_it_is_sexy;
-
+int best_move;
     // game loop
     while (read(gui, buffer, sizeof buffer) > 0) {
         // do remote move
@@ -215,7 +215,8 @@ int main(int argc, char *argv[])
 
 this_is_so_dirty_it_is_sexy:
         // find and do AI move
-        find_best_move(ai, board, &m);
+        best_move = find_best_move(ai, board, &m);
+        //do_move(board, best_move);
         do_actual_move(board, &m);
         swapturn(board);
 

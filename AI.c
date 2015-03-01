@@ -74,7 +74,7 @@ AI_instance_t *ai_new(int nr_ports) {
     ret->separation_threshold = 35;
     ret->output_exponent = 10;
     ret->state_separation_threshold = 35;
-        create_random_connections(ret, 2,  a1->low_port, 0);
+    //    create_random_connections(ret, 2,  a1->low_port, 0);
 
     return ret;
 }
@@ -802,46 +802,6 @@ int do_nonrandom_move(board_t * board) {
             return 0;
         }
         rndmove = board->moves_count - 1;
-
-    } while (!do_move(board, rndmove));
-
-    swapturn(board);
-
-    return 1;
-}
-
-int do_piece_random_move(board_t * board) {
-    int rndmove;
-    generate_random_moves(board);
-    int double_checked = 0;
-    do {
-        if (is_checkmate(board)) {
-            if (!double_checked) {
-                //printf("double check, check mate please\n");
-                board->moves_count = -1;
-                double_checked = 1;
-            }
-            generate_all_moves(board);
-            if (is_checkmate(board)) {
-                debug_print("checkmate\n");
-                return -1;
-            }
-        }
-        if (is_stalemate(board)) {
-            if (!double_checked) {
-                board->moves_count = -1;
-                double_checked = 1;
-                //printf("double check, stalemate please\n");
-
-            }
-            generate_all_moves(board);
-            if (is_stalemate(board)) {
-
-                debug_print("stalemate\n");
-                return 0;
-            }
-        }
-        rndmove = random_int_r(0, board->moves_count - 1);
 
     } while (!do_move(board, rndmove));
 
