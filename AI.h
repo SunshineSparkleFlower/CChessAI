@@ -14,26 +14,19 @@ typedef struct AI_instance {
     int nr_wins, nr_losses, nr_games_played;
     float positive_reward;
     int generation;
-    int ***brain;    
-    int ***brain_a; 
-    int ***brain_b;       
+    int **brain;         
     int nr_ports;
     int nr_synapsis;
     int board_size;
-    int mutation_rate;
-    int nr_brain_parts;
-    int **port_type;
-    int **mutationrate;
+    int *port_type;
     int nr_porttypes;
-    int ***activation_count;
-    int ***correlations;
-    int **invert;
-    int nr_outputs;
-    int ***separation;
-    int **separation_count;
-    int ***state_separation;
-    int **state_separation_count;
-    int **output_tag;
+    int **activation_count;
+    int *invert;
+    int **separation;
+    int *separation_count;
+    int **state_separation;
+    int *state_separation_count;
+    int *output_tag;
     int zero_rate;
     int one_rate;
     int port_type_rate;
@@ -46,11 +39,13 @@ typedef struct AI_instance {
     int state_separation_threshold;
     int *used_port;
     int output_exponent;
+    int low_port;
+    int high_port;
 
 } __attribute__((packed)) AI_instance_t;
 
-extern AI_instance_t *ai_new(int mutation_rate, int brain_size, int nr_ports);
-extern AI_instance_t *load_ai(char *file, int mutation_rate);
+extern AI_instance_t *ai_new(int nr_ports);
+extern AI_instance_t *load_ai(char *file);
 extern int dump_ai(char *file, AI_instance_t *ai);
 extern void ai_free(AI_instance_t *ai);
 extern int _get_best_move(AI_instance_t *ai, board_t * board);
@@ -64,9 +59,10 @@ extern void clear_score(AI_instance_t *ai);
 extern int do_nonrandom_move(board_t *board);
 extern int do_random_move(board_t *board);
 extern int do_pseudo_random_move(board_t *board);
+extern int do_piece_random_move(board_t *board);
 
 
 extern int score(AI_instance_t *ai, piece_t *board);
-extern int eval_curcuit(int *V, int **M,  int nr_ports, piece_t *board, int board_size, int* port_type, int **brain_a, int **brain_b, int **activation_count,int **state_separation, int *invert, int nr_outputs, int*output_tag, int *used_port);
+extern int eval_curcuit(piece_t *board, AI_instance_t *ai);
 
 #endif
