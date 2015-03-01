@@ -27,7 +27,6 @@ struct game_struct *games = NULL;
 struct job *jobs = NULL;
 
 char *ai_file = NULL;
-int mutation_rate = 1000;
 int games_to_play = 100;
 int max_iterations = 100;
 int brain_size = 1;
@@ -59,36 +58,47 @@ void play_chess(void *arg) {
     //printf("game_id: %d\n", game->game_id);
     //printf("starting game %d\n", game->game_id);
     //    printf("max_moves: %d\n", max_moves);
+
     for (nr_games = 0; nr_games < games_pr_iteration; nr_games++) {
+        // printf("__________________NEW GAME_________________\n");
         board = new_board(game->fen);
         //board_t *board = new_board("rnbqkbnr/qqqqqqqq/8/8/8/8/qqqqqqqq/qqqqKqqq w - - 0 1");
+        int pseudo_r = random_int_r(0, 10);
 
         for (moves = 0; moves < max_moves; moves++) {
             ret = do_best_move(ai, board);
-            //                              print_board(board->board);
+            //print_board(board->board);
 
             if (ret == 0) {
                 break;
             } else if (ret == -1) {
 
-                punish(ai);
+                //punish(ai);
                 //printf("AI lost\n");
-                //            print_board(board->board);
+                //                   print_board(board->board);
                 break;
             }
+            /* if (pseudo_r)
+                 ret = do_random_move(board);
 
-            ret = do_random_move(board);
+             else
+                 ret = do_nonrandom_move(board);
+             */
+
+            ret = do_piece_random_move(board);
             if (ret == 0) {
                 break;
             } else if (ret == -1) {
-                //printf("AI won\n");
-                //                                       print_board(board->board);
+                //     printf("AI won\n");
+                //    print_board(board->board);
                 reward(ai);
                 break;
             }
         }
-        if (ret == 0 || moves == max_moves)
+        if (ret == 0 || moves == max_moves) {
             draw(ai, board);
+            //printf("DRAW\n");
+        }
         //  if (ret >= 0){
         //          small_reward(ai,score_board(board->board));            
         //  }
@@ -366,10 +376,10 @@ int print_brain(AI_instance_t *a1, int tmp) {
     //i%(8*16);
     //board[i/8*16][(i/8*16)/16]
     /* print integers and floats */
-    for (i = 0; i < a1->nr_ports; i++) {
+    for (i = a1->low_port; i <= a1->high_port; i++) {
 
         for (j = 0; j < a1->nr_synapsis; j++) {
-            if ((i > a1->nr_ports - 1 || (TestBit(a1->used_port, i) || a1->output_tag[0][i])) && TestBit(a1->brain[0][i], j)) {
+            if (((TestBit(a1->used_port, i) || a1->output_tag[i])) && TestBit(a1->brain[i], j)) {
                 piece_t piece = 1 << ((j % (8 * 16)) % 16);
 
                 fprintf(f, "p_%d -> p_%d\n", i, j);
@@ -379,15 +389,15 @@ int print_brain(AI_instance_t *a1, int tmp) {
                     fprintf(f, "p_%d[label=\"x:%d y:%d piece:%s(M)\"]\n", j, j / (8 * 16), (j % (8 * 16)) / 16, piece_to_str(piece));
 
 
-                if (a1->port_type[0][i] == 1)
+                if (a1->port_type[i] == 1)
                     fprintf(f, "p_%d[color=red,style=filled,shape=octagon]\n", i);
-                else if (a1->port_type[0][i] == 2)
+                else if (a1->port_type[i] == 2)
                     fprintf(f, "p_%d[color=green,style=filled,shape=doublecircle]\n", i);
-                else if (a1->port_type[0][i] == 3)
+                else if (a1->port_type[i] == 3)
                     fprintf(f, "p_%d[color=chocolate2,style=filled,shape=star]\n", i);
-                else if (a1->port_type[0][i] == 4)
+                else if (a1->port_type[i] == 4)
                     fprintf(f, "p_%d[color=deeppink3,style=filled,shape=house]\n", i);
-                if (a1->output_tag[0][i])
+                if (a1->output_tag[i])
                     fprintf(f, "p_%d[color=gold,style=filled]\n", i);
             }
         }
@@ -460,10 +470,10 @@ int main(int argc, char *argv[]) {
 
     for (i = 0; i < nr_jobs; i++) {
         if (ai_file) {
-            ais[i] = load_ai(ai_file, mutation_rate);
+            ais[i] = load_ai(ai_file);
             clear_score(ais[i]);
         } else
-            ais[i] = ai_new(mutation_rate, brain_size, nr_ports); // mutation rate = 5000
+            ais[i] = ai_new(nr_ports); // mutation rate = 5000
         if (ais[i] == NULL) {
             perror("ai creation");
             exit(1);
@@ -540,7 +550,7 @@ int main(int argc, char *argv[]) {
         } else {
             int nr_mutated = 0;
             best = get_best_ai(ais, nr_jobs, -1);
-            printf("best AI VS RANDOM: %d\n", best);
+            // printf("best AI VS RANDOM: %d, %f \n", best, get_score(ais[best]));
             if (!(iteration % 100)) {
                 printf("print tmp brain\n");
                 print_brain(ais[best], 1);
@@ -548,7 +558,7 @@ int main(int argc, char *argv[]) {
             //printf("nr played %d\n", ais[best]->nr_games_played);
             for (i = 0; i < nr_jobs; put_new_job(jobs + i), i++) {
                 if (games_to_play > ais[best]->nr_games_played) {
-
+                    printf("need to play more before mutating\n");
                     continue;
                 }
                 if (i == best) {
@@ -560,8 +570,6 @@ int main(int argc, char *argv[]) {
                 }
             }
             printf("nr_muated: %f\n", ((float) nr_mutated) / nr_jobs);
-
-
         }
     }
     if (ai_vs_ai)
