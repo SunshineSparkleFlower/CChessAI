@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "common.h"
 #include "AI.h"
+#include "bitboard.h"
 
 #define MAGIC_LENGTH 6
 static unsigned char ai_mem_magic[] = "\x01\x02\x03\x04\x05\x06";
@@ -934,6 +935,46 @@ int do_random_move(board_t * board) {
     return 1;
 }
 
+/* generate moves for a pice and make a move.
+ * piece_type must be one of the values defined in enum_moves index. if EMPTY is
+ * passed, a random piece is choosed */
+int do_move_piece(board_t *board, enum moves_index piece_type) {
+    int rnd, i;
+    static void (*move_gen_callbacks[6])(board_t *board) = {
+            generate_pawn_moves_only,
+            generate_rook_moves_only,
+            generate_knight_moves_only,
+            generate_bishop_moves_only,
+            generate_queen_moves_only,
+            generate_king_moves_only,
+    };
+
+    if (piece_type == EMPTY) {
+        // pick a random piece and generate moves for it. pick another piece if
+        // the current one has no possible moves
+        rnd = random_int_r(0, 5);
+        for (i = (rnd + 1) % 6; i != rnd; i = (i + 1) % 6){
+            move_gen_callbacks[i](board);
+            if (board->moves_count > 0)
+                break;
+        }
+    } else if (piece_type >= 0 && piece_type < 6)
+        move_gen_callbacks[piece_type](board);
+    else
+        return -2; // user passed invalid value in piece_type
+
+    // the stalemate (if EMPTY was passed) or no possible moves for piece the user specified
+    if (board->moves_count <= 0)
+        return 0;
+
+    // will return a random move from the list of moves created in this function
+    return do_random_move(board);
+}
+
+int do_move_random_piece(board_t *board) {
+    return do_move_piece(board, EMPTY);
+}
+
 //perform a nonrandom move return 0 if stalemate, -1 if check mate 1 of success
 
 int do_nonrandom_move(board_t * board) {
@@ -1135,10 +1176,10 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print, int print_stats) {
                     fprintf(stderr, "%d(r), ", j);
             } else
                 if (print)
-                fprintf(stderr, "%d, ", j);
+                    fprintf(stderr, "%d, ", j);
         } else
             if (print)
-            fprintf(stderr, "%d(u), ", j);
+                fprintf(stderr, "%d(u), ", j);
     }
 
     //check for constant ports and reset them
@@ -1290,7 +1331,7 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print, int print_stats) {
     bzero(a1->activation_count[0][0], 2 * a1->nr_ports * a1->nr_brain_parts * sizeof (int));
     if (print_stats)
         fprintf(stderr, "score %f, %d w, %d games from score %f, %d w, %d games, one_rate: %d, zero_rate: %d, p_type_rate: %d, unused_rate: %d, o_rate: %d, r_o_rate: %d, separation_threshold: %d, state_separation_threshold: %d, separation_rate: %d, state_separation_rate: %d, exponent: %d\n",
-            get_score(a1), a1->nr_wins, a1->nr_games_played, get_score(a2), a2->nr_wins, a2->nr_games_played, a2->one_rate, a2->zero_rate, a2->port_type_rate, a2->unused_rate, a2->output_rate, a2->r_output_rate, a2->separation_threshold, a2->state_separation_threshold, a2->separation_rate, a2->state_separation_rate, a2->output_exponent);
+                get_score(a1), a1->nr_wins, a1->nr_games_played, get_score(a2), a2->nr_wins, a2->nr_games_played, a2->one_rate, a2->zero_rate, a2->port_type_rate, a2->unused_rate, a2->output_rate, a2->r_output_rate, a2->separation_threshold, a2->state_separation_threshold, a2->separation_rate, a2->state_separation_rate, a2->output_exponent);
     clear_score(a1);
 
 

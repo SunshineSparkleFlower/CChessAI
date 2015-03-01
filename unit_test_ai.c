@@ -36,9 +36,10 @@ void *moves_test(void *arg)
 {
     int i, j, ret;
     board_t *board;
-    long checkmate = 0, stalemate = 0, timeout = 0;
     struct game_struct *game = (struct game_struct *)arg;
     uint64_t num = 0, *num_moves;
+
+    enum moves_index type_piece = EMPTY;
 
     for (j = 0; j < game->nr_games; j++) {
         board = new_board(DEFAULT_FEN);
@@ -48,42 +49,29 @@ void *moves_test(void *arg)
         //board = new_board("Q6k/8/8/8/8/8/K7/6R1 b - - 0 1");
 
         for (i = 0; i < 100; i++) {
-            //printf("\n--------------- %s's turn --------------- \n", board->turn == WHITE ? "WHITE" : "BLACK");
-            generate_all_moves(board);
-
-            /*
+            getchar();
+            printf("\n--------------- %s's turn --------------- \n", board->turn == WHITE ? "WHITE" : "BLACK");
             print_board(board->board);
             bb_print(board->white_pieces.apieces);
             printf("thread %d: --- %d %s ---\n", game->thread_id, i,
                     board->turn == WHITE ? "white" : "black");
-            printf("legal_moves:\n");
-            //print_legal_moves(board);
-            getchar();
-            */
 
-            num += board->moves_count;
-            ret = do_random_move(board);
+            ret = do_random_move_piece(board, type_piece);
 
             if (ret == 0) {
-                debug_print("(%d) stalemate\n", game->thread_id);
-                ++stalemate;
+                printf("(%d) stalemate\n", game->thread_id);
                 break;
             } else if (ret == -1) {
-                debug_print("(%d) checkmate\n", game->thread_id);
-                ++checkmate;
+                printf("(%d) checkmate\n", game->thread_id);
+                break;
+            } else if (ret == -2) {
+                printf("no more possible moves for piece type %d\n", type_piece);
                 break;
             }
         }
 
-        if (ret > 0)
-            ++timeout;
-
         free_board(board);
     }
-
-    game->checkmates = checkmate;
-    game->stalemates = stalemate;
-    game->timeouts = timeout;
 
     num_moves = malloc(sizeof(num));
     *num_moves = num;
@@ -94,7 +82,6 @@ uint64_t spawn_n_games(int n, int rounds)
 {
     pthread_t threads[n - 1];
     int i;
-    int checkmate, stalemate, timeout;
     struct game_struct games[n];
     uint64_t ret = 0, *tmp;
 
@@ -105,20 +92,11 @@ uint64_t spawn_n_games(int n, int rounds)
         pthread_create(&threads[i], NULL, moves_test, (void *)&games[i]);
     }
 
-    checkmate = stalemate = timeout = 0;
     for (i = 0; i < n; i++) {
         pthread_join(threads[i], (void **)&tmp);
         ret += *tmp;
         free(tmp);
-
-        checkmate += games[i].checkmates;
-        stalemate += games[i].stalemates;
-        timeout += games[i].timeouts;
     }
-
-    printf("%d checkmates\n", checkmate);
-    printf("%d stalemates\n", stalemate);
-    printf("%d timeouts\n", timeout);
 
     return ret;
 }
@@ -160,24 +138,11 @@ int main(int argc, char *argv[])
     //random_test();
 
 
-    unsigned long start, end;
-    double diff;
-    int rounds, threads, count;
-    uint64_t num_trekk;
+    int rounds, threads;
 
-    start = now();
     rounds = argc > 1 ? atoi(argv[1]) : 1;
     threads = argc > 2 ? atoi(argv[2]) : 1;
-    num_trekk = spawn_n_games(threads, rounds);
-    end = now();
-
-    diff = end - start;
-
-    printf("%lu\n", num_trekk);
-    count = rounds * threads;
-    printf("%d games played in %.0f ms (%.1f games pr. second, w/ %d threads)",
-            count, diff, (double)count / (diff / 1000), threads);
-    printf(" %lu moves pr. second\n", (uint64_t)((double)num_trekk / (diff / 1000)));
+    spawn_n_games(threads, rounds);
 
     _shutdown();
     return 0;

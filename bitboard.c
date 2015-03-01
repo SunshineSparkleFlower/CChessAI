@@ -847,3 +847,104 @@ void bb_generate_all_legal_moves(board_t *board)
     generate_en_passant_moves(board, b);
 #endif
 }
+
+void generate_king_moves_only(board_t *board)
+{
+    int i;
+    struct bitboard *b;
+
+    board->moves_count = 0;
+    b = board->turn == WHITE ? &board->white_pieces : &board->black_pieces;
+
+    memset(board->moves, 0, sizeof(board->moves));
+    for (i = 0; i < 64; i++) {
+        if ((b->king >> i) & 1)
+            store_moves(generate_king_moves(b, i), i, board->moves,
+                    &board->moves_count);
+    }
+#ifndef DISABLE_CASTLING
+    generate_castling_moves(board, b);
+#endif
+}
+
+void generate_queen_moves_only(board_t *board)
+{
+    int i;
+    struct bitboard *b;
+
+    board->moves_count = 0;
+    b = board->turn == WHITE ? &board->white_pieces : &board->black_pieces;
+
+    memset(board->moves, 0, sizeof(board->moves));
+    for (i = 0; i < 64; i++) {
+        if ((b->queens >> i) & 1)
+            store_moves(generate_queen_moves(b, i), i, board->moves,
+                    &board->moves_count);
+    }
+}
+
+void generate_rook_moves_only(board_t *board)
+{
+    int i;
+    struct bitboard *b;
+
+    board->moves_count = 0;
+    b = board->turn == WHITE ? &board->white_pieces : &board->black_pieces;
+
+    memset(board->moves, 0, sizeof(board->moves));
+    for (i = 0; i < 64; i++) {
+        if ((b->rooks >> i) & 1)
+            store_moves(generate_rook_moves(b, i), i, board->moves,
+                    &board->moves_count);
+    }
+}
+
+void generate_bishop_moves_only(board_t *board)
+{
+    int i;
+    struct bitboard *b;
+
+    board->moves_count = 0;
+    b = board->turn == WHITE ? &board->white_pieces : &board->black_pieces;
+
+    memset(board->moves, 0, sizeof(board->moves));
+    for (i = 0; i < 64; i++) {
+        if ((b->bishops >> i) & 1)
+            store_moves(generate_bishop_moves(b, i), i, board->moves,
+                    &board->moves_count);
+    }
+}
+
+void generate_knight_moves_only(board_t *board)
+{
+    int i;
+    struct bitboard *b;
+
+    board->moves_count = 0;
+    b = board->turn == WHITE ? &board->white_pieces : &board->black_pieces;
+
+    memset(board->moves, 0, sizeof(board->moves));
+    for (i = 0; i < 64; i++) {
+        if ((b->knights >> i) & 1)
+            store_moves(generate_knight_moves(b, i), i, board->moves,
+                    &board->moves_count);
+    }
+}
+
+void generate_pawn_moves_only(board_t *board)
+{
+    u64 moves, attacks;
+    struct bitboard *b;
+
+    board->moves_count = 0;
+    b = board->turn == WHITE ? &board->white_pieces : &board->black_pieces;
+
+    memset(board->moves, 0, sizeof(board->moves));
+    moves = generate_pawn_moves(b, &attacks, board->turn);
+    store_pawn_moves(b, moves, attacks, board->moves,
+            &board->moves_count, board->turn);
+
+#ifndef DISABLE_EN_PASSANT
+    generate_en_passant_moves(board, b);
+#endif
+}

@@ -81,7 +81,7 @@ void play_chess(void *arg) {
                 break;
             }
 
-            ret = do_random_move(board);
+            ret = do_move_random_piece(board);
             if (ret == 0) {
                 break;
             } else if (ret == -1) {
@@ -187,7 +187,6 @@ void sighandler(int sig) {
     fprintf(stderr, "Are you sure you want to quit? (Y/n): [default: n] ");
     if (fgets(buffer, sizeof (buffer), stdin) == NULL)
         return;
-    printf("answer was %s\n", buffer);
     if (tolower(buffer[0]) == 'c') //exit without any further questions
         exit(0);
 
