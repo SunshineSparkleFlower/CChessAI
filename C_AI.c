@@ -61,6 +61,10 @@ void play_chess(void *arg) {
     //    printf("max_moves: %d\n", max_moves);
     for (nr_games = 0; nr_games < games_pr_iteration; nr_games++) {
         board = new_board(game->fen);
+        if (board == NULL) {
+            fprintf(stderr, "BOARD = NULL!!!\n");
+            exit(1);
+        }
         //board_t *board = new_board("rnbqkbnr/qqqqqqqq/8/8/8/8/qqqqqqqq/qqqqKqqq w - - 0 1");
 
         for (moves = 0; moves < max_moves; moves++) {
@@ -183,6 +187,7 @@ void sighandler(int sig) {
     fprintf(stderr, "Are you sure you want to quit? (Y/n): [default: n] ");
     if (fgets(buffer, sizeof (buffer), stdin) == NULL)
         return;
+    printf("answer was %s\n", buffer);
     if (tolower(buffer[0]) == 'c') //exit without any further questions
         exit(0);
 
@@ -475,7 +480,7 @@ int main(int argc, char *argv[]) {
 
         //games[i].do_a_move = do_nonrandom_move;
         //games[i].do_a_move = do_random_move;
-        //games[i].fen = DEFAULT_FEN;
+        games[i].fen = DEFAULT_FEN;
         games[i].game_id = i;
 
         jobs[i].data = games + i;

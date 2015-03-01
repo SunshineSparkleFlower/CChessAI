@@ -10,15 +10,21 @@ typedef struct coord {
     int8_t x :4;
 } coord_t;
 
+#include "common.h"
 typedef struct move {
+    u8 en_passant :1; // 1 if its an en passant move. 0 otherwise
     coord_t frm, to;
 } move_t;
 
-#include "common.h"
 struct bitboard {
     u8 king_has_moved :1;
     u8 long_rook_moved :1;
     u8 short_rook_moved :1;
+    // must be updated on each move.
+    // 0-7 indicates the column of double move.
+    // > 7 indicates that no double move was done
+    u8 double_pawn_move :4;
+
     u64 pieces, apieces;
     u64 pawns;
     u64 rooks;
@@ -52,7 +58,7 @@ typedef struct board {
     int is_check;
 } board_t;
 
-#define DEFAULT_FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1"
+#define DEFAULT_FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 extern board_t *new_board(char *_fen);
 extern void free_board(board_t *b);

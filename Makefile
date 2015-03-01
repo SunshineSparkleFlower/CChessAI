@@ -11,6 +11,7 @@ fast: C_AI.o board.o AI.o common.o bitboard.o magicmoves.o threadpool.o
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
 
 alice: CFLAGS += -D ENGINE_NAME=\"Alice\" -D ENGINE_AUTHOR=\"Andreas\"
+alice: CFLAGS += -D DISABLE_CASTLING -D DISABLE_EN_PASSANT
 alice: alice.o AI.o board.o bitboard.o magicmoves.o common.o
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
 

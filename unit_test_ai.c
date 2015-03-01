@@ -41,24 +41,25 @@ void *moves_test(void *arg)
     uint64_t num = 0, *num_moves;
 
     for (j = 0; j < game->nr_games; j++) {
-        //board = new_board(DEFAULT_FEN);
+        board = new_board(DEFAULT_FEN);
         //board = new_board("rn2k2r/8/8/8/8/8/8/RN2K2R w KQkq - 0 1");
-        board = new_board("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1");
+        //board = new_board("r3k2r/pppp1ppp/8/3Pp3/8/8/PPP1PPPP/R3K2R w KQkq e6 0 1");
         //board = new_board("Q6k/5K2/8/8/8/8/8/8 b - - 0 1");
         //board = new_board("Q6k/8/8/8/8/8/K7/6R1 b - - 0 1");
 
         for (i = 0; i < 100; i++) {
-            printf("\n--------------- %s's turn --------------- \n", board->turn == WHITE ? "WHITE" : "BLACK");
+            //printf("\n--------------- %s's turn --------------- \n", board->turn == WHITE ? "WHITE" : "BLACK");
             generate_all_moves(board);
 
+            /*
             print_board(board->board);
             bb_print(board->white_pieces.apieces);
             printf("thread %d: --- %d %s ---\n", game->thread_id, i,
                     board->turn == WHITE ? "white" : "black");
             printf("legal_moves:\n");
-            print_legal_moves(board);
+            //print_legal_moves(board);
             getchar();
-
+            */
 
             num += board->moves_count;
             ret = do_random_move(board);
@@ -77,7 +78,7 @@ void *moves_test(void *arg)
         if (ret > 0)
             ++timeout;
 
-        free(board);
+        free_board(board);
     }
 
     game->checkmates = checkmate;
@@ -157,6 +158,7 @@ int main(int argc, char *argv[])
     //ai_test();
 
     //random_test();
+
 
     unsigned long start, end;
     double diff;

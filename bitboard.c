@@ -146,6 +146,47 @@ void init_bitboards(char *_fen, board_t *board)
     w->apieces = b->apieces = w->pieces | b->pieces;
 
     board->turn = *fen_ptr == 'w' ? WHITE : BLACK;
+
+    tmp = strchr(fen_ptr, ' ') + 1;
+    if (tmp == NULL)
+        return;
+
+    // initialize catling permissions
+    fen_ptr = tmp;
+    tmp = strchr(fen_ptr, ' ');
+    if (tmp)
+        *tmp = 0;
+    w->long_rook_moved = b->long_rook_moved = 1;
+    w->short_rook_moved = b->short_rook_moved = 1;
+    while (*fen_ptr) {
+        debug_print("castling: %c\n", *fen_ptr);
+        switch (*fen_ptr) {
+            case 'Q':
+                w->long_rook_moved = 0;
+                break;
+            case 'q':
+                b->long_rook_moved = 0;
+                break;
+            case 'K':
+                w->short_rook_moved = 0;
+                break;
+            case 'k':
+                b->short_rook_moved = 0;
+                break;
+        }
+        ++fen_ptr;
+    }
+
+    // set en passant
+    w->double_pawn_move = b->double_pawn_move = 8; // > 7 means unavailable
+    ++fen_ptr;
+
+    debug_print("en passant: %s\n", fen_ptr);
+    static int lookup[] = {7, 6, 5, 4, 3, 2, 1, 0};
+    if (fen_ptr[1] == '3' && tolower(fen_ptr[0]) >= 'a' && tolower(fen_ptr[0]) <= 'h')
+        w->double_pawn_move = lookup[tolower(fen_ptr[0]) - 'a'];
+    else if (fen_ptr[1] == '6' && tolower(fen_ptr[0]) >= 'a' && tolower(fen_ptr[0]) <= 'h')
+        b->double_pawn_move = lookup[tolower(fen_ptr[0]) - 'a'];
 }
 
 /* https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetTable */
@@ -404,6 +445,7 @@ int bb_do_actual_move(board_t *board, struct move *m)
     }
 
     board->backup.castling = board->backup.promotion = 0;
+    self->double_pawn_move = 8;
     // if self->[short|long]_rook_moved is not set; do so
     if (&self->rooks == move_board) {
         board->backup.short_rook_had_moved = self->short_rook_moved;
@@ -437,6 +479,9 @@ int bb_do_actual_move(board_t *board, struct move *m)
             clear_bit(*move_board, to);
             set_bit(self->queens, to);
         }
+
+        if (abs(m->frm.y - m->to.y) == 2)
+            self->double_pawn_move = m->frm.x;
     } else if (&self->king == move_board) {
         debug_print("moving king. dist = %d\n", abs(from - to));
         if (abs(from - to) == 2) {
@@ -504,6 +549,12 @@ int bb_do_actual_move(board_t *board, struct move *m)
     if (capture_board != NULL) {
         board->backup.capture_mask = isolate_bit(*capture_board, to);
         clear_bit(*capture_board, to);
+    } else if (m->en_passant) {
+        board->backup.capture_board = capture_board = &enemy->pawns;
+
+        board->backup.capture_mask = isolate_bit(*capture_board, to - 8 * board->turn);
+        clear_bit(*capture_board, to - 8 * board->turn);
+        ret = 7;
     } else
         board->backup.capture_mask = 0;
 
@@ -605,7 +656,10 @@ int bb_undo_move(board_t *board, int index)
     } else if (move_board == &self->rooks) {
         self->short_rook_moved = board->backup.short_rook_had_moved;
         self->long_rook_moved = board->backup.long_rook_had_moved;
-    }
+    } else if (m->en_passant)
+        ret = 7; // we just undid an en passant move
+
+    self->double_pawn_move = 8; // no need to check if it was a double pawn move
 
     // update friends and "all pieces"-board
     self->pieces = self->pawns | self->rooks | self->knights
@@ -638,6 +692,79 @@ int bb_calculate_check(board_t *board)
     board->is_check = any_can_attack(enemy, attacks, king_idx);
 
     return board->is_check;
+}
+
+static void generate_en_passant_moves(board_t *b, struct bitboard *self)
+{
+    struct bitboard *enemy;
+    u64 mask, self_pawns, enemy_pawns, tmp;
+    static u64 col_mask = 0x0101010101010101;
+
+    if (b->turn == WHITE) {
+        mask = 0x000000ff00000000; // 5th row
+        enemy = &b->black_pieces;
+    } else {
+        mask = 0x00000000ff000000; // 4nd row
+        enemy = &b->white_pieces;
+    }
+    self_pawns = self->pawns;
+    enemy_pawns = enemy->pawns;
+
+    self_pawns &= mask;
+    enemy_pawns &= mask;
+    if (self_pawns == 0 || enemy_pawns == 0) {
+        debug_print("self_pawns = 0x%lx enemy_pawns = 0x%lx\n", self_pawns, enemy_pawns);
+        return;
+    }
+
+    // check if any enemy pawns are directly right/left -adjacent
+    if (((enemy_pawns << 1lu) & self_pawns) == 0 &&
+            ((enemy_pawns >> 1lu) & self_pawns) == 0) {
+        debug_print("no enemies are directly right or left-adjacent\n");
+        return;
+    }
+
+    // no double move was done last move
+    if (enemy->double_pawn_move > 7) {
+        debug_print("no double move was done last time (%d)\n", enemy->double_pawn_move);
+        return;
+    }
+
+    tmp = ((self_pawns >> 1lu) & enemy_pawns) &
+        (col_mask << enemy->double_pawn_move);
+    if (enemy->double_pawn_move > 0 && tmp) {
+        int self_pwn_pos[2];
+        get_set_bits(tmp, self_pwn_pos);
+        index_to_coords(&b->moves[b->moves_count].frm, self_pwn_pos[0] + 1);
+        index_to_coords(&b->moves[b->moves_count].to, self_pwn_pos[0] + 8 * b->turn);
+        b->moves[b->moves_count].en_passant = 1;
+        b->moves_count++;
+
+#ifdef DEBUG
+        char *side = b->turn == WHITE ? "BLACK" : "WHITE";
+        printf("RIGHT EN PASSANT POSSIBLE! column %d %s side\n", b->moves[b->moves_count-1].to.x, side);
+        print_board(b->board);
+#endif
+    } else
+        debug_print("no moves to right\n");
+
+    tmp = (((self_pawns << 1lu) & enemy_pawns) &
+            (col_mask << enemy->double_pawn_move));
+    if (enemy->double_pawn_move < 7 && tmp) {
+        int self_pwn_pos[2];
+        get_set_bits(tmp, self_pwn_pos);
+        index_to_coords(&b->moves[b->moves_count].frm, self_pwn_pos[0] - 1);
+        index_to_coords(&b->moves[b->moves_count].to, self_pwn_pos[0] + 8 * b->turn);
+        b->moves[b->moves_count].en_passant = 1;
+        b->moves_count++;
+
+#ifdef DEBUG
+        char *side = b->turn == WHITE ? "BLACK" : "WHITE";
+        printf("LEFT EN PASSANT POSSIBLE! column %d %s side\n", b->moves[b->moves_count-1].to.x, side);
+        print_board(b->board);
+#endif
+    } else
+        debug_print("no moved to left\n");
 }
 
 static void generate_castling_moves(board_t *b, struct bitboard *self)
@@ -686,6 +813,7 @@ void bb_generate_all_legal_moves(board_t *board)
 
     b = board->turn == WHITE ? &board->white_pieces : &board->black_pieces;
 
+    memset(board->moves, 0, sizeof(board->moves));
     for (i = 0; i < 64; i++) {
         if ((b->king >> i) & 1)
             store_moves(generate_king_moves(b, i), i, board->moves,
@@ -712,6 +840,10 @@ void bb_generate_all_legal_moves(board_t *board)
     store_pawn_moves(b, moves, attacks, board->moves,
             &board->moves_count, board->turn);
 
+#ifndef DISABLE_CASTLING
     generate_castling_moves(board, b);
-
+#endif
+#ifndef DISABLE_EN_PASSANT
+    generate_en_passant_moves(board, b);
+#endif
 }

@@ -216,6 +216,7 @@ int undo_move(board_t *b, int n)
     ret = bb_undo_move(b, n);
 
     m = &b->moves[n];
+    // convert coordinates from bitboard coords (0->7, 1->6, ..., 7->0)
     tx = ~m->to.x & 0x7;
     fx = ~m->frm.x & 0x7;
     PIECE(b->board, m->frm.y, fx) = PIECE(b->board, m->to.y, tx);
@@ -244,6 +245,10 @@ int undo_move(board_t *b, int n)
             PIECE(b->board, 7, 0) = PIECE(b->board, 7, 3);
             PIECE(b->board, 7, 3) = P_EMPTY;
             break;
+        case 7: // move was en passant
+            PIECE(b->board, m->to.y, tx) = P_EMPTY;
+            PIECE(b->board, m->to.y - 1 * b->turn, tx) = b->backup.piece;
+            break;
         default:
             break;
     }
@@ -256,6 +261,9 @@ int undo_move(board_t *b, int n)
 int do_actual_move(board_t *b, struct move *m)
 {
     int tx, fx, ret;
+
+    printf("in %s\n", __func__);
+    getchar();
 
     b->is_check = -1;
     ret = bb_do_actual_move(b, m);
@@ -270,11 +278,38 @@ int do_actual_move(board_t *b, struct move *m)
     debug_print("moving from %d, %d to %d, %d\n", m->frm.y, ~m->frm.x & 0x7,
             m->to.y, ~m->to.x & 0x7);
 
+    // convert coordinates from bitboard coords (0->7, 1->6, ..., 7->0)
     tx = ~m->to.x & 0x7;
     fx = ~m->frm.x & 0x7;
     b->backup.piece = PIECE(b->board, m->to.y, tx);
     PIECE(b->board, m->to.y, tx) = PIECE(b->board, m->frm.y, fx);
     PIECE(b->board, m->frm.y, fx) = P_EMPTY;
+
+    debug_print("%s: ret = %d\n", __func__, ret);
+    switch (ret) {
+        case 3: // move was white short castling
+            PIECE(b->board, 0, 5) = PIECE(b->board, 0, 7);
+            PIECE(b->board, 0, 7) = P_EMPTY;
+            break;
+        case 4: // move was white long castling
+            PIECE(b->board, 0, 3) = PIECE(b->board, 0, 0);
+            PIECE(b->board, 0, 0) = P_EMPTY;
+            break;
+        case 5: // move was black short castling
+            PIECE(b->board, 7, 5) = PIECE(b->board, 7, 7);
+            PIECE(b->board, 7, 7) = P_EMPTY;
+            break;
+        case 6: // move was black long castling
+            PIECE(b->board, 7, 3) = PIECE(b->board, 7, 0);
+            PIECE(b->board, 7, 0) = P_EMPTY;
+            break;
+        case 7: // en passant
+            b->backup.piece = PIECE(b->board, m->to.y - 1 * b->turn, tx);
+            PIECE(b->board, m->to.y - 1 * b->turn, tx) = P_EMPTY;
+            break;
+        default:
+            break;
+    }
 
     if (b->backup.promotion) {
         PIECE(b->board, m->to.y, tx) = b->turn == WHITE
@@ -323,13 +358,13 @@ int do_move(board_t *b, int n)
     debug_print("moving from %d, %d to %d, %d\n", m->frm.y, ~m->frm.x & 0x7,
             m->to.y, ~m->to.x & 0x7);
 
+    // convert coordinates from bitboard coords (0->7, 1->6, ..., 7->0)
     tx = ~m->to.x & 0x7;
     fx = ~m->frm.x & 0x7;
     b->backup.piece = PIECE(b->board, m->to.y, tx);
     PIECE(b->board, m->to.y, tx) = PIECE(b->board, m->frm.y, fx);
     PIECE(b->board, m->frm.y, fx) = P_EMPTY;
 
-    debug_print("%s: ret = %d\n", __func__, ret);
     switch (ret) {
         case 3: // move was white short castling
             PIECE(b->board, 0, 5) = PIECE(b->board, 0, 7);
@@ -346,6 +381,10 @@ int do_move(board_t *b, int n)
         case 6: // move was black long castling
             PIECE(b->board, 7, 3) = PIECE(b->board, 7, 0);
             PIECE(b->board, 7, 0) = P_EMPTY;
+            break;
+        case 7: // en passant
+            b->backup.piece = PIECE(b->board, m->to.y - 1 * b->turn, tx);
+            PIECE(b->board, m->to.y - 1 * b->turn, tx) = P_EMPTY;
             break;
         default:
             break;
