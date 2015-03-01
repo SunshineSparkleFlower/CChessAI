@@ -41,10 +41,8 @@ void *ai_bench(void *arg)
     long nr_games = game->nr_games;
     int moves, max_moves = game->max_moves;
     int ai_wins = 0, ai_losses = 0;
-    int mutation_rate = 1000;
-    int brain_size = 3;
-
-    ai = ai_new(mutation_rate, brain_size);
+    int nr_ports = 512;
+    ai = ai_new(nr_ports);
 
     for (i = 0; i < nr_games; i++) {
         board = new_board(NULL);
