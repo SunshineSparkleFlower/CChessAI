@@ -31,6 +31,7 @@ AI_instance_t *ai_new(int nr_ports) {
     ret->brain = (int **) malloc_2d(ret->nr_synapsis / (sizeof (int) * 8),
             ret->nr_ports, sizeof (int));
 
+    
     ret->invert = (int*) malloc(ret->nr_ports * sizeof (int));
     bzero(ret->invert, ret->nr_ports * sizeof (int));
 
@@ -72,6 +73,8 @@ AI_instance_t *ai_new(int nr_ports) {
     ret->separation_threshold = 35;
     ret->output_exponent = 10;
     ret->state_separation_threshold = 35;
+        create_random_connections(ret, 2,  a1->low_port, 0);
+
     return ret;
 }
 
@@ -581,7 +584,7 @@ int eval_curcuit(piece_t *board, AI_instance_t *ai) {
     bzero(V, sizeof (V));
 
     for (i = ai->low_port; i <= ai->high_port; i++) {
-        if (ai->output_tag[i] || TestBit(ai->used_port, i)) {
+       // if (ai->output_tag[i] || TestBit(ai->used_port, i)) {
 
             //printf("port: %d", i);
             if (ai->port_type[i] == 1) {
@@ -598,7 +601,7 @@ int eval_curcuit(piece_t *board, AI_instance_t *ai) {
                     SetBit(V, i);
             } else
                 fprintf(stderr, "ERROR: port type error(%d)", ai->port_type[i]);
-        }
+        //}
     }
 
     //log the output of each ports
@@ -681,7 +684,7 @@ int _get_best_move(AI_instance_t *ai, board_t * board) {
     for (i = 0; i < board->moves_count; i++) {
         //      printf("%d, ", scores[i]);
         int sum = scores[i];
-        for (j = 0; j < ai->output_exponent; j++)
+        for (j = 0; j < 2; j++)
             sum *= scores[i];
         fcount += sum;
         cumdist[i] = fcount;
@@ -1101,21 +1104,24 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print, int print_stats) {
     mutate_mutation_rates(a1);
     a1->low_port -= 1;
     a1->low_port = keep_in_range(a1->low_port, 0, a1->nr_ports - 1);
-    a1->high_port += 1;
-    a1->high_port = keep_in_range(a1->high_port, 0, a1->nr_ports - 1);
+    create_random_connections(a1, 2,  a1->low_port, 0);
 
-    a1->output_tag[a1->high_port] = 1;
-    a1->port_type[a1->high_port] = random_int_r(1, a1->nr_porttypes);
-    create_random_connections(a1, 2, a1->high_port, 1);
+    if (!random_int_r(0, 10)) {
+        a1->high_port += 1;
+        a1->high_port = keep_in_range(a1->high_port, 0, a1->nr_ports - 1);
 
+        a1->output_tag[a1->high_port] = 1;
+        a1->port_type[a1->high_port] = random_int_r(1, a1->nr_porttypes);
+        create_random_connections(a1, 2, a1->high_port, 1);
+    }
     //chance to set one port as an output port
-    if (random_int_r(min_val, max_val) > 90) {
+    if (random_int_r(min_val, max_val) > 99) {
         a1->output_tag[random_int_r(a1->low_port, a1->high_port)] = 1;
     }
 
 
     //chance to remove the output tag
-    if (random_int_r(min_val, max_val) > 1) {
+    if (random_int_r(min_val, max_val) > 20) {
         a1->output_tag[random_int_r(a1->low_port, a1->high_port)] = 0;
     }
     //printf("out_tag: %d\n", a1->output_tag[a1->low_port]);
@@ -1125,12 +1131,13 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print, int print_stats) {
     reset_constant_ports(a1, a2);
 
     //reset_low_entropy_ports(a1, a2);
+    if (random_int_r(min_val, max_val) > 50)
 
-    randomize_ports(a1);
+        randomize_ports(a1);
 
 
     //remove a random connection
-    for (i = 0; i < a1->zero_rate; i++) {
+    for (i = 0; i < 10; i++) {
         int r_port = random_int_r(a1->low_port, a1->high_port);
         int r_synaps = 0;
         r_synaps = random_int_r(0, a1->nr_synapsis - 1); // if (r_port >= a1->nr_ports - 1 - 9 && r_synaps > a1->nr_ports - 1 - 9)
@@ -1139,11 +1146,12 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print, int print_stats) {
     }
 
     //create a new random connections
-    for (i = 0; i < a1->one_rate; i++) {
+    if (random_int_r(min_val, max_val) > 50) {
+
         int r_port = random_int_r(a1->low_port, a1->high_port);
         create_random_connections(a1, 1, r_port, 0);
-
     }
+
     // defrag(a2);
 
 
