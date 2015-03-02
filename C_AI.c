@@ -86,11 +86,12 @@ void play_chess(void *arg) {
                  ret = do_random_move(board);
 */
             ret = do_move_random_piece(board);
+            //ret = do_random_move(board);
             if (ret == 0) {
                 break;
             } else if (ret == -1) {
-                     printf("AI won\n");
-                    print_board(board->board);
+                printf("AI won\n");
+                //print_board(board->board);
                 reward(ai);
                 break;
             }
@@ -246,7 +247,7 @@ void usage(char **argv, struct option *options) {
     printf("Available options:\n");
     for (i = 0; options[i].name; i++)
         printf("    -%c, --%s %s\n", options[i].val, options[i].name,
-            options[i].has_arg == required_argument ? "<argument>" : "");
+                options[i].has_arg == required_argument ? "<argument>" : "");
 }
 
 void parse_arguments(int argc, char **argv) {
@@ -267,7 +268,7 @@ void parse_arguments(int argc, char **argv) {
     };
 
     while ((c = getopt_long(argc, argv, "t:j:f:g:i:n:p:m:a:h", long_options,
-            &option_index)) != -1)
+                    &option_index)) != -1)
         switch (c) {
             case 't':
                 nr_threads = atoi(optarg);
@@ -311,30 +312,30 @@ void parse_arguments(int argc, char **argv) {
 
 void natural_selection(void) {
     /*
-    int ai1 = random_int_r(0, nr_jobs - 1);
-    int ai2 = random_int_r(0, nr_jobs - 1);
-    float score_ai1 = get_score(games[ai1].ai);
-    float score_ai2 = get_score(games[ai2].ai);
-    if (score_ai1 > score_ai2) {
-        printf("mutating ai%d (score %f, %d wins, %d losses)",
-                ai2, get_score(games[ai2].ai),
-                games[ai2].ai->nr_wins, games[ai2].ai->nr_losses);
-        printf(" from ai%d (score %f, %d wins, %d losses)\n",
-                ai1, get_score(games[ai1].ai),
-                games[ai1].ai->nr_wins, games[ai1].ai->nr_losses);
+       int ai1 = random_int_r(0, nr_jobs - 1);
+       int ai2 = random_int_r(0, nr_jobs - 1);
+       float score_ai1 = get_score(games[ai1].ai);
+       float score_ai2 = get_score(games[ai2].ai);
+       if (score_ai1 > score_ai2) {
+       printf("mutating ai%d (score %f, %d wins, %d losses)",
+       ai2, get_score(games[ai2].ai),
+       games[ai2].ai->nr_wins, games[ai2].ai->nr_losses);
+       printf(" from ai%d (score %f, %d wins, %d losses)\n",
+       ai1, get_score(games[ai1].ai),
+       games[ai1].ai->nr_wins, games[ai1].ai->nr_losses);
 
-        mutate(games[ai2].ai, games[ai1].ai, 0);
-    } else if (score_ai2 > score_ai1) {
-        printf("mutating ai%d (score %f, %d wins, %d losses)",
-                ai1, get_score(games[ai1].ai),
-                games[ai1].ai->nr_wins, games[ai1].ai->nr_losses);
-        printf(" from ai%d (score %f, %d wins, %d losses)\n",
-                ai2, get_score(games[ai2].ai),
-                games[ai2].ai->nr_wins, games[ai2].ai->nr_losses);
+       mutate(games[ai2].ai, games[ai1].ai, 0);
+       } else if (score_ai2 > score_ai1) {
+       printf("mutating ai%d (score %f, %d wins, %d losses)",
+       ai1, get_score(games[ai1].ai),
+       games[ai1].ai->nr_wins, games[ai1].ai->nr_losses);
+       printf(" from ai%d (score %f, %d wins, %d losses)\n",
+       ai2, get_score(games[ai2].ai),
+       games[ai2].ai->nr_wins, games[ai2].ai->nr_losses);
 
-        mutate(games[ai1].ai, games[ai2].ai, 0);
-    }
-     */
+       mutate(games[ai1].ai, games[ai2].ai, 0);
+       }
+       */
 
     //   best = get_best_ai(games, nr_jobs, -1);
 
@@ -345,18 +346,18 @@ void natural_selection(void) {
 }
 
 /*if (port_type[i] == 1) {
-                if (nand256(V, M[i], nr_ports, board, board_size, brain_a[i], brain_b[i], i > (nr_ports / 2), i < (nr_ports / 4)))
-                    SetBit(V, i);
-            } else if (port_type[i] == 3) {
-                if (or256(V, M[i], nr_ports, board, board_size, brain_a[i], brain_b[i], i > (nr_ports / 2), i < (nr_ports / 4)))
-                    SetBit(V, i);
-            } else if (port_type[i] == 2) {
-                if (nor256(V, M[i], nr_ports, board, board_size, brain_a[i], brain_b[i], i > (nr_ports / 2), i < (nr_ports / 4)))
-                    SetBit(V, i);
-            } else if (port_type[i] == 4) {
-                if (and256(V, M[i], nr_ports, board, board_size, brain_a[i], brain_b[i], i > (nr_ports / 2), i < (nr_ports / 4)))
-                    SetBit(V, i);
- */
+  if (nand256(V, M[i], nr_ports, board, board_size, brain_a[i], brain_b[i], i > (nr_ports / 2), i < (nr_ports / 4)))
+  SetBit(V, i);
+  } else if (port_type[i] == 3) {
+  if (or256(V, M[i], nr_ports, board, board_size, brain_a[i], brain_b[i], i > (nr_ports / 2), i < (nr_ports / 4)))
+  SetBit(V, i);
+  } else if (port_type[i] == 2) {
+  if (nor256(V, M[i], nr_ports, board, board_size, brain_a[i], brain_b[i], i > (nr_ports / 2), i < (nr_ports / 4)))
+  SetBit(V, i);
+  } else if (port_type[i] == 4) {
+  if (and256(V, M[i], nr_ports, board, board_size, brain_a[i], brain_b[i], i > (nr_ports / 2), i < (nr_ports / 4)))
+  SetBit(V, i);
+  */
 int print_brain(AI_instance_t *a1, int tmp) {
     int i, j;
 

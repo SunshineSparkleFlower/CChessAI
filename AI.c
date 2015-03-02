@@ -751,7 +751,7 @@ int do_random_move(board_t * board) {
  * piece_type must be one of the values defined in enum_moves index. if EMPTY is
  * passed, a random piece is choosed */
 int do_move_piece(board_t *board, enum moves_index piece_type) {
-    int rnd, i;
+    int rnd, i, ret = 0;
     static void (*move_gen_callbacks[6])(board_t *board) = {
             generate_pawn_moves_only,
             generate_rook_moves_only,
@@ -764,23 +764,29 @@ int do_move_piece(board_t *board, enum moves_index piece_type) {
     if (piece_type == EMPTY) {
         // pick a random piece and generate moves for it. pick another piece if
         // the current one has no possible moves
-        rnd = random_int_r(0, 5);
-        for (i = (rnd + 1) % 6; i != rnd; i = (i + 1) % 6){
+        i = rnd = random_int_r(0, 5);
+        do {
+            i = (i + 1) % 6;
             move_gen_callbacks[i](board);
-            if (board->moves_count > 0)
-                break;
-        }
-    } else if (piece_type >= 0 && piece_type < 6)
+            if (board->moves_count > 0) {
+                ret = do_random_move(board);
+                if (ret == 1)
+                    return 1;
+            }
+        } while (i != rnd);
+        return ret;
+    }
+
+    if (piece_type >= 0 && piece_type < 6) {
         move_gen_callbacks[piece_type](board);
-    else
-        return -2; // user passed invalid value in piece_type
+        // the stalemate (if EMPTY was passed) or no possible moves for piece the user specified
+        if (board->moves_count <= 0)
+            return 0;
+        // will return a random move from the list of moves created in this function
+        return do_random_move(board);
+    }
 
-    // the stalemate (if EMPTY was passed) or no possible moves for piece the user specified
-    if (board->moves_count <= 0)
-        return 0;
-
-    // will return a random move from the list of moves created in this function
-    return do_random_move(board);
+    return -2; // user passed invalid value in piece_type
 }
 
 int do_move_random_piece(board_t *board) {
@@ -1180,7 +1186,7 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print, int print_stats) {
     bzero(&a1->state_separation[0][0], 2 * a1->nr_ports * sizeof (int));
     if (print_stats)
         fprintf(stderr, "score %f, %d w, %d games from score %f, %d w, %d games, one_rate: %d, zero_rate: %d, p_type_rate: %d, unused_rate: %d, o_rate: %d, r_o_rate: %d, separation_threshold: %d, state_separation_threshold: %d, separation_rate: %d, state_separation_rate: %d, exponent: %d, low_port: %d, high_port: %d\n",
-            get_score(a1), a1->nr_wins, a1->nr_games_played, get_score(a2), a2->nr_wins, a2->nr_games_played, a2->one_rate, a2->zero_rate, a2->port_type_rate, a2->unused_rate, a2->output_rate, a2->r_output_rate, a2->separation_threshold, a2->state_separation_threshold, a2->separation_rate, a2->state_separation_rate, a2->output_exponent, a2->low_port, a2->high_port);
+                get_score(a1), a1->nr_wins, a1->nr_games_played, get_score(a2), a2->nr_wins, a2->nr_games_played, a2->one_rate, a2->zero_rate, a2->port_type_rate, a2->unused_rate, a2->output_rate, a2->r_output_rate, a2->separation_threshold, a2->state_separation_threshold, a2->separation_rate, a2->state_separation_rate, a2->output_exponent, a2->low_port, a2->high_port);
     clear_score(a1);
 
     return 1;
@@ -1204,7 +1210,7 @@ int score_board(board_t * board) {
         else
 
             if (color(board->_board[i]) == BLACK)
-            score -= piece_score[get_moves_index(board->_board[i])];
+                score -= piece_score[get_moves_index(board->_board[i])];
 
         // printf("score: %d\n", score);
         // printf("move_index: %d\n", get_moves_index(board->_board[i]));
