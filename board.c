@@ -262,12 +262,9 @@ int do_actual_move(board_t *b, struct move *m)
 {
     int tx, fx, ret;
 
-    printf("in %s\n", __func__);
-    getchar();
-
     b->is_check = -1;
     ret = bb_do_actual_move(b, m);
-    if (ret == 1) {
+    if (ret == 0) {
         printf("FATAL FUCKING ERROR: %s: SOMETHING WENT WRONG\n", __FUNCTION__);
         printf("%s: HALTING EXECUTION!!1\n", __FUNCTION__);
         asm("int3");
