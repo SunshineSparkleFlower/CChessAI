@@ -7,6 +7,7 @@
 #include <sys/fcntl.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <ctype.h>
 
 #include "board.h"
 #include "AI.h"
@@ -16,6 +17,7 @@
 static int white = 1;
 static char ai_file[256] = "./ai_save.aidump";
 static char gui_ip[256] = "0";
+static char uci_engine[256] = "";
 static int verbose = 0;
 
 static int setup_socket(int port)
@@ -86,6 +88,23 @@ static void parse_input(char *line, struct move *m)
     m->to.x = lookup[m->to.x];
 }
 
+static void uci_move_notation_to_internal(char *u, struct move *m)
+{
+    static int lookup[] = {7, 6, 5, 4, 3, 2, 1, 0};
+
+    u[0] = tolower(u[0]) - 'a';
+    u[1] = u[1] - '1';
+    u[2] = tolower(u[2]) - 'a';
+    u[3] = u[3] - '1';
+
+    m->frm.x = lookup[(int)u[0]];
+    m->frm.y = u[1];
+    m->to.x = lookup[(int)u[2]];
+    m->to.y = u[3];
+
+    m->promotion = u[4];
+}
+
 static void move_to_json(char *buffer, struct move *m)
 {
     static int lookup[] = {7, 6, 5, 4, 3, 2, 1, 0};
@@ -122,6 +141,7 @@ void parse_arguments(int argc, char **argv)
     int option_index = 0;
     static struct option long_options[] = {
         {"ai", required_argument, NULL, 'a'},
+        {"uci", required_argument, NULL, 'u'},
         {"gui-ip", required_argument, NULL, 'i'},
         {"white", no_argument, NULL, 'w'},
         {"black", no_argument, NULL, 'b'},
@@ -135,6 +155,9 @@ void parse_arguments(int argc, char **argv)
         switch (c) {
             case 'a':
                 strncpy(ai_file, optarg, sizeof(ai_file));
+                break;
+            case 'u':
+                strncpy(uci_engine, optarg, sizeof(ai_file));
                 break;
             case 'i':
                 strncpy(gui_ip, optarg, sizeof(ai_file));
@@ -155,17 +178,68 @@ void parse_arguments(int argc, char **argv)
         }
 }
 
+void do_uci_move_fokk(struct uci *iface, board_t *board, int gui)
+{
+    char *move, buffer[128];
+    struct move m;
+
+    move = uci_get_next_move(iface);
+    printf("next move should be %s\n", move);
+    
+    uci_register_new_move(iface, move);
+    uci_move_notation_to_internal(move, &m);
+
+    move_to_json(buffer, &m);
+    if (write(gui, buffer, strlen(buffer)) <= 0) {
+        printf("failed to write to gui\n");
+        perror("write");
+        exit(1);
+    }
+}
+
+void do_ai_move(AI_instance_t *ai, board_t *board, int gui)
+{
+    struct move m;
+    char buffer[512];
+
+    // find and do AI move
+    find_best_move(ai, board, &m);
+    //do_move(board, best_move);
+    do_actual_move(board, &m);
+    swapturn(board);
+
+    // send the move to the remote GUI
+    move_to_json(buffer, &m);
+    if (write(gui, buffer, strlen(buffer)) <= 0) {
+        printf("failed to write to gui\n");
+        perror("write");
+        exit(1);
+    }
+}
+
 int main(int argc, char *argv[])
 {
     int sd, gui, count = 0;
     char buffer[512];
-    board_t *board;
-    AI_instance_t *ai;
+    board_t *board = NULL;
+    AI_instance_t *ai = NULL;
+    struct uci *uci_inst = NULL;
     struct move m;
 
     parse_arguments(argc, argv);
 
     init_magicmoves();
+
+    if (uci_engine[0] == 0) {
+        // initialize board and AI
+        board = new_board(DEFAULT_FEN);
+        ai = load_ai(ai_file);
+        if (!ai) {
+            printf("failed to load ai\n");
+            return 1;
+        }
+    } else
+        uci_inst = uci_init(uci_engine, NULL, white);
 
     // connect to GUI
     printf("Connecting..\n");
@@ -177,14 +251,6 @@ int main(int argc, char *argv[])
     } else {
         while ((gui = node_connect(gui_ip, 4444)) == -1)
             usleep(1000 * 100);
-    }
-
-    // initialize board and AI
-    board = new_board(DEFAULT_FEN);
-    ai = load_ai(ai_file);
-    if (!ai) {
-        printf("failed to load ai\n");
-        return 1;
     }
 
     // get player name and send AI's player name
@@ -200,13 +266,17 @@ int main(int argc, char *argv[])
     memset(buffer, 0, sizeof(buffer));
     if (white)
         goto this_is_so_dirty_it_is_sexy;
-int best_move;
+
     // game loop
     while (read(gui, buffer, sizeof buffer) > 0) {
         // do remote move
         parse_input(buffer, &m);
-        do_actual_move(board, &m);
-        swapturn(board);
+        if (ai) {
+            do_actual_move(board, &m);
+            swapturn(board);
+        } else if (uci_inst) {
+            register_move_to_uci(&m, uci_inst);
+        }
 
         if (verbose > 0) {
             printf("%d:\n", ++count);
@@ -214,16 +284,8 @@ int best_move;
         }
 
 this_is_so_dirty_it_is_sexy:
-        // find and do AI move
-        best_move = find_best_move(ai, board, &m);
-        //do_move(board, best_move);
-        do_actual_move(board, &m);
-        swapturn(board);
-
-        // send the move to the remote GUI
-        move_to_json(buffer, &m);
-        if (write(gui, buffer, strlen(buffer)) <= 0)
-            break;
+        //do_ai_move(ai, board, gui);
+        do_uci_move_fokk(uci_inst, board, gui);
 
         if (verbose > 0)
             print_board(board->board);

@@ -120,7 +120,7 @@ void init_bitboards(char *_fen, board_t *board)
                 for (; cnt < rank[j] - '0'; --col, ++cnt);
             } else {
                 tmpbb = fen_to_bitboard(rank[j], board);
-                set_bit(*tmpbb, coord_to_index(row, col));
+                set_bit(*tmpbb, bb_coord_to_index(row, col));
                 col--;
             }
         }
@@ -151,7 +151,7 @@ void init_bitboards(char *_fen, board_t *board)
     if (tmp == NULL)
         return;
 
-    // initialize catling permissions
+    // initialize castling permissions
     fen_ptr = tmp;
     tmp = strchr(fen_ptr, ' ');
     if (tmp)
@@ -182,11 +182,10 @@ void init_bitboards(char *_fen, board_t *board)
     ++fen_ptr;
 
     debug_print("en passant: %s\n", fen_ptr);
-    static int lookup[] = {7, 6, 5, 4, 3, 2, 1, 0};
     if (fen_ptr[1] == '3' && tolower(fen_ptr[0]) >= 'a' && tolower(fen_ptr[0]) <= 'h')
-        w->double_pawn_move = lookup[tolower(fen_ptr[0]) - 'a'];
+        w->double_pawn_move = AI_col_to_bb_col(tolower(fen_ptr[0]) - 'a');
     else if (fen_ptr[1] == '6' && tolower(fen_ptr[0]) >= 'a' && tolower(fen_ptr[0]) <= 'h')
-        b->double_pawn_move = lookup[tolower(fen_ptr[0]) - 'a'];
+        b->double_pawn_move = AI_col_to_bb_col(tolower(fen_ptr[0]) - 'a');
 }
 
 /* https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetTable */
@@ -218,15 +217,6 @@ static inline void get_set_bits(uint64_t n, int *arr)
     arr[j] = -1;
 }
 
-static void index_to_coords(coord_t *c, int index)
-{
-    // 0 == H1
-    // 7 == A1
-    // 8 == H2
-    c->y = index / 8;
-    c->x = index % 8;
-}
-
 static int lsb_to_index(u64 board)
 {
     int i;
@@ -239,6 +229,15 @@ static int lsb_to_index(u64 board)
             return i;
 
     return -1;
+}
+
+static void index_to_coords(coord_t *c, int index)
+{
+    // 0 == H1
+    // 7 == A1
+    // 8 == H2
+    c->y = index / 8;
+    c->x = index % 8;
 }
 
 int bb_can_attack(u64 moves, int pos)
@@ -386,6 +385,24 @@ static inline u64 *find_board(struct bitboard *b, int pos)
     return NULL;
 }
 
+static inline char *find_board_name(struct bitboard *b, int pos)
+{
+    if (is_set(b->pawns, pos))
+        return "pawn";
+    else if (is_set(b->rooks, pos))
+        return "rook";
+    else if (is_set(b->knights, pos))
+        return "knight";
+    else if (is_set(b->bishops, pos))
+        return "bishop";
+    else if (is_set(b->queens, pos))
+        return "queen";
+    else if (is_set(b->king, pos))
+        return "king";
+
+    return NULL;
+}
+
 // check if any pieces can attack a given square
 static int any_can_attack(struct bitboard *enemy, u64 pawn_attacks, int square_index)
 {
@@ -418,15 +435,137 @@ static int any_can_attack(struct bitboard *enemy, u64 pawn_attacks, int square_i
     return 0;
 }
 
+static int handle_king_move(struct bitboard *self, struct bitboard *enemy,
+        board_t *board, int from, int to)
+{
+    int i, ret = 1;
+    u64 pawn_attacks;
+    int short_target, r_short_from, r_long_from, r_short_to, r_long_to;
+
+    if (abs(from - to) == 2) {
+        if (is_check(board)) // castling is illegal if king is under attack
+            return 0;
+
+        if (!self->king_has_moved) {
+            if (board->turn == WHITE) {
+                short_target = G1;
+                r_short_from = H1;
+                r_long_from = A1;
+                r_short_to = F1;
+                r_long_to = D1;
+                ret = 3;
+            } else {
+                short_target = G8;
+                r_short_from = H8;
+                r_long_from = A8;
+                r_short_to = F8;
+                r_long_to = D8;
+                ret = 5;
+            }
+
+            generate_pawn_moves(enemy, &pawn_attacks, board->turn);
+            if (to == short_target) { // short castling
+                // check if any of the squares can be attacked
+                for (i = 1; i < 3; i++)
+                    if (any_can_attack(enemy, pawn_attacks, from - i))
+                        return 0;
+
+                clear_bit(self->rooks, r_short_from);
+                set_bit(self->rooks, r_short_to);
+                board->backup.castling = 1;
+                self->short_rook_moved = 1;
+            } else { // long castling
+                // check if any of the squares can be attacked
+                for (i = 1; i < 4; i++)
+                    if (any_can_attack(enemy, pawn_attacks, from + i))
+                        return 0;
+                clear_bit(self->rooks, r_long_from);
+                set_bit(self->rooks, r_long_to);
+                board->backup.castling = 2;
+                self->long_rook_moved = 1;
+                ret++;
+            }
+        } else
+            return 0;
+    }
+    board->backup.king_had_moved = self->king_has_moved;
+    self->king_has_moved = 1;
+
+    return ret;
+}
+
+static void handle_pawn_move(struct bitboard *self, board_t *board,
+        struct move *m, int to)
+{
+    // check for pawn promotion
+    if ((board->turn == WHITE && m->to.y == 7) ||
+            (board->turn == BLACK && m->to.y == 0)) {
+        board->backup.promotion = 1;
+        clear_bit(self->pawns, to);
+
+        //printf("promotion! turn: %s. promotion character: %c (0x%02x)\n",
+                //self == &board->white_pieces ? "white" : "black", m->promotion, m->promotion);
+        switch (tolower(m->promotion)) {
+            case 'q':
+                set_bit(self->queens, to);
+                break;
+            case 'n':
+                set_bit(self->knights, to);
+                break;
+            case 'b':
+                set_bit(self->bishops, to);
+                break;
+            case 'r':
+                set_bit(self->rooks, to);
+                break;
+            default:
+                // use queen as default promotion if no other option was set
+                m->promotion = 'q';
+                set_bit(self->queens, to);
+                break;
+        }
+    }
+
+    if (abs(m->frm.y - m->to.y) == 2)
+        self->double_pawn_move = m->frm.x;
+}
+
+// if self->[short|long]_rook_moved is not set; do so
+static void handle_rook_move(struct bitboard *self, board_t *board, int from)
+{
+    board->backup.short_rook_had_moved = self->short_rook_moved;
+    board->backup.long_rook_had_moved = self->long_rook_moved;
+    debug_print("%s: doing rook move:\n", __func__);
+
+    if (board->turn == WHITE) {
+        debug_print("white moving from index %d\n", from);
+        if (from == H1) {
+            debug_print("white moving from %d == %d H1\n", from, H1);
+            self->short_rook_moved = 1;
+        } else if (from == A1) {
+            debug_print("white moving from %d == %d A1\n", from, A1);
+            self->long_rook_moved = 1;
+        }
+    } else {
+        debug_print("black moving from index %d\n", from);
+        if (from == H8) {
+            debug_print("black moving from %d == %d H8\n", from, H8);
+            self->short_rook_moved = 1;
+        } else if (from == A8) {
+            debug_print("black moving from %d == %d A8\n", from, A8);
+            self->long_rook_moved = 1;
+        }
+    }
+}
+
 int bb_do_actual_move(board_t *board, struct move *m)
 {
     struct bitboard *enemy, *self;
-    int to, from, i, ret = 1;
-    u64 *move_board, *capture_board, pawn_attacks;
+    int to, from, ret = 1;
+    u64 *move_board, *capture_board;
 
-
-    to = coord_to_index(m->to.y, m->to.x);
-    from = coord_to_index(m->frm.y, m->frm.x);
+    to = bb_coord_to_index(m->to.y, m->to.x);
+    from = bb_coord_to_index(m->frm.y, m->frm.x);
 
     debug_print("%s moving from %d to %d\n", __func__, from, to);
 
@@ -440,109 +579,20 @@ int bb_do_actual_move(board_t *board, struct move *m)
 
     board->backup.move_board = move_board = find_board(self, from);
     if (move_board == NULL) {
-        printf("failed to obtain move board. board is likely not a board\n");
+        fprintf(stderr, "failed to obtain move board. board is likely not a board\n");
         return 0;
     }
 
     board->backup.castling = board->backup.promotion = 0;
     self->double_pawn_move = 8;
-    // if self->[short|long]_rook_moved is not set; do so
-    if (&self->rooks == move_board) {
-        board->backup.short_rook_had_moved = self->short_rook_moved;
-        board->backup.long_rook_had_moved = self->long_rook_moved;
-        debug_print("%s: doing rook move:\n", __func__);
-
-        if (board->turn == WHITE) {
-            debug_print("white moving from index %d\n", from);
-            if (from == H1) {
-                debug_print("white moving from %d == %d H1\n", from, H1);
-                self->short_rook_moved = 1;
-            } else if (from == A1) {
-                debug_print("white moving from %d == %d A1\n", from, A1);
-                self->long_rook_moved = 1;
-            }
-        } else {
-            debug_print("black moving from index %d\n", from);
-            if (from == H8) {
-                debug_print("black moving from %d == %d H8\n", from, H8);
-                self->short_rook_moved = 1;
-            } else if (from == A8) {
-                debug_print("black moving from %d == %d A8\n", from, A8);
-                self->long_rook_moved = 1;
-            }
-        }
-    } else if (&self->pawns == move_board) {
-        // check for pawn promotion
-        if ((board->turn == WHITE && m->to.y == 7) ||
-                (board->turn == BLACK && m->to.y == 0)) {
-            board->backup.promotion = 1;
-            clear_bit(*move_board, to);
-            set_bit(self->queens, to);
-        }
-
-        if (abs(m->frm.y - m->to.y) == 2)
-            self->double_pawn_move = m->frm.x;
-    } else if (&self->king == move_board) {
-        debug_print("moving king. dist = %d\n", abs(from - to));
-        if (abs(from - to) == 2) {
-            if (is_check(board)) { // castling is illegal if king is under attack
-                debug_print("king is in check. will not castle\n");
-                return 2;
-            }
-
-            debug_print("not in check. has king moved?: %s\n", self->king_has_moved ? "yes" : "no");
-            if (!self->king_has_moved) {
-                int short_target, r_short_from, r_long_from,
-                    r_short_to, r_long_to;
-                if (board->turn == WHITE) {
-                    debug_print("wites turn\n");
-                    short_target = G1;
-                    r_short_from = H1;
-                    r_long_from = A1;
-                    r_short_to = F1;
-                    r_long_to = D1;
-                    ret = 3;
-                } else {
-                    debug_print("blacks turn\n");
-                    short_target = G8;
-                    r_short_from = H8;
-                    r_long_from = A8;
-                    r_short_to = F8;
-                    r_long_to = D8;
-                    ret = 5;
-                }
-
-                generate_pawn_moves(enemy, &pawn_attacks, board->turn);
-                if (to == short_target) { // short castling
-                    debug_print("short castling\n");
-                    // check if any of the squares can be attacked
-                    for (i = 1; i < 3; i++)
-                        if (any_can_attack(enemy, pawn_attacks, from - i)) {
-                            debug_print("SOMEONE CAN ATTACK %d\n", from - i);
-                            return 2;
-                        }
-
-                    clear_bit(self->rooks, r_short_from);
-                    set_bit(self->rooks, r_short_to);
-                    board->backup.castling = 1;
-                } else { // long castling
-                    debug_print("long castling\n");
-                    // check if any of the squares can be attacked
-                    for (i = 1; i < 4; i++)
-                        if (any_can_attack(enemy, pawn_attacks, from + i)) {
-                            debug_print("SOMEONE CAN ATTACK %d\n", from + i);
-                            return 2;
-                        }
-                    clear_bit(self->rooks, r_long_from);
-                    set_bit(self->rooks, r_long_to);
-                    board->backup.castling = 2;
-                    ret++;
-                }
-            } else
-                return 2;
-        }
-        board->backup.king_had_moved = self->king_has_moved;
-        self->king_has_moved = 1;
+    if (&self->rooks == move_board)
+        handle_rook_move(self, board, from);
+    else if (&self->pawns == move_board)
+        handle_pawn_move(self, board, m, to);
+    else if (&self->king == move_board) {
+        ret = handle_king_move(self, enemy, board, from, to);
+        if (!ret)
+            return 2; // attempted illegal castling move
     }
 
     board->backup.capture_board = capture_board = find_board(enemy, to);
@@ -559,7 +609,9 @@ int bb_do_actual_move(board_t *board, struct move *m)
         board->backup.capture_mask = 0;
 
     clear_bit(*move_board, from);
-    set_bit(*move_board, to);
+
+    if (!board->backup.promotion)
+        set_bit(*move_board, to);
 
     // update friends and "all pieces"-board
     self->pieces = self->pawns | self->rooks | self->knights
@@ -567,6 +619,7 @@ int bb_do_actual_move(board_t *board, struct move *m)
     enemy->pieces = enemy->pawns | enemy->rooks | enemy->knights
         | enemy->bishops | enemy->queens | enemy->king;
     self->apieces = enemy->apieces = self->pieces | enemy->pieces;
+
 
     return ret;
 }
@@ -596,8 +649,8 @@ int bb_undo_move(board_t *board, int index)
         return 0;
 
     m = &board->moves[index];
-    to = coord_to_index(m->to.y, m->to.x);
-    from = coord_to_index(m->frm.y, m->frm.x);
+    to = bb_coord_to_index(m->to.y, m->to.x);
+    from = bb_coord_to_index(m->frm.y, m->frm.x);
 
     move_board = board->backup.move_board;
     capture_board = board->backup.capture_board;
@@ -641,12 +694,12 @@ int bb_undo_move(board_t *board, int index)
             ret = 5;
         }
         if (board->backup.castling == 1) {
-            clear_bit(self->rooks, coord_to_index(row, 2));
-            set_bit(self->rooks, coord_to_index(row, 0));
+            clear_bit(self->rooks, bb_coord_to_index(row, 2));
+            set_bit(self->rooks, bb_coord_to_index(row, 0));
             self->short_rook_moved = 0;
         } else if (board->backup.castling == 2) {
-            clear_bit(self->rooks, coord_to_index(row, 4));
-            set_bit(self->rooks, coord_to_index(row, 7));
+            clear_bit(self->rooks, bb_coord_to_index(row, 4));
+            set_bit(self->rooks, bb_coord_to_index(row, 7));
             self->long_rook_moved = 0;
             ret++;
         }
@@ -781,9 +834,10 @@ static void generate_castling_moves(board_t *b, struct bitboard *self)
         if ((self->king >> king_pos) & 1)
             break;
 
-    // if tmp is 0 the path is clear
-    tmp = (self->apieces & (1lu << (king_pos - 1))) |
-        (self->apieces & (1lu << (king_pos - 2)));
+    // if tmp is 0 the path is clear and short rook is present
+    tmp = isolate_bit(self->apieces, king_pos - 1) |
+        isolate_bit(self->apieces, king_pos - 2) |
+        !isolate_bit(self->rooks, king_pos - 3);
     debug_print("%s: path clear for short castling? : %s\n", __func__, tmp ? "no" : "yes");
     debug_print("%s: short rook has moved? : %s\n",  __func__, self->short_rook_moved ? "yes" : "no");
     if (!self->short_rook_moved && tmp == 0) {
@@ -793,9 +847,10 @@ static void generate_castling_moves(board_t *b, struct bitboard *self)
     }
 
     // if tmp is 0 the path is clear
-    tmp = (self->apieces & (1lu << (king_pos + 1))) |
-        (self->apieces & (1lu << (king_pos + 2))) |
-        (self->apieces & (1lu << (king_pos + 3)));
+    tmp = isolate_bit(self->apieces, king_pos + 1) |
+        isolate_bit(self->apieces, king_pos + 2) |
+        isolate_bit(self->apieces, king_pos + 3) |
+        !isolate_bit(self->rooks, king_pos + 4);
     debug_print("%s: path clear for long castling? : %s\n", __func__, tmp ? "no" : "yes");
     debug_print("%s: long rook has moved? : %s\n",  __func__, self->long_rook_moved ? "yes" : "no");
     if (!self->long_rook_moved && tmp == 0) {

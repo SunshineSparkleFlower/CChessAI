@@ -32,73 +32,122 @@ struct game_struct {
     long checkmates, stalemates, timeouts;
 };
 
-void *moves_test(void *arg)
+static void print_stats(board_t *board)
+{
+    printf("------------- %s' turn -------------\n",
+            board->turn == WHITE ? "white" : "black");
+    print_board(board->board);
+}
+
+void uci_test(void)
 {
     int i, j, ret;
     board_t *board;
-    struct game_struct *game = (struct game_struct *)arg;
-    uint64_t num = 0, *num_moves;
+    struct uci *engine;
+    int num_games = 1;
+    int max_moves = 50;
 
-    enum moves_index type_piece = EMPTY;
+    engine = uci_init("/usr/games/stockfish", UCI_DEFAULT_FEN, BLACK);
+    if (engine == NULL) {
+        printf("Failed to initialize UCI engine!\n");
+        return;
+    }
 
-    for (j = 0; j < game->nr_games; j++) {
+    for (i = 0; i < num_games; i++) {
         board = new_board(DEFAULT_FEN);
-        //board = new_board("rn2k2r/8/8/8/8/8/8/RN2K2R w KQkq - 0 1");
-        //board = new_board("r3k2r/pppp1ppp/8/3Pp3/8/8/PPP1PPPP/R3K2R w KQkq e6 0 1");
-        //board = new_board("Q6k/5K2/8/8/8/8/8/8 b - - 0 1");
-        //board = new_board("Q6k/8/8/8/8/8/K7/6R1 b - - 0 1");
-
-        for (i = 0; i < 100; i++) {
+        uci_new_game(engine, UCI_DEFAULT_FEN);
+        for (j = 0; j < max_moves; j++) {
+            ret = do_move_random_piece(board, engine);
+#ifdef INSPECT_MOVES
+            print_stats(board);
             getchar();
-            printf("\n--------------- %s's turn --------------- \n", board->turn == WHITE ? "WHITE" : "BLACK");
-            print_board(board->board);
-            bb_print(board->white_pieces.apieces);
-            printf("thread %d: --- %d %s ---\n", game->thread_id, i,
-                    board->turn == WHITE ? "white" : "black");
-
-            ret = do_random_move_piece(board, type_piece);
+#endif
 
             if (ret == 0) {
-                printf("(%d) stalemate\n", game->thread_id);
+                // stalemate
                 break;
             } else if (ret == -1) {
-                printf("(%d) checkmate\n", game->thread_id);
+                // checkmate
+                printf("checkmate! uci won in %d moves\n", j);
+                printf("fen: %s\n", get_fen(board));
                 break;
-            } else if (ret == -2) {
-                printf("no more possible moves for piece type %d\n", type_piece);
+            }
+
+            ret = do_uci_move(board, engine);
+
+#ifdef INSPECT_MOVES
+            print_stats(board);
+            getchar();
+#endif
+            if (ret == 0) {
+                // stalemate
+                break;
+            } else if (ret == -1) {
+                printf("checkmate! uci lost in %d moves\n", j);
+                printf("fen: %s\n", get_fen(board));
+                // checkmate
                 break;
             }
         }
-
         free_board(board);
     }
-
-    num_moves = malloc(sizeof(num));
-    *num_moves = num;
-    pthread_exit(num_moves);
+    uci_close(engine);
 }
 
-uint64_t spawn_n_games(int n, int rounds)
+void moves_test(char *fen, int num_games, int max_moves)
 {
-    pthread_t threads[n - 1];
-    int i;
-    struct game_struct games[n];
-    uint64_t ret = 0, *tmp;
+    int i, j, ret;
+    board_t *board;
 
-    for (i = 0; i < n; i++) {
-        games[i].nr_games = rounds;
-        games[i].thread_id = i + 1;
+    for (i = 0; i < num_games; i++) {
+        board = new_board(fen);
+        for (j = 0; j < max_moves; j++) {
+            ret = do_move_random_piece(board, NULL);
+#ifdef INSPECT_MOVES
+            print_stats(board);
+            getchar();
+#endif
+            if (ret == 0) {
+                // stalemate
+                break;
+            } else if (ret == -1) {
+                // checkmate
+                break;
+            }
 
-        pthread_create(&threads[i], NULL, moves_test, (void *)&games[i]);
+            do_random_move(board, NULL);
+#ifdef INSPECT_MOVES
+            print_stats(board);
+            getchar();
+#endif
+            if (ret == 0) {
+                // stalemate
+                break;
+            } else if (ret == -1) {
+                // checkmate
+                break;
+            }
+        }
+        free_board(board);
     }
+}
 
-    for (i = 0; i < n; i++) {
-        pthread_join(threads[i], (void **)&tmp);
-        ret += *tmp;
-        free(tmp);
-    }
+void moves_consistency_test(void)
+{
+#ifndef BOARD_CONSISTENCY_TEST
+    fprintf(stderr, "recompile with '-D BOARD_CONSISTENCY_TEST' to run this test!\n");
+    return;
+#endif
+    moves_test(DEFAULT_FEN, 50000, 100);
+}
 
-    return ret;
+void inspect_moves(void)
+{
+#ifndef INSPECT_MOVES
+    fprintf(stderr, "recompile with '-D INSPECT_MOVES' to run this test!\n");
+    return;
+#endif
+    moves_test(DEFAULT_FEN, 1, 40);
 }
 
 void random_test(void)
@@ -123,26 +172,11 @@ void random_test(void)
 
 int main(int argc, char *argv[])
 {
-    //multiply_test();
-    //score_test();
-    //malloc_2d_test();
-    //do_best_move_test();
-    //mutate_test();
-
     init_magicmoves();
 
-    //ai_dumptest();
-
-    //ai_test();
-
     //random_test();
-
-
-    int rounds, threads;
-
-    rounds = argc > 1 ? atoi(argv[1]) : 1;
-    threads = argc > 2 ? atoi(argv[2]) : 1;
-    spawn_n_games(threads, rounds);
+    //moves_consistency_test();
+    uci_test();
 
     _shutdown();
     return 0;

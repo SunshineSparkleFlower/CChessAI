@@ -7,6 +7,7 @@
 #include "common.h"
 #include "AI.h"
 #include "bitboard.h"
+#include "uci.h"
 
 #define MAGIC_LENGTH 6
 #define MIN_VAL 0
@@ -701,7 +702,7 @@ int _get_best_move(AI_instance_t *ai, board_t * board) {
 
 //perform a best move return 0 if stalemate, -1 if check mate 1 of success
 
-int do_best_move(AI_instance_t *ai, board_t * board) {
+int do_best_move(AI_instance_t *ai, board_t * board, struct uci *uci_iface) {
     int best_move;
 
     generate_all_moves(board);
@@ -714,11 +715,14 @@ int do_best_move(AI_instance_t *ai, board_t * board) {
 
         return 0;
     }
-    if (best_move < 0)
-        printf("best move: %d\n", best_move);
+
     int ret = do_move(board, best_move);
     if (!ret)
         fprintf(stderr, "ret %d\n", ret);
+
+    if (uci_iface)
+        register_move_to_uci(&board->moves[best_move], uci_iface);
+
     swapturn(board);
 
     return 1;
@@ -726,7 +730,7 @@ int do_best_move(AI_instance_t *ai, board_t * board) {
 
 //perform a random move return 0 if stalemate, -1 if check mate 1 of success
 
-int do_random_move(board_t * board) {
+int do_random_move(board_t *board, struct uci *uci_iface) {
     int rndmove;
 
     do {
@@ -742,23 +746,27 @@ int do_random_move(board_t * board) {
 
     } while (do_move(board, rndmove) != 1);
 
+    if (uci_iface)
+        register_move_to_uci(&board->moves[rndmove], uci_iface);
+
     swapturn(board);
 
     return 1;
 }
 
 /* generate moves for a pice and make a move.
- * piece_type must be one of the values defined in enum_moves index. if EMPTY is
+ * piece_type must be one of the values defined in enum moves_index. if EMPTY is
  * passed, a random piece is choosed */
-int do_move_piece(board_t *board, enum moves_index piece_type) {
+int do_move_piece(board_t *board, enum moves_index piece_type,
+        struct uci *uci_iface) {
     int rnd, i, ret = 0;
     static void (*move_gen_callbacks[6])(board_t *board) = {
-            generate_pawn_moves_only,
-            generate_rook_moves_only,
-            generate_knight_moves_only,
-            generate_bishop_moves_only,
-            generate_queen_moves_only,
-            generate_king_moves_only,
+        generate_pawn_moves_only,
+        generate_rook_moves_only,
+        generate_knight_moves_only,
+        generate_bishop_moves_only,
+        generate_queen_moves_only,
+        generate_king_moves_only,
     };
 
     if (piece_type == EMPTY) {
@@ -769,7 +777,7 @@ int do_move_piece(board_t *board, enum moves_index piece_type) {
             i = (i + 1) % 6;
             move_gen_callbacks[i](board);
             if (board->moves_count > 0) {
-                ret = do_random_move(board);
+                ret = do_random_move(board, uci_iface);
                 if (ret == 1)
                     return 1;
             }
@@ -783,19 +791,19 @@ int do_move_piece(board_t *board, enum moves_index piece_type) {
         if (board->moves_count <= 0)
             return 0;
         // will return a random move from the list of moves created in this function
-        return do_random_move(board);
+        return do_random_move(board, uci_iface);
     }
 
     return -2; // user passed invalid value in piece_type
 }
 
-int do_move_random_piece(board_t *board) {
-    return do_move_piece(board, EMPTY);
+int do_move_random_piece(board_t *board, struct uci *uci_iface) {
+    return do_move_piece(board, EMPTY, uci_iface);
 }
 
 //perform a nonrandom move return 0 if stalemate, -1 if check mate 1 of success
 
-int do_nonrandom_move(board_t * board) {
+int do_nonrandom_move(board_t *board, struct uci *uci_iface) {
     int rndmove;
 
     do {
@@ -808,8 +816,10 @@ int do_nonrandom_move(board_t * board) {
             return 0;
         }
         rndmove = board->moves_count - 1;
-
     } while (!do_move(board, rndmove));
+
+    if (uci_iface)
+        register_move_to_uci(&board->moves[rndmove], uci_iface);
 
     swapturn(board);
 

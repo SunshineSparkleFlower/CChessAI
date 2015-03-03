@@ -2,6 +2,7 @@
 #define __BOARD_H
 
 #include <stdint.h>
+#include "uci.h"
 
 typedef uint16_t piece_t;
 
@@ -13,6 +14,7 @@ typedef struct coord {
 #include "common.h"
 typedef struct move {
     u8 en_passant :1; // 1 if its an en passant move. 0 otherwise
+    u8 promotion; // 'q' for queen, 'k' for knight, 'b' for bishop, 'r' for rook
     coord_t frm, to;
 } move_t;
 
@@ -76,6 +78,9 @@ extern void print_board(piece_t *board);
 extern void print_move(board_t *board, int n);
 extern void print_legal_moves(board_t *board);
 extern const char *piece_to_str(piece_t p);
+extern int do_uci_move(board_t *board, struct uci *iface);
+extern void register_move_to_uci(struct move *m, struct uci *iface);
+extern void board_consistency_check(board_t *board);
 
 extern void init_magicmoves(void);
 

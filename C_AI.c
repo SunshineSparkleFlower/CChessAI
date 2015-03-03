@@ -11,6 +11,7 @@
 
 #include "common.h"
 #include "board.h"
+#include "bitboard.h"
 #include "AI.h"
 #include "threadpool.h"
 
@@ -37,6 +38,7 @@ int nr_ports = 256;
 int max_moves = 20;
 int ai_vs_ai = 0;
 AI_instance_t **ais;
+char uci_engine[256] = "";
 
 void print_ai_stats(int tid, AI_instance_t *ai, int ite, int rndwins) {
     printf("thread %d: iteration %d\n", tid, ite);
@@ -47,17 +49,22 @@ void print_ai_stats(int tid, AI_instance_t *ai, int ite, int rndwins) {
     printf("thread %d: generation: %d\n", tid, ai->generation);
 }
 
+    struct uci *engine = NULL;
 void play_chess(void *arg) {
     struct game_struct *game = (struct game_struct *) arg;
     int nr_games, moves, ret = -1;
     AI_instance_t *ai;
-
     board_t *board;
 
+    if (uci_engine[0]) {
+        engine = uci_init(uci_engine, UCI_DEFAULT_FEN, BLACK);
+        if (engine == NULL) {
+            printf("failed to initialize uci engine\n");
+            return;
+        }
+    }
+
     ai = game->ais[game->game_id];
-    //printf("game_id: %d\n", game->game_id);
-    //printf("starting game %d\n", game->game_id);
-    //    printf("max_moves: %d\n", max_moves);
 
     for (nr_games = 0; nr_games < games_pr_iteration; nr_games++) {
         // printf("__________________NEW GAME_________________\n");
@@ -66,36 +73,53 @@ void play_chess(void *arg) {
             fprintf(stderr, "ERROR: BOARD = NULL!!!\n");
             exit(1);
         }
+        if (uci_engine[0])
+            uci_new_game(engine, UCI_DEFAULT_FEN);
         //board_t *board = new_board("rnbqkbnr/qqqqqqqq/8/8/8/8/qqqqqqqq/qqqqKqqq w - - 0 1");
-       // int pseudo_r = random_int_r(0, 10);
+        // int pseudo_r = random_int_r(0, 10);
 
         for (moves = 0; moves < max_moves; moves++) {
-            ret = do_best_move(ai, board);
-            //print_board(board->board);
+            ret = do_best_move(ai, board, engine);
 
             if (ret == 0) {
                 break;
             } else if (ret == -1) {
-
                 //punish(ai);
-                //printf("AI lost\n");
+                printf("AI lost\n");
                 //                   print_board(board->board);
                 break;
             }
             /* if (pseudo_r)
-                 ret = do_random_move(board);
-*/
-            ret = do_move_random_piece(board);
+               ret = do_random_move(board);
+               print_board(board->board);
+               getchar();
+               */
+
+            if (uci_engine[0])
+                ret = do_uci_move(board, engine);
+            else
+                ret = do_move_random_piece(board, engine);
+
             //ret = do_random_move(board);
             if (ret == 0) {
                 break;
             } else if (ret == -1) {
                 printf("AI won\n");
-                //print_board(board->board);
                 reward(ai);
                 break;
             }
+            /*
+               print_board(board->board);
+               getchar();
+               */
         }
+        /*
+           print_board(board->board);
+           char *fen = get_fen(board);
+           printf("ret = %d moves = %d. max_moves = %d. fen: %s\n", ret, moves, max_moves, fen);
+           getchar();
+           */
+
         if (ret == 0 || moves == max_moves) {
             draw(ai, board);
             //printf("DRAW\n");
@@ -127,7 +151,7 @@ void play_chess_aivsai(void *arg) {
         //board_t *board = new_board("rnbqkbnr/qqqqqqqq/8/8/8/8/qqqqqqqq/qqqqKqqq w - - 0 1");
 
         for (moves = 0; moves < max_moves; moves++) {
-            ret = do_best_move(ai, board);
+            ret = do_best_move(ai, board, NULL);
 
             //          ret = do_best_move(ai, board);
             //                    print_board(board->board);
@@ -142,8 +166,7 @@ void play_chess_aivsai(void *arg) {
                 //            print_board(board->board);
                 break;
             }
-            ret = do_best_move(ai_b, board);
-
+            ret = do_best_move(ai_b, board, NULL);
 
             //            ret = do_best_move(ai_b, board);
             if (ret == 0) {
@@ -257,6 +280,7 @@ void parse_arguments(int argc, char **argv) {
         {"threads", required_argument, NULL, 't'},
         {"jobs", required_argument, NULL, 'j'},
         {"file", required_argument, NULL, 'f'},
+        {"uci-enine", required_argument, NULL, 'u'},
         {"games-to-play", required_argument, NULL, 'g'},
         {"iterations", required_argument, NULL, 'i'},
         {"games-pr-iteration", required_argument, NULL, 'n'},
@@ -267,7 +291,7 @@ void parse_arguments(int argc, char **argv) {
         {NULL, 0, NULL, 0},
     };
 
-    while ((c = getopt_long(argc, argv, "t:j:f:g:i:n:p:m:a:h", long_options,
+    while ((c = getopt_long(argc, argv, "t:j:f:g:i:n:p:m:a:u:h", long_options,
                     &option_index)) != -1)
         switch (c) {
             case 't':
@@ -296,6 +320,9 @@ void parse_arguments(int argc, char **argv) {
                 break;
             case 'a':
                 ai_vs_ai = atoi(optarg);
+                break;
+            case 'u':
+                strncpy(uci_engine, optarg, sizeof(uci_engine));
                 break;
             case 'h':
             default:

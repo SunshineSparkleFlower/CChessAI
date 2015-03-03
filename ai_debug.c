@@ -11,12 +11,14 @@
 #include "common.h"
 #include "board.h"
 #include "AI.h"
+#include "uci.h"
 
 struct game_struct {
     AI_instance_t *ai;
     int games_to_play, max_moves;
-    int (*do_a_move)(board_t *);
+    int (*do_a_move)(board_t *, struct uci *engine);
     char *fen;
+    char *engine;
 
     int game_id;
 };
@@ -29,7 +31,8 @@ void play_chess(void *arg)
 {
     struct game_struct *game = (struct game_struct *)arg;
     int games_to_play, nr_games, max_moves, moves, ret = -1;
-    int (*do_a_move)(board_t *);
+    int (*do_a_move)(board_t *, struct uci *engine);
+    struct uci *engine = NULL;
     AI_instance_t *ai;
     board_t *board;
 
@@ -37,6 +40,9 @@ void play_chess(void *arg)
     games_to_play = game->games_to_play;
     max_moves = game->max_moves;
     do_a_move = game->do_a_move;
+
+    if (game->engine)
+        engine = uci_init(game->engine, game->fen, BLACK);
 
     printf("starting game %d\n", game->game_id);
 
@@ -46,7 +52,7 @@ void play_chess(void *arg)
             print_board(board->board);
             getchar();
 
-            ret = do_best_move(ai, board);
+            ret = do_best_move(ai, board, NULL);
             if(ret == 0) {
                 printf("stalemate\n");
                 break;
@@ -58,7 +64,7 @@ void play_chess(void *arg)
             print_board(board->board);
             getchar();
 
-            ret = do_a_move(board);
+            ret = do_a_move(board, engine);
             if(ret == 0) {
                 printf("stalemate\n");
                 break;
@@ -93,12 +99,14 @@ int main(int argc, char *argv[])
     games = malloc(nr_jobs * sizeof(struct game_struct));
 
     i = 0;
-    games[i].ai = load_ai(ai_file, 0);
+    games[i].ai = load_ai(ai_file);
     clear_score(games[i].ai);
     if (games[i].ai == NULL) {
         perror("ai creation");
         exit(1);
     }
+
+    games[i].engine = NULL;
     games[i].games_to_play = 1;
     games[i].max_moves = 20;
     games[i].do_a_move = do_random_move;

@@ -49,19 +49,19 @@ extern AI_instance_t *load_ai(char *file);
 extern int dump_ai(char *file, AI_instance_t *ai);
 extern void ai_free(AI_instance_t *ai);
 extern int _get_best_move(AI_instance_t *ai, board_t * board);
-extern int do_best_move(AI_instance_t *ai, board_t *board);
+extern int do_best_move(AI_instance_t *ai, board_t * board, struct uci *uci_iface);
 extern void punish(AI_instance_t *ai);
 extern void reward(AI_instance_t *ai);
 extern void draw(AI_instance_t *ai, board_t * board);
 extern float get_score(AI_instance_t *ai);
 extern int mutate(AI_instance_t *a1, AI_instance_t *a2, int print, int print_stats);
 extern void clear_score(AI_instance_t *ai);
-extern int do_nonrandom_move(board_t *board);
-extern int do_random_move(board_t *board);
-extern int do_move_random_piece(board_t *board);
-extern int do_move_piece(board_t *board, enum moves_index piece_type);
-extern int do_pseudo_random_move(board_t *board);
-extern int do_piece_random_move(board_t *board);
+extern int do_nonrandom_move(board_t *board, struct uci *uci_iface);
+extern int do_random_move(board_t *board, struct uci *uci_iface);
+extern int do_move_random_piece(board_t *board, struct uci *uci_iface);
+extern int do_move_piece(board_t *board, enum moves_index piece_type, struct uci *uci_iface);
+extern int do_pseudo_random_move(board_t *board, struct uci *uci_iface);
+extern int do_piece_random_move(board_t *board, struct uci *uci_iface);
 
 
 extern int score(AI_instance_t *ai, piece_t *board);

@@ -14,7 +14,11 @@ enum coords {
     H8, G8, F8, E8, D8, C8, B8, A8,
 };
 
-#define coord_to_index(row, col) ((row) * 8 + (col))
+#define bb_col_to_AI_col(col) (~(col) & 0x7)
+#define bb_coord_to_index(row, col) ((row) * 8 + (col))
+
+#define AI_col_to_bb_col(col) (~(col) & 0x7)
+#define AI_coord_to_index(row, col) ((row) * 8 + AI_col_to_bb_col(col))
 
 #include "board.h"
 extern void init_bitboards(char *_fen, board_t *board);
