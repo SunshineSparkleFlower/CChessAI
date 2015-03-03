@@ -332,10 +332,10 @@ int do_actual_move(board_t *b, struct move *m)
 
     if (b->backup.promotion) {
         /*
-        printf("promotion! turn: %s. promotion character: %c (0x%02x)\n",
-                b->turn == WHITE ? "white" : "black", m->promotion, m->promotion);
-        getchar();
-        */
+           printf("promotion! turn: %s. promotion character: %c (0x%02x)\n",
+           b->turn == WHITE ? "white" : "black", m->promotion, m->promotion);
+           getchar();
+           */
         switch (tolower(m->promotion)) {
             case 'q':
                 PIECE(b->board, m->to.y, tx) = b->turn == WHITE
@@ -441,10 +441,10 @@ int do_move(board_t *b, int n)
 
     if (b->backup.promotion) {
         /*
-        printf("promotion! turn: %s. promotion character: %c (0x%02x)\n",
-                b->turn == WHITE ? "white" : "black", m->promotion, m->promotion);
-        getchar();
-        */
+           printf("promotion! turn: %s. promotion character: %c (0x%02x)\n",
+           b->turn == WHITE ? "white" : "black", m->promotion, m->promotion);
+           getchar();
+           */
         switch (tolower(m->promotion)) {
             case 'q':
                 PIECE(b->board, m->to.y, tx) = b->turn == WHITE
