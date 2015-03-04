@@ -159,7 +159,7 @@ void uci_start_search(struct uci *iface)
     int tmp;
     char buffer[256];
 
-    sprintf(buffer, "go movetime %u\n", iface->search_time);
+    sprintf(buffer, "go depth %u\n", 1);
 #ifdef UCI_DEBUG
     printf("%s", buffer);
 #endif

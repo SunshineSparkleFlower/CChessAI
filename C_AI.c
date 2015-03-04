@@ -21,6 +21,7 @@ struct game_struct {
     int (*do_a_move)(board_t *);
     char *fen;
     int game_id;
+    struct uci *engine;
 };
 
 int nr_threads = 2, nr_jobs = 2, i, best, iteration;
@@ -54,15 +55,9 @@ void play_chess(void *arg) {
     int nr_games, moves, ret = -1;
     AI_instance_t *ai;
     board_t *board;
-    struct uci *engine = NULL;
+    //struct uci *engine = NULL;
 
-    if (uci_engine[0]) {
-        engine = uci_init(uci_engine, UCI_DEFAULT_FEN, BLACK);
-        if (engine == NULL) {
-            printf("failed to initialize uci engine\n");
-            return;
-        }
-    }
+
 
     ai = game->ais[game->game_id];
 
@@ -74,18 +69,18 @@ void play_chess(void *arg) {
             exit(1);
         }
         if (uci_engine[0])
-            uci_new_game(engine, UCI_DEFAULT_FEN);
+            uci_new_game(game->engine, UCI_DEFAULT_FEN);
         //board_t *board = new_board("rnbqkbnr/qqqqqqqq/8/8/8/8/qqqqqqqq/qqqqKqqq w - - 0 1");
         // int pseudo_r = random_int_r(0, 10);
 
         for (moves = 0; moves < max_moves; moves++) {
-            ret = do_best_move(ai, board, engine);
+            ret = do_best_move(ai, board, game->engine);
 
             if (ret == 0) {
                 break;
             } else if (ret == -1) {
-                //punish(ai);
-                printf("AI lost\n");
+                punish(ai);
+                //printf("AI lost\n");
                 //                   print_board(board->board);
                 break;
             }
@@ -93,12 +88,12 @@ void play_chess(void *arg) {
                ret = do_random_move(board);
                print_board(board->board);
                getchar();
-               */
+             */
 
             if (uci_engine[0])
-                ret = do_uci_move(board, engine);
+                ret = do_uci_move(board, game->engine);
             else
-                ret = do_move_random_piece(board, engine);
+                ret = do_move_random_piece(board, game->engine);
 
             //ret = do_random_move(board);
             if (ret == 0) {
@@ -111,14 +106,14 @@ void play_chess(void *arg) {
             /*
                print_board(board->board);
                getchar();
-               */
+             */
         }
         /*
            print_board(board->board);
            char *fen = get_fen(board);
            printf("ret = %d moves = %d. max_moves = %d. fen: %s\n", ret, moves, max_moves, fen);
            getchar();
-           */
+         */
 
         if (ret == 0 || moves == max_moves) {
             draw(ai, board);
@@ -129,6 +124,7 @@ void play_chess(void *arg) {
         //  }
         free_board(board);
     }
+
 }
 
 void play_chess_aivsai(void *arg) {
@@ -270,7 +266,7 @@ void usage(char **argv, struct option *options) {
     printf("Available options:\n");
     for (i = 0; options[i].name; i++)
         printf("    -%c, --%s %s\n", options[i].val, options[i].name,
-                options[i].has_arg == required_argument ? "<argument>" : "");
+            options[i].has_arg == required_argument ? "<argument>" : "");
 }
 
 void parse_arguments(int argc, char **argv) {
@@ -292,7 +288,7 @@ void parse_arguments(int argc, char **argv) {
     };
 
     while ((c = getopt_long(argc, argv, "t:j:f:g:i:n:p:m:a:u:h", long_options,
-                    &option_index)) != -1)
+            &option_index)) != -1)
         switch (c) {
             case 't':
                 nr_threads = atoi(optarg);
@@ -322,7 +318,7 @@ void parse_arguments(int argc, char **argv) {
                 ai_vs_ai = atoi(optarg);
                 break;
             case 'u':
-                strncpy(uci_engine, optarg, sizeof(uci_engine));
+                strncpy(uci_engine, optarg, sizeof (uci_engine));
                 break;
             case 'h':
             default:
@@ -362,7 +358,7 @@ void natural_selection(void) {
 
        mutate(games[ai1].ai, games[ai2].ai, 0);
        }
-       */
+     */
 
     //   best = get_best_ai(games, nr_jobs, -1);
 
@@ -384,7 +380,7 @@ void natural_selection(void) {
   } else if (port_type[i] == 4) {
   if (and256(V, M[i], nr_ports, board, board_size, brain_a[i], brain_b[i], i > (nr_ports / 2), i < (nr_ports / 4)))
   SetBit(V, i);
-  */
+ */
 int print_brain(AI_instance_t *a1, int tmp) {
     int i, j;
 
@@ -515,7 +511,13 @@ int main(int argc, char *argv[]) {
         //games[i].do_a_move = do_random_move;
         games[i].fen = DEFAULT_FEN;
         games[i].game_id = i;
-
+        if (uci_engine[0]) {
+            games[i].engine = uci_init(uci_engine, UCI_DEFAULT_FEN, BLACK);
+            if (games[i].engine == NULL) {
+                printf("failed to initialize uci engine\n");
+                exit(1);
+            }
+        }
         jobs[i].data = games + i;
         if (ai_vs_ai)
             jobs[i].task = play_chess_aivsai;
@@ -604,6 +606,9 @@ int main(int argc, char *argv[]) {
         best = get_best_ai(ais, nr_jobs / 2, -1);
     else
         best = get_best_ai(ais, nr_jobs, -1);
+
+    for (i = 0; i < nr_jobs; i++)
+        uci_close(games[i].engine);
 
     print_brain(ais[best], 0);
     dump_ai("ai.aidump", ais[best]);
