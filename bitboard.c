@@ -256,10 +256,10 @@ void bb_print(u64 b)
 
     for (i = 7; i >= 0; i--) {
         for (j = 7; j >= 0; j--)
-            printf("%lu ", ((b >> (i * 8 + j) & 1)));
-        putchar('\n');
+            fprintf(stderr, "%lu ", ((b >> (i * 8 + j) & 1)));
+        fprintf(stderr, "\n");
     }
-    printf("0x%016lx\n\n", b);
+    fprintf(stderr, "0x%016lx\n\n", b);
 }
 
 static inline u64 generate_rook_moves(struct bitboard *b, int pos)
@@ -463,12 +463,18 @@ static int handle_king_move(struct bitboard *self, struct bitboard *enemy,
                 ret = 5;
             }
 
-            generate_pawn_moves(enemy, &pawn_attacks, board->turn);
             if (to == short_target) { // short castling
+                set_bit(enemy->apieces, 1);
+                set_bit(enemy->apieces, 2);
+                generate_pawn_moves(enemy, &pawn_attacks, -board->turn);
+                clear_bit(enemy->apieces, 1);
+                clear_bit(enemy->apieces, 2);
                 // check if any of the squares can be attacked
-                for (i = 1; i < 3; i++)
-                    if (any_can_attack(enemy, pawn_attacks, from - i))
+                for (i = 1; i < 3; i++) {
+                    if (any_can_attack(enemy, pawn_attacks, from - i)) {
                         return 0;
+                    }
+                }
 
                 clear_bit(self->rooks, r_short_from);
                 set_bit(self->rooks, r_short_to);
@@ -476,9 +482,18 @@ static int handle_king_move(struct bitboard *self, struct bitboard *enemy,
                 self->short_rook_moved = 1;
             } else { // long castling
                 // check if any of the squares can be attacked
-                for (i = 1; i < 4; i++)
-                    if (any_can_attack(enemy, pawn_attacks, from + i))
+                set_bit(enemy->apieces, 4);
+                set_bit(enemy->apieces, 5);
+                set_bit(enemy->apieces, 6);
+                generate_pawn_moves(enemy, &pawn_attacks, -board->turn);
+                clear_bit(enemy->apieces, 4);
+                clear_bit(enemy->apieces, 5);
+                clear_bit(enemy->apieces, 6);
+                for (i = 1; i < 4; i++) {
+                    if (any_can_attack(enemy, pawn_attacks, from + i)) {
                         return 0;
+                    }
+                }
                 clear_bit(self->rooks, r_long_from);
                 set_bit(self->rooks, r_long_to);
                 board->backup.castling = 2;
@@ -504,7 +519,7 @@ static void handle_pawn_move(struct bitboard *self, board_t *board,
         clear_bit(self->pawns, to);
 
         //printf("promotion! turn: %s. promotion character: %c (0x%02x)\n",
-                //self == &board->white_pieces ? "white" : "black", m->promotion, m->promotion);
+        //self == &board->white_pieces ? "white" : "black", m->promotion, m->promotion);
         switch (tolower(m->promotion)) {
             case 'q':
                 set_bit(self->queens, to);
@@ -894,12 +909,11 @@ void bb_generate_all_legal_moves(board_t *board)
     moves = generate_pawn_moves(b, &attacks, board->turn);
     store_pawn_moves(b, moves, attacks, board->moves,
             &board->moves_count, board->turn);
-
-#ifndef DISABLE_CASTLING
-    generate_castling_moves(board, b);
-#endif
 #ifndef DISABLE_EN_PASSANT
     generate_en_passant_moves(board, b);
+#endif
+#ifndef DISABLE_CASTLING
+    generate_castling_moves(board, b);
 #endif
 }
 

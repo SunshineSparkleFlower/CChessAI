@@ -294,8 +294,6 @@ int do_actual_move(board_t *b, struct move *m)
         printf("%s: HALTING EXECUTION!!1\n", __FUNCTION__);
         print_board(b->board);
         bb_print(bb->apieces);
-        extern struct uci *engine;
-        printf("%s\n", engine->position);
         asm("int3");
         return 0;
     } else if (ret == 2) // attempted castling move was illegal
@@ -653,7 +651,6 @@ int do_uci_move(board_t *board, struct uci *iface)
 
     move = uci_get_next_move(iface);
     strncpy(move_copy, move, sizeof(move_copy));
-    printf("got move '%s'\n", move);
 
     memset(&m, 0, sizeof(m));
     uci_move_notation_to_internal(move_copy, &m);

@@ -22,8 +22,8 @@ ai_debug: ai_debug.o board.o AI.o common.o bitboard.o magicmoves.o uci.o
 debug: CFLAGS += -DDEBUG -g
 debug: test
 
-#test: CFLAGS += -D BOARD_CONSISTENCY_TEST
-#test: CFLAGS += -D INSPECT_MOVES
+test: CFLAGS += -D BOARD_CONSISTENCY_TEST
+test: CFLAGS += -D INSPECT_MOVES
 #test: CFLAGS += -D UCI_DEBUG
 test: unit_test_ai.o board.o AI.o common.o bitboard.o magicmoves.o uci.o
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@

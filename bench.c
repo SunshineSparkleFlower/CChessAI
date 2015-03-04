@@ -47,7 +47,7 @@ void *ai_bench(void *arg)
     for (i = 0; i < nr_games; i++) {
         board = new_board(NULL);
         for (moves = 0; moves < max_moves; moves++) {
-            ret = do_best_move(ai, board);
+            ret = do_best_move(ai, board, NULL);
             if (ret == -1) {
                 ++ai_losses;
                 break;
@@ -58,7 +58,7 @@ void *ai_bench(void *arg)
             }
 
             // break if stalemate or checkmate
-            ret = do_random_move(board);
+            ret = do_random_move(board, NULL);
             if (ret == -1) {
                 ++ai_wins;
                 break;
@@ -98,14 +98,14 @@ void *move_gen(void *arg)
             generate_all_moves(board);
             num += board->moves_count;
 
-            ret = do_random_move(board);
+            ret = do_random_move(board, NULL);
             if (ret <= 0)
                 break;
 
             generate_all_moves(board);
             num += board->moves_count;
 
-            ret = do_random_move(board);
+            ret = do_random_move(board, NULL);
             if (ret <= 0)
                 break;
         }

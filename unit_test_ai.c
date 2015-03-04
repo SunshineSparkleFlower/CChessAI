@@ -43,9 +43,9 @@ void uci_test(void)
 {
     int i, j, ret;
     board_t *board;
-    struct uci *engine;
     int num_games = 1;
     int max_moves = 50;
+    struct uci *engine;
 
     engine = uci_init("/usr/games/stockfish", UCI_DEFAULT_FEN, BLACK);
     if (engine == NULL) {
@@ -102,7 +102,7 @@ void moves_test(char *fen, int num_games, int max_moves)
     for (i = 0; i < num_games; i++) {
         board = new_board(fen);
         for (j = 0; j < max_moves; j++) {
-            ret = do_move_random_piece(board, NULL);
+            ret = do_random_move(board, NULL);
 #ifdef INSPECT_MOVES
             print_stats(board);
             getchar();
@@ -147,7 +147,7 @@ void inspect_moves(void)
     fprintf(stderr, "recompile with '-D INSPECT_MOVES' to run this test!\n");
     return;
 #endif
-    moves_test(DEFAULT_FEN, 1, 40);
+    moves_test("rnbqkbnr/pppp1ppp/8/8/8/8/PPPPpPPP/RNBQK2R w KQkq - 0 1", 1, 40);
 }
 
 void random_test(void)
@@ -176,7 +176,8 @@ int main(int argc, char *argv[])
 
     //random_test();
     //moves_consistency_test();
-    uci_test();
+    inspect_moves();
+    //uci_test();
 
     _shutdown();
     return 0;

@@ -49,12 +49,12 @@ void print_ai_stats(int tid, AI_instance_t *ai, int ite, int rndwins) {
     printf("thread %d: generation: %d\n", tid, ai->generation);
 }
 
-    struct uci *engine = NULL;
 void play_chess(void *arg) {
     struct game_struct *game = (struct game_struct *) arg;
     int nr_games, moves, ret = -1;
     AI_instance_t *ai;
     board_t *board;
+    struct uci *engine = NULL;
 
     if (uci_engine[0]) {
         engine = uci_init(uci_engine, UCI_DEFAULT_FEN, BLACK);
