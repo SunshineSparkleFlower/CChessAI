@@ -464,11 +464,11 @@ static int handle_king_move(struct bitboard *self, struct bitboard *enemy,
             }
 
             if (to == short_target) { // short castling
-                set_bit(enemy->apieces, 1);
-                set_bit(enemy->apieces, 2);
+                set_bit(enemy->apieces, from - 1);
+                set_bit(enemy->apieces, from - 2);
                 generate_pawn_moves(enemy, &pawn_attacks, -board->turn);
-                clear_bit(enemy->apieces, 1);
-                clear_bit(enemy->apieces, 2);
+                clear_bit(enemy->apieces, from - 1);
+                clear_bit(enemy->apieces, from - 2);
                 // check if any of the squares can be attacked
                 for (i = 1; i < 3; i++) {
                     if (any_can_attack(enemy, pawn_attacks, from - i)) {
@@ -482,13 +482,13 @@ static int handle_king_move(struct bitboard *self, struct bitboard *enemy,
                 self->short_rook_moved = 1;
             } else { // long castling
                 // check if any of the squares can be attacked
-                set_bit(enemy->apieces, 4);
-                set_bit(enemy->apieces, 5);
-                set_bit(enemy->apieces, 6);
+                set_bit(enemy->apieces, from + 1);
+                set_bit(enemy->apieces, from + 2);
+                set_bit(enemy->apieces, from + 3);
                 generate_pawn_moves(enemy, &pawn_attacks, -board->turn);
-                clear_bit(enemy->apieces, 4);
-                clear_bit(enemy->apieces, 5);
-                clear_bit(enemy->apieces, 6);
+                clear_bit(enemy->apieces, from + 1);
+                clear_bit(enemy->apieces, from + 2);
+                clear_bit(enemy->apieces, from + 3);
                 for (i = 1; i < 4; i++) {
                     if (any_can_attack(enemy, pawn_attacks, from + i)) {
                         return 0;
