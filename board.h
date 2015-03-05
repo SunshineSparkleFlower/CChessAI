@@ -72,7 +72,7 @@ extern void swapturn(board_t *b);
 extern int undo_move(board_t *b, int n);
 extern int move(board_t *b, int n);
 extern int do_move(board_t *b, int n);
-extern int do_actual_move(board_t *b, struct move *m);
+extern int do_actual_move(board_t *b, struct move *m, struct uci *iface);
 extern char *get_fen(board_t *board);
 extern void print_board(piece_t *board);
 extern void print_move(board_t *board, int n);

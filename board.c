@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include<pthread.h>
 
 #include "common.h"
 #include "board.h"
@@ -266,11 +267,14 @@ int undo_move(board_t *b, int n)
 #endif
     return 1;
 }
+//pthread_mutex_t lock;
 
 /* should only be called from UCI mode. It does not verify that the move did not
  * put the player in check */
-int do_actual_move(board_t *b, struct move *m)
+int do_actual_move(board_t *b, struct move *m, struct uci *iface)
 {
+//                    pthread_mutex_lock(&lock);
+
     int tx, fx, ret;
 
     // convert coordinates from bitboard coords (0->7, 1->6, ..., 7->0)
@@ -292,6 +296,7 @@ int do_actual_move(board_t *b, struct move *m)
             &b->black_pieces;
         printf("FATAL FUCKING ERROR: %s: SOMETHING WENT WRONG\n", __FUNCTION__);
         printf("%s: HALTING EXECUTION!!1\n", __FUNCTION__);
+        printf("position: %s\n", iface->position);
         print_board(b->board);
         bb_print(bb->apieces);
         asm("int3");
@@ -364,6 +369,8 @@ int do_actual_move(board_t *b, struct move *m)
     printf("%s: move was from %d, %d to %d, %d\n", __func__, m->frm.y, fx, m->to.y, tx);
     board_consistency_check(b);
 #endif
+                   // pthread_mutex_unlock(&lock);
+
     return 1;
 }
 
@@ -648,9 +655,11 @@ int do_uci_move(board_t *board, struct uci *iface)
     struct move m;
     int fx, tx;
     char *move, move_copy[32];
-
+    
     move = uci_get_next_move(iface);
     strncpy(move_copy, move, sizeof(move_copy));
+    //print_board(board->board);
+     //   printf("got: %s\n",move);
 
     memset(&m, 0, sizeof(m));
     uci_move_notation_to_internal(move_copy, &m);
@@ -664,7 +673,7 @@ int do_uci_move(board_t *board, struct uci *iface)
         m.en_passant = 1;
     }
 
-    do_actual_move(board, &m);
+    do_actual_move(board, &m, iface);
 
     if (is_stalemate(board))
         return 0;

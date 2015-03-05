@@ -62,9 +62,6 @@ extern int do_move_random_piece(board_t *board, struct uci *uci_iface);
 extern int do_move_piece(board_t *board, enum moves_index piece_type, struct uci *uci_iface);
 extern int do_pseudo_random_move(board_t *board, struct uci *uci_iface);
 extern int do_piece_random_move(board_t *board, struct uci *uci_iface);
-
-
-extern int score(AI_instance_t *ai, piece_t *board);
 extern int eval_curcuit(piece_t *board, AI_instance_t *ai);
 
 #endif

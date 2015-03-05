@@ -653,6 +653,8 @@ int _get_best_move(AI_instance_t *ai, board_t * board) {
             break;
         else if (moveret == -1)
             return -1;
+        else
+            printf("ERROR: moveret error\n");
     }
 
     //check if a port had constant output
@@ -960,7 +962,7 @@ void create_random_connections(AI_instance_t *a1, int nr_connections, int port, 
         for (i = 0; i < nr_connections && a1->low_port < port; i++) {
             int r = random_int_r(a1->low_port, port - 1);
             if (r > port - 1 || r < a1->low_port)
-                printf("ERRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRROROOORr: %d\n", r);
+                printf("ERROR: illegal connection created: %d\n", r);
             SetBit(a1->brain[port], r);
         }
 
@@ -972,10 +974,11 @@ void create_random_connections(AI_instance_t *a1, int nr_connections, int port, 
 
 }
 
-void reset_constant_ports(AI_instance_t *a1, AI_instance_t * a2) {
     //check for constant ports and reset them
+void reset_constant_ports(AI_instance_t *a1, AI_instance_t * a2) {
     int j;
     for (j = a1->low_port; j <= a1->high_port; j++) {
+        //ports that doesn't change in 1000 games is reset 
         if (((1000 * a2->separation_count[j]) / (1 + a2->nr_games_played)) == 0 &&
                 ((1000 * a2->state_separation_count[j]) / (1 + a2->nr_games_played)) == 0) {
             if (random_int_r(MIN_VAL, MAX_VAL) > 90) {
@@ -992,25 +995,8 @@ void reset_constant_ports(AI_instance_t *a1, AI_instance_t * a2) {
     }
 }
 
-void reset_low_entropy_ports(AI_instance_t *a1, AI_instance_t * a2) {
-    //check for low entropy in state separation ports
-    int j;
-    return;
-    for (j = 0; j < a1->nr_ports / 4; j++) {
-        if (((a1->state_separation_threshold * a2->state_separation_count[j]) / (1 + a2->nr_games_played)) == 0) {
-            if (random_int_r(MIN_VAL, MAX_VAL) > a1->state_separation_rate) {
 
-                bzero(a1->brain[j], a1->nr_synapsis / 8);
-                a1->port_type[j] = random_int_r(1, a1->nr_porttypes);
-                a1->invert[j] = random_int_r(0, 1);
-                create_random_connections(a1, 2, j, 0);
-
-            }
-        }
-    }
-
-}
-
+//delete all connections for a port and create new ones
 void randomize_ports(AI_instance_t *a1) {
     int i;
     //completely randomize a port
@@ -1021,14 +1007,14 @@ void randomize_ports(AI_instance_t *a1) {
 
         bzero(a1->brain[r_port], a1->nr_synapsis / 8);
         create_random_connections(a1, 2, r_port, 0);
-
     }
-
 }
 
+//find ports that are used by other ports
 void find_ports_in_use(AI_instance_t *a1) {
     //find ports that are actually in use
     int i, j;
+    int max_depth = 7;
     __m128i ad, bd;
 
     for (i = 0; i < (a1->nr_ports) / 32; i += 4) {
@@ -1041,7 +1027,7 @@ void find_ports_in_use(AI_instance_t *a1) {
         _mm_storeu_si128((__m128i *) (((int*) a1->used_port + i)), bd);
     }
     int k;
-    for (k = 0; k < 7; k++) {
+    for (k = 0; k < max_depth; k++) {
         for (i = 0; i < (a1->nr_ports) / 32; i += 4) {
 
             bd = _mm_loadu_si128((__m128i *) (((int*) a1->brain[0]) + i));
@@ -1057,6 +1043,7 @@ void find_ports_in_use(AI_instance_t *a1) {
     }
 }
 
+//move a port in ai with its connections, this should have no effect on AI output
 void move_port(AI_instance_t *ai, int from, int to) {
     // printf("from %d to %d\n", from, to);
     memcpy(&ai->brain[to][0], &ai->brain[from][0], ai->nr_synapsis / 8);
@@ -1080,25 +1067,20 @@ void move_port(AI_instance_t *ai, int from, int to) {
 void defrag(AI_instance_t *ai) {
     int i;
     int j;
-    int k;
     for (i = ai->low_port; i <= ai->high_port;) {
-        for (k = ai->low_port; k <= ai->high_port; k++) {
-            //printf("(%d, %d, %d), ", ai->output_tag[k], TestBit(ai->used_port,k),k);
-        }
-        //printf("\n");
+       
+        //is the port in use?
         if (!TestBit(ai->used_port, i) && !ai->output_tag[i]) {
-            //  printf("fragging %d\n", i);
+            
+            //if there are more ports in the lower half of brain than the upper half
             if (ai->nr_ports / 2 - ai->low_port >= ai->high_port - ai->nr_ports / 2) {
-                //    printf("lower\n");
                 for (j = i - 1; j >= ai->low_port; j--) {
-
                     move_port(ai, j, j + 1);
                 }
                 ai->low_port++;
                 ai->low_port = keep_in_range(ai->low_port, 0, ai->nr_ports / 2);
-                i++;
+                i++; //low port increased then so should i
             } else {
-                //  printf("higher\n");
                 for (j = i + 1; j <= ai->high_port; j++) {
 
                     move_port(ai, j, j - 1);
@@ -1106,13 +1088,12 @@ void defrag(AI_instance_t *ai) {
                 ai->high_port--;
 
             }
-        } else
+        } else //increase i if the port is in use
             i++;
     }
 }
 
-//brain in a a1 is replaced with brain from a2 pluss a mutation
-
+//brain in a a1 is replaced with brain from a2 plus a mutation
 int mutate(AI_instance_t *a1, AI_instance_t * a2, int print, int print_stats) {
     int i;
     int max_val = 100;
@@ -1123,6 +1104,7 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print, int print_stats) {
     a1->low_port = keep_in_range(a1->low_port, 0, a1->nr_ports - 1);
     create_random_connections(a1, 2,  a1->low_port, 0);
 
+    //chance to add a new port with random connections
     if (!random_int_r(0, 10)) {
         a1->high_port += 1;
         a1->high_port = keep_in_range(a1->high_port, 0, a1->nr_ports - 1);
@@ -1153,11 +1135,11 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print, int print_stats) {
         randomize_ports(a1);
 
 
-    //remove a random connection
-    for (i = 0; i < 10; i++) {
+    //remove random connections
+    for (i = 0; i < 1000; i++) {
         int r_port = random_int_r(a1->low_port, a1->high_port);
         int r_synaps = 0;
-        r_synaps = random_int_r(0, a1->nr_synapsis - 1); // if (r_port >= a1->nr_ports - 1 - 9 && r_synaps > a1->nr_ports - 1 - 9)
+        r_synaps = random_int_r(0, a1->nr_synapsis - 1);
 
         ClearBit(a1->brain[r_port], r_synaps);
     }
@@ -1169,25 +1151,10 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print, int print_stats) {
         create_random_connections(a1, 1, r_port, 0);
     }
 
-    // defrag(a2);
-
-
     find_ports_in_use(a1);
-    //printf("before out_tag: (%d,%d,%d) %d - %d\n", a1->output_tag[a1->low_port],a1->output_tag[a1->low_port+1],a1->output_tag[a1->low_port+2], a1->low_port, a1->high_port);
-    //printf("before defrag\n");
-
-    for (i = a1->low_port; i <= a1->high_port; i++) {
-        // printf("(%d, %d), ", a1->output_tag[i], TestBit(a1->used_port,i));
-    }
-    //printf("\n");
+    
     defrag(a1);
-    //printf("after defrag\n");
-    for (i = a1->low_port; i <= a1->high_port; i++) {
-        //   printf("(%d, %d), ", a1->output_tag[i], TestBit(a1->used_port,i));
-    }
-    //printf("\n");
-    //printf("after out_tag: (%d,%d,%d) %d - %d\n", a1->output_tag[a1->low_port],a1->output_tag[a1->low_port+1],a1->output_tag[a1->low_port+2], a1->low_port, a1->high_port);
-
+   
 
     //reset the new AI
     bzero(&a1->separation_count[0], a1->nr_ports * sizeof (int));
@@ -1202,35 +1169,6 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print, int print_stats) {
     return 1;
 }
 
-int crossover(AI_instance_t *a1, AI_instance_t *a2, AI_instance_t * a3) {
-    //int r = random_int_r(0,1);
-
-    return -1;
-}
-
-int score_board(board_t * board) {
-    int piece_score[13] = {1, 2, 2, 2, 3, 0,
-        -1, -2, -2. - 2, -3, 0,
-        0};
-    int i;
-    int score = 0;
-    for (i = 0; i < 64; i++) {
-        if (color(board->_board[i]) == WHITE)
-            score += piece_score[get_moves_index(board->_board[i])];
-        else
-
-            if (color(board->_board[i]) == BLACK)
-                score -= piece_score[get_moves_index(board->_board[i])];
-
-        // printf("score: %d\n", score);
-        // printf("move_index: %d\n", get_moves_index(board->_board[i]));
-
-    }
-    //print_board(board);
-    // printf("score: %d\n", score);
-    return score;
-
-}
 
 float get_score(AI_instance_t * ai) {
 

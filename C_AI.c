@@ -39,7 +39,9 @@ int nr_ports = 256;
 int max_moves = 20;
 int ai_vs_ai = 0;
 AI_instance_t **ais;
+AI_instance_t ***ais_2d;
 char uci_engine[256] = "";
+int nr_islands = 1;
 
 void print_ai_stats(int tid, AI_instance_t *ai, int ite, int rndwins) {
     printf("thread %d: iteration %d\n", tid, ite);
@@ -49,31 +51,31 @@ void print_ai_stats(int tid, AI_instance_t *ai, int ite, int rndwins) {
     printf("    P and R\n");
     printf("thread %d: generation: %d\n", tid, ai->generation);
 }
+pthread_mutex_t lock;
 
 void play_chess(void *arg) {
     struct game_struct *game = (struct game_struct *) arg;
     int nr_games, moves, ret = -1;
     AI_instance_t *ai;
     board_t *board;
-    //struct uci *engine = NULL;
-
-
 
     ai = game->ais[game->game_id];
+    //printf("game_id: %d\n", game->game_id);
 
     for (nr_games = 0; nr_games < games_pr_iteration; nr_games++) {
-        // printf("__________________NEW GAME_________________\n");
+      //  printf("__________________NEW GAME_________________\n");
         board = new_board(game->fen);
         if (board == NULL) {
             fprintf(stderr, "ERROR: BOARD = NULL!!!\n");
             exit(1);
         }
+            //                pthread_mutex_lock(&lock);
+
         if (uci_engine[0])
             uci_new_game(game->engine, UCI_DEFAULT_FEN);
-        //board_t *board = new_board("rnbqkbnr/qqqqqqqq/8/8/8/8/qqqqqqqq/qqqqKqqq w - - 0 1");
-        // int pseudo_r = random_int_r(0, 10);
 
         for (moves = 0; moves < max_moves; moves++) {
+
             ret = do_best_move(ai, board, game->engine);
 
             if (ret == 0) {
@@ -84,12 +86,8 @@ void play_chess(void *arg) {
                 //                   print_board(board->board);
                 break;
             }
-            /* if (pseudo_r)
-               ret = do_random_move(board);
-               print_board(board->board);
-               getchar();
-             */
 
+            // print_board(board->board);
             if (uci_engine[0])
                 ret = do_uci_move(board, game->engine);
             else
@@ -102,11 +100,14 @@ void play_chess(void *arg) {
                 printf("AI won\n");
                 reward(ai);
                 break;
+                
             }
             /*
                print_board(board->board);
                getchar();
              */
+            //("unlocking\n");
+
         }
         /*
            print_board(board->board);
@@ -114,77 +115,18 @@ void play_chess(void *arg) {
            printf("ret = %d moves = %d. max_moves = %d. fen: %s\n", ret, moves, max_moves, fen);
            getchar();
          */
+//pthread_mutex_unlock(&lock);
 
+        //nobody won, either because of stalemate or max number of moves made
         if (ret == 0 || moves == max_moves) {
             draw(ai, board);
             //printf("DRAW\n");
         }
-        //  if (ret >= 0){
-        //          small_reward(ai,score_board(board->board));            
-        //  }
         free_board(board);
+                        
     }
+     //   printf("done game_id: %d\n", game->game_id);
 
-}
-
-void play_chess_aivsai(void *arg) {
-    struct game_struct *game = (struct game_struct *) arg;
-    int nr_games, moves, ret = -1;
-    AI_instance_t *ai;
-    AI_instance_t *ai_b;
-
-    board_t *board;
-    if (game->game_id >= nr_jobs / 2)
-        return;
-    ai = game->ais[game->game_id];
-    ai_b = game->ais[game->game_id + nr_jobs / 2];
-
-    //printf("game_id: %d\n", game->game_id);
-    //printf("starting game %d\n", game->game_id);
-
-    for (nr_games = 0; nr_games < games_pr_iteration; nr_games++) {
-        board = new_board(game->fen);
-        //board_t *board = new_board("rnbqkbnr/qqqqqqqq/8/8/8/8/qqqqqqqq/qqqqKqqq w - - 0 1");
-
-        for (moves = 0; moves < max_moves; moves++) {
-            ret = do_best_move(ai, board, NULL);
-
-            //          ret = do_best_move(ai, board);
-            //                    print_board(board->board);
-
-            if (ret == 0) {
-                break;
-            } else if (ret == -1) {
-                reward(ai_b);
-
-                punish(ai);
-                //printf("AI lost\n");
-                //            print_board(board->board);
-                break;
-            }
-            ret = do_best_move(ai_b, board, NULL);
-
-            //            ret = do_best_move(ai_b, board);
-            if (ret == 0) {
-                break;
-            } else if (ret == -1) {
-                //printf("AI won\n");
-                //                             print_board(board->board);
-                reward(ai);
-                punish(ai_b);
-
-                break;
-            }
-        }
-        if (ret == 0 || moves == max_moves) {
-            draw(ai, board);
-            draw(ai_b, board);
-        }
-        //  if (ret >= 0){
-        //          small_reward(ai,score_board(board->board));            
-        //  }
-        free_board(board);
-    }
 }
 
 int get_best_ai(AI_instance_t **ais, int n, int lim) {
@@ -199,6 +141,8 @@ int get_best_ai(AI_instance_t **ais, int n, int lim) {
 
     return best;
 }
+
+//used to catch SIGINT and interrupt the training to write the AI to file 
 
 void sighandler(int sig) {
     char buffer[512], file[128];
@@ -248,6 +192,8 @@ void sighandler(int sig) {
             file[64] = 0;
         }
     }
+    for (i = 0; i < nr_jobs * nr_islands; i++)
+        uci_close(games[i].engine);
 
     for (i = 0; i < n; i++) {
         best = get_best_ai(ais, nr_jobs, -1);
@@ -333,54 +279,10 @@ void parse_arguments(int argc, char **argv) {
     }
 }
 
-void natural_selection(void) {
-    /*
-       int ai1 = random_int_r(0, nr_jobs - 1);
-       int ai2 = random_int_r(0, nr_jobs - 1);
-       float score_ai1 = get_score(games[ai1].ai);
-       float score_ai2 = get_score(games[ai2].ai);
-       if (score_ai1 > score_ai2) {
-       printf("mutating ai%d (score %f, %d wins, %d losses)",
-       ai2, get_score(games[ai2].ai),
-       games[ai2].ai->nr_wins, games[ai2].ai->nr_losses);
-       printf(" from ai%d (score %f, %d wins, %d losses)\n",
-       ai1, get_score(games[ai1].ai),
-       games[ai1].ai->nr_wins, games[ai1].ai->nr_losses);
 
-       mutate(games[ai2].ai, games[ai1].ai, 0);
-       } else if (score_ai2 > score_ai1) {
-       printf("mutating ai%d (score %f, %d wins, %d losses)",
-       ai1, get_score(games[ai1].ai),
-       games[ai1].ai->nr_wins, games[ai1].ai->nr_losses);
-       printf(" from ai%d (score %f, %d wins, %d losses)\n",
-       ai2, get_score(games[ai2].ai),
-       games[ai2].ai->nr_wins, games[ai2].ai->nr_losses);
 
-       mutate(games[ai1].ai, games[ai2].ai, 0);
-       }
-     */
+//prints the brain in a graph format, tmp == 1 means the brain is written to brain.dot
 
-    //   best = get_best_ai(games, nr_jobs, -1);
-
-    // printf("BEST: ai%d (score %f, %d wins, %d losses, wlr: %f\n)",
-    //                best, get_score(games[best].ai),
-    //               games[best].ai->nr_wins, games[best].ai->nr_losses, games[best].ai->nr_wins/(float)games[best].ai->nr_losses);
-
-}
-
-/*if (port_type[i] == 1) {
-  if (nand256(V, M[i], nr_ports, board, board_size, brain_a[i], brain_b[i], i > (nr_ports / 2), i < (nr_ports / 4)))
-  SetBit(V, i);
-  } else if (port_type[i] == 3) {
-  if (or256(V, M[i], nr_ports, board, board_size, brain_a[i], brain_b[i], i > (nr_ports / 2), i < (nr_ports / 4)))
-  SetBit(V, i);
-  } else if (port_type[i] == 2) {
-  if (nor256(V, M[i], nr_ports, board, board_size, brain_a[i], brain_b[i], i > (nr_ports / 2), i < (nr_ports / 4)))
-  SetBit(V, i);
-  } else if (port_type[i] == 4) {
-  if (and256(V, M[i], nr_ports, board, board_size, brain_a[i], brain_b[i], i > (nr_ports / 2), i < (nr_ports / 4)))
-  SetBit(V, i);
- */
 int print_brain(AI_instance_t *a1, int tmp) {
     int i, j;
 
@@ -395,11 +297,7 @@ int print_brain(AI_instance_t *a1, int tmp) {
     const char *text = "brain";
     fprintf(f, "digraph %s{\n", text);
 
-    //print_board(board->board);
-    //i/8*16;
-    //i%(8*16);
-    //board[i/8*16][(i/8*16)/16]
-    /* print integers and floats */
+
     for (i = a1->low_port; i <= a1->high_port; i++) {
 
         for (j = 0; j < a1->nr_synapsis; j++) {
@@ -479,135 +377,100 @@ int print_brain(AI_instance_t *a1, int tmp) {
 
 int main(int argc, char *argv[]) {
     int j;
-
+    int k;
     parse_arguments(argc, argv);
 
     srand(100);
-
     init_threadpool(nr_threads);
     init_magicmoves();
-
     signal(SIGINT, sighandler);
-    ais = malloc(nr_jobs * sizeof (struct AI_instance*));
-    jobs = malloc(nr_jobs * sizeof (struct job));
-    games = malloc(nr_jobs * sizeof (struct game_struct));
 
-    for (i = 0; i < nr_jobs; i++) {
-        if (ai_file) {
-            ais[i] = load_ai(ai_file);
-            clear_score(ais[i]);
-        } else
-            ais[i] = ai_new(nr_ports); // mutation rate = 5000
-        if (ais[i] == NULL) {
-            perror("ai creation");
-            exit(1);
-        }
+    //allocate structs for AI, thread jobs and game data
+    ais_2d = (AI_instance_t***) malloc_2d(nr_jobs, nr_islands, sizeof (struct AI_instance*));
+    ais = malloc(nr_islands * nr_jobs * sizeof (struct AI_instance*));
+    jobs = malloc(nr_islands * nr_jobs * sizeof (struct job));
+    games = malloc(nr_islands * nr_jobs * sizeof (struct game_struct));
 
-        games[i].ais = ais;
-        //games[i].max_moves = max_moves;
-        //        games[i].max_moves = 50;
+    for (i = 0, k = 0; k < nr_jobs; k++) {
+        for (j = 0; j < nr_islands; j++, i++) {
+            if (ai_file) {
+                ais_2d[j][k] = load_ai(ai_file);
+                clear_score(ais_2d[j][k]);
 
-        //games[i].do_a_move = do_nonrandom_move;
-        //games[i].do_a_move = do_random_move;
-        games[i].fen = DEFAULT_FEN;
-        games[i].game_id = i;
-        if (uci_engine[0]) {
-            games[i].engine = uci_init(uci_engine, UCI_DEFAULT_FEN, BLACK);
-            if (games[i].engine == NULL) {
-                printf("failed to initialize uci engine\n");
+                ais[i] = ais_2d[j][k];
+            } else {
+                ais[i] = ai_new(nr_ports); // mutation rate = 5000
+                ais_2d[j][k] = ais[i];
+            }
+            if (ais_2d[j][k] == NULL) {
+                perror("ai creation");
                 exit(1);
             }
-        }
-        jobs[i].data = games + i;
-        if (ai_vs_ai)
-            jobs[i].task = play_chess_aivsai;
-        else
-            jobs[i].task = play_chess;
 
+            games[i].ais = ais;
+            games[i].fen = DEFAULT_FEN;
+            games[i].game_id = i;
+
+            //setup the UCI engine
+            if (uci_engine[0]) {
+                games[i].engine = uci_init(uci_engine, UCI_DEFAULT_FEN, BLACK);
+                if (games[i].engine == NULL) {
+                    printf("failed to initialize uci engine\n");
+                    exit(1);
+                }
+            }
+
+            jobs[i].data = games + i;
+            jobs[i].task = play_chess;
+        }
     }
-    for (i = 0; i < nr_jobs; i++) {
+    for (i = 0; i < nr_islands * nr_jobs; i++) {
         put_new_job(jobs + i);
     }
+
     iteration = 0;
     while (iteration < max_iterations) {
         printf("iteration %d\n", ++iteration);
 
-
-
-
         /* wait for jobs to finish */
         while (get_jobs_left() > 0 || get_jobs_in_progess() > 0)
-            usleep(1000 * 1); // sleep 10 ms
+            usleep(1000 * 1); // sleep 1 ms
+        printf("jobs done\n");
 
-        if (selection_function == 0) {
-            for (j = 0; j < nr_selections; j++)
-                natural_selection();
+        int nr_mutated = 0;
+        best = get_best_ai(ais, nr_jobs, -1);
+        if (!(iteration % 100)) {
+            printf("print tmp brain\n");
+            print_brain(ais[best], 1);
         }
-        if (ai_vs_ai) {
-            int nr_mutated = 0;
+        for (k = 0, i = 0; k < nr_islands; k++) {
+            best = get_best_ai(ais_2d[k], nr_jobs, -1);
+            printf("nr played %d\n", ais_2d[k][best]->nr_games_played);
 
-            printf("FIRST HALF: \n");
-            best = get_best_ai(ais, nr_jobs / 2, -1);
-            printf("best: %d\n", best);
-            for (i = 0; i < nr_jobs / 2; put_new_job(jobs + i), i++) {
-                if (games_to_play > ais[best]->nr_games_played) {
-                    continue;
-                }
-                if (i == best) {
-                    continue;
-                }
-                if (get_score(ais[i]) < get_score(ais[best])) {
-                    mutate(ais[i], ais[best], 0, !nr_mutated);
-                    nr_mutated++;
-
-                }
-            }
-            printf("SECOND HALF: \n");
-            best = get_best_ai(&ais[(nr_jobs / 2)], nr_jobs / 2, -1) + nr_jobs / 2;
-            printf("best: %d\n", best);
-            for (i = nr_jobs / 2; i < nr_jobs; put_new_job(jobs + i), i++) {
-                if (games_to_play > ais[best]->nr_games_played)
-                    break;
-                if (i == best)
-                    continue;
-                if (get_score(ais[i]) < get_score(ais[best])) {
-                    mutate(ais[i], ais[best], 0, !nr_mutated);
-                    nr_mutated++;
-
-                }
-            }
-
-        } else {
-            int nr_mutated = 0;
-            best = get_best_ai(ais, nr_jobs, -1);
-            // printf("best AI VS RANDOM: %d, %f \n", best, get_score(ais[best]));
-            if (!(iteration % 100)) {
-                printf("print tmp brain\n");
-                print_brain(ais[best], 1);
-            }
-            //printf("nr played %d\n", ais[best]->nr_games_played);
-            for (i = 0; i < nr_jobs; put_new_job(jobs + i), i++) {
-                if (games_to_play > ais[best]->nr_games_played) {
+            for (j = 0; j < nr_jobs; put_new_job(jobs + i), j++, i++) {
+                if (games_to_play > ais_2d[k][best]->nr_games_played) {
                     printf("need to play more before mutating\n");
                     continue;
                 }
-                if (i == best) {
+                if (j == best) {
+                  //                  printf("posting job %d\n", i);
+
                     continue;
                 }
-                if (get_score(ais[i]) < get_score(ais[best])) {
-                    mutate(ais[i], ais[best], 0, !nr_mutated);
+                if (get_score(ais_2d[k][j]) < get_score(ais_2d[k][best])) {
+                    mutate(ais_2d[k][j], ais_2d[k][best], 0, !nr_mutated);
                     nr_mutated++;
                 }
+                //printf("posting job %d\n", i);
             }
-            printf("nr_muated: %f\n", ((float) nr_mutated) / nr_jobs);
         }
-    }
-    if (ai_vs_ai)
-        best = get_best_ai(ais, nr_jobs / 2, -1);
-    else
-        best = get_best_ai(ais, nr_jobs, -1);
+        printf("Percent mutated: %f\n", ((float) nr_mutated) / nr_jobs);
 
-    for (i = 0; i < nr_jobs; i++)
+    }
+
+    best = get_best_ai(ais, nr_jobs, -1);
+
+    for (i = 0; i < nr_jobs * nr_islands; i++)
         uci_close(games[i].engine);
 
     print_brain(ais[best], 0);

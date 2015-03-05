@@ -43,9 +43,10 @@ static inline void unlink_node(struct job_list *j)
 
 void put_new_job(struct job *j)
 {
+        pthread_mutex_lock(&jobs_lock);
+
     struct job_list *new;
 
-    pthread_mutex_lock(&jobs_lock);
 
     new = malloc(sizeof(struct job_list));
     new->job = j;
@@ -69,10 +70,11 @@ int get_jobs_in_progess(void)
 
 static struct job *get_job(void)
 {
+        pthread_mutex_lock(&jobs_lock);
+
     struct job_list *tmp;
     struct job *ret = NULL;
 
-    pthread_mutex_lock(&jobs_lock);
     while (num_free_jobs == 0 && run)
         pthread_cond_wait(&cond, &jobs_lock);
 
@@ -82,7 +84,9 @@ static struct job *get_job(void)
         ret = tmp->job;
         free(tmp);
 
-        --num_free_jobs;
+        --num_free_jobs; 
+        ++jobs_in_progress;
+
     }
 
     pthread_mutex_unlock(&jobs_lock);
@@ -92,7 +96,6 @@ static struct job *get_job(void)
 static inline void report_start(void)
 {
     pthread_mutex_lock(&jobs_lock);
-    ++jobs_in_progress;
     pthread_mutex_unlock(&jobs_lock);
 }
 

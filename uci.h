@@ -9,6 +9,7 @@ struct uci {
 
     unsigned depth; // depth the engine will search
     unsigned search_time; // engime search time in ms
+    char __next_move[1024];
 };
 
 #define UCI_DEFAULT_FEN "startpos"

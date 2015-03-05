@@ -594,7 +594,8 @@ int bb_do_actual_move(board_t *board, struct move *m)
 
     board->backup.move_board = move_board = find_board(self, from);
     if (move_board == NULL) {
-        fprintf(stderr, "failed to obtain move board. board is likely not a board\n");
+        
+        fprintf(stderr, "failed to obtain move board. board is likely not a board, toY: %x, toX: %x, fromY: %x, fromX: %x \n",m->to.y, m->to.x, m->frm.y, m->frm.x );
         return 0;
     }
 

@@ -5,19 +5,18 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <unistd.h>
-
+#include<pthread.h>
 #include "common.h"
 #include "uci.h"
 
 /* if fen is NULL, standard position is assumed.
  * white is 1 if engine is white */
-struct uci *uci_init(char *path, char *fen, int color)
-{
+struct uci *uci_init(char *path, char *fen, int color) {
     int in[2], out[2];
     struct uci *ret;
     char buffer[2048];
 
-    ret = malloc(sizeof(struct uci));
+    ret = malloc(sizeof (struct uci));
     if (ret == NULL) {
         perror("malloc");
         return NULL;
@@ -29,7 +28,7 @@ struct uci *uci_init(char *path, char *fen, int color)
     }
     ret->out = fdopen(out[0], "r");
     ret->in = fdopen(in[1], "w");
-
+    
     setvbuf(ret->out, NULL, _IOLBF, 0);
     setvbuf(ret->in, NULL, _IOLBF, 0);
 
@@ -72,7 +71,7 @@ struct uci *uci_init(char *path, char *fen, int color)
         free(ret);
         return NULL;
     }
-    
+
     uci_new_game(ret, fen);
 
     ret->depth = 1;
@@ -83,18 +82,19 @@ struct uci *uci_init(char *path, char *fen, int color)
 
     return ret;
 }
+//pthread_mutex_t lock;
 
-void uci_new_game(struct uci *iface, char *fen)
-{
+void uci_new_game(struct uci *iface, char *fen) {
+
     if (fen == NULL)
         fen = "startpos";
 
     sprintf(iface->position, "position %s moves \n", fen);
     iface->pos_end = iface->position + strlen(iface->position) - 1;
+
 }
 
-void uci_close(struct uci *iface)
-{
+void uci_close(struct uci *iface) {
     fprintf(iface->in, "stop\n");
     fprintf(iface->in, "quit\n");
     fclose(iface->in);
@@ -102,34 +102,34 @@ void uci_close(struct uci *iface)
     free(iface->position);
     free(iface);
 }
-
-static char __next_move[1024];
+//static char __next_move[1024];
 // returns the next move in a statically allocated string buffer
-char *uci_get_next_move(struct uci *iface)
-{
+
+char *uci_get_next_move(struct uci *iface) {
+
     char *tmp;
     //fprintf(iface->in, "stop\n");
     //printf("stop\n");
 
-    while (fgets(__next_move, sizeof(__next_move), iface->out)) {
+    while (fgets(iface->__next_move, sizeof (iface->__next_move), iface->out)) {
 #ifdef UCI_DEBUG
         printf("got: %s", __next_move);
 #endif
-        if ((tmp = strstr(__next_move, "bestmove ")))
+        if ((tmp = strstr(iface->__next_move, "bestmove ")))
             break;
     }
     if (tmp == NULL)
         return NULL; // why would this ever happen?
 
-    tmp = strchr(__next_move, ' ') + 1;
+    tmp = strchr(iface->__next_move, ' ') + 1;
     *(strchr(tmp, ' ')) = 0;
 
     return tmp;
 }
 
-void uci_register_new_move(struct uci *iface, char *move)
-{
-    if ((iface->pos_end - iface->position + strlen(move) + 1) > 
+void uci_register_new_move(struct uci *iface, char *move) {
+
+    if ((iface->pos_end - iface->position + strlen(move) + 1) >
             iface->position_size) {
         iface->position_size *= 2;
         iface->position = realloc(iface->position, iface->position_size);
@@ -152,14 +152,16 @@ void uci_register_new_move(struct uci *iface, char *move)
 #endif
 
     fprintf(iface->in, "%s", iface->position);
+
 }
 
-void uci_start_search(struct uci *iface)
-{
+void uci_start_search(struct uci *iface) {
+
     int tmp;
     char buffer[256];
-
     sprintf(buffer, "go depth %u\n", 1);
+    //sprintf(buffer, "Skill Level %u\n", 0);
+
 #ifdef UCI_DEBUG
     printf("%s", buffer);
 #endif
@@ -171,4 +173,5 @@ void uci_start_search(struct uci *iface)
         perror("fwrite");
     }
     fflush(iface->in);
+
 }
