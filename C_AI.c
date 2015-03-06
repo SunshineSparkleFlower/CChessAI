@@ -63,13 +63,13 @@ void play_chess(void *arg) {
     //printf("game_id: %d\n", game->game_id);
 
     for (nr_games = 0; nr_games < games_pr_iteration; nr_games++) {
-      //  printf("__________________NEW GAME_________________\n");
+        //  printf("__________________NEW GAME_________________\n");
         board = new_board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w aaaa - 0 1");
         if (board == NULL) {
             fprintf(stderr, "ERROR: BOARD = NULL!!!\n");
             exit(1);
         }
-            //                pthread_mutex_lock(&lock);
+        //                pthread_mutex_lock(&lock);
 
         if (uci_engine[0])
             uci_new_game(game->engine, "fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1");
@@ -77,7 +77,7 @@ void play_chess(void *arg) {
         for (moves = 0; moves < max_moves; moves++) {
 
             ret = do_best_move(ai, board, game->engine);
-
+            //printf("AI move done\n");
             if (ret == 0) {
                 break;
             } else if (ret == -1) {
@@ -92,7 +92,7 @@ void play_chess(void *arg) {
                 ret = do_uci_move(board, game->engine);
             else
                 ret = do_move_random_piece(board, game->engine);
-
+            //printf("engine move done\n");
             //ret = do_random_move(board);
             if (ret == 0) {
                 break;
@@ -100,7 +100,7 @@ void play_chess(void *arg) {
                 //printf("AI won\n");
                 reward(ai);
                 break;
-                
+
             }
             /*
                print_board(board->board);
@@ -115,7 +115,7 @@ void play_chess(void *arg) {
            printf("ret = %d moves = %d. max_moves = %d. fen: %s\n", ret, moves, max_moves, fen);
            getchar();
          */
-//pthread_mutex_unlock(&lock);
+        //pthread_mutex_unlock(&lock);
 
         //nobody won, either because of stalemate or max number of moves made
         if (ret == 0 || moves == max_moves) {
@@ -123,9 +123,9 @@ void play_chess(void *arg) {
             //printf("DRAW\n");
         }
         free_board(board);
-                        
+
     }
-     //   printf("done game_id: %d\n", game->game_id);
+    //   printf("done game_id: %d\n", game->game_id);
 
 }
 
@@ -192,7 +192,7 @@ void sighandler(int sig) {
             file[64] = 0;
         }
     }
-    
+
 
     for (i = 0; i < n; i++) {
         best = get_best_ai(ais, nr_jobs, -1);
@@ -202,8 +202,8 @@ void sighandler(int sig) {
         clear_score(ais[best]);
     }
     printf("ai saved\n");
-    for (i = 0; i < nr_jobs * nr_islands; i++){
-        fprintf(stderr,"closing engine %d\n", i);
+    for (i = 0; i < nr_jobs * nr_islands; i++) {
+        fprintf(stderr, "closing engine %d\n", i);
         uci_close(games[i].engine);
     }
     exit(0);
@@ -374,7 +374,7 @@ int print_brain(AI_instance_t *a1, int tmp) {
 
     fclose(f);
 
-    printf("brain written to %s", filename);
+    printf("brain written to %s\n", filename);
     return 1;
 }
 
@@ -456,7 +456,7 @@ int main(int argc, char *argv[]) {
                     continue;
                 }
                 if (j == best) {
-                  //                  printf("posting job %d\n", i);
+                    //                  printf("posting job %d\n", i);
 
                     continue;
                 }
@@ -467,16 +467,21 @@ int main(int argc, char *argv[]) {
                 //printf("posting job %d\n", i);
             }
         }
-        printf("Percent mutated: %f\n", ((float) nr_mutated) / (nr_jobs-1));
+        printf("Percent mutated: %f\n", ((float) nr_mutated) / (nr_jobs - 1));
 
     }
-
+    while (get_jobs_left() > 0 || get_jobs_in_progess() > 0)
+        usleep(1000 * 1); // sleep 1 ms
+    printf("jobs done\n");
+    shutdown_threadpool(1);
+    
     best = get_best_ai(ais, nr_jobs, -1);
 
     for (i = 0; i < nr_jobs * nr_islands; i++)
         uci_close(games[i].engine);
 
     print_brain(ais[best], 0);
+
     dump_ai("ai.aidump", ais[best]);
     clear_score(ais[best]);
 
