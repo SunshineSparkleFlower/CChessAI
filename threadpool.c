@@ -161,7 +161,8 @@ void shutdown_threadpool(int force_kill)
     for (i = 0; i < num_threads; i++) {
         if (force_kill)
             pthread_cancel(threads[i]);
-        pthread_join(threads[i], (void *)&count);
+        else
+            pthread_join(threads[i], (void *)&count);
     }
     pthread_mutex_destroy(&jobs_lock);
 
@@ -173,34 +174,3 @@ void shutdown_threadpool(int force_kill)
     }
     free(threads);
 }
-
-/*
-   static void hello(void *a)
-   {
-   int id = (long)a;
-   printf("hello world (%d)\n", id);
-   }
-
-   int main(int argc, char *argv[])
-   {
-   int i;
-   struct job *jobs[100];
-
-   for (i = 0; i < 100; i++) {
-   jobs[i] = malloc(sizeof(struct job));
-   jobs[i]->task = hello;
-   jobs[i]->data = (void *)(long)i + 1;
-   }
-
-   init_threadpool(20);
-
-   for (i = 0; i < 100; i++)
-   put_new_job(jobs[i]);
-
-   getchar();
-
-   shutdown_threadpool();
-
-   return 0;
-   }
-   */

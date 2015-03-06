@@ -3,16 +3,15 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include<pthread.h>
 #include "common.h"
 #include "uci.h"
 
 /* if fen is NULL, standard position is assumed.
  * white is 1 if engine is white */
 struct uci *uci_init(char *path, char *fen, int color) {
-    int in[2], out[2];
     struct uci *ret;
     char buffer[2048];
 
@@ -22,19 +21,19 @@ struct uci *uci_init(char *path, char *fen, int color) {
         return NULL;
     }
 
-    if (pipe(in) == -1 || pipe(out) == -1) {
+    if (pipe(ret->in_fds) == -1 || pipe(ret->out_fds) == -1) {
         perror("pipe");
         return NULL;
     }
-    ret->out = fdopen(out[0], "r");
-    ret->in = fdopen(in[1], "w");
+    ret->out = fdopen(ret->out_fds[0], "r");
+    ret->in = fdopen(ret->in_fds[1], "w");
     
     setvbuf(ret->out, NULL, _IOLBF, 0);
     setvbuf(ret->in, NULL, _IOLBF, 0);
 
-    if (!fork()) {
-        dup2(out[1], 1);
-        dup2(in[0], 0);
+    if (!(ret->pid = fork())) {
+        dup2(ret->out_fds[1], 1);
+        dup2(ret->in_fds[0], 0);
         dup2(open("/dev/null", O_RDWR), 2);
         execl(path, path, NULL);
         perror("execl");
@@ -86,7 +85,6 @@ struct uci *uci_init(char *path, char *fen, int color) {
 
     return ret;
 }
-//pthread_mutex_t lock;
 
 void uci_new_game(struct uci *iface, char *fen) {
 
@@ -101,12 +99,14 @@ void uci_new_game(struct uci *iface, char *fen) {
 void uci_close(struct uci *iface) {
     fprintf(iface->in, "stop\n");
     fprintf(iface->in, "quit\n");
-    fclose(iface->in);
-    fclose(iface->out);
+    close(iface->in_fds[0]);
+    close(iface->in_fds[1]);
+    close(iface->out_fds[0]);
+    close(iface->out_fds[1]);
     free(iface->position);
+    waitpid(iface->pid, NULL, 0);
     free(iface);
 }
-//static char __next_move[1024];
 // returns the next move in a statically allocated string buffer
 
 char *uci_get_next_move(struct uci *iface) {

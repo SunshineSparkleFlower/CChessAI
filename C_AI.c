@@ -192,7 +192,6 @@ void sighandler(int sig) {
             file[64] = 0;
         }
     }
-    
 
     for (i = 0; i < n; i++) {
         best = get_best_ai(ais, nr_jobs, -1);
@@ -202,6 +201,9 @@ void sighandler(int sig) {
         clear_score(ais[best]);
     }
     printf("ai saved\n");
+
+    printf("shutting down threadpool\n");
+    shutdown_threadpool(1);
     for (i = 0; i < nr_jobs * nr_islands; i++){
         fprintf(stderr,"closing engine %d\n", i);
         uci_close(games[i].engine);

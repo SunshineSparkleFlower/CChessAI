@@ -26,7 +26,7 @@
  *
  *3. This notice may not be removed or altered from any source distribution.
  */
-
+/* the contents of this file has been altered */
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
