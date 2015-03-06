@@ -2,10 +2,12 @@
 #define __UCI_H
 
 struct uci {
+    int out_fds[2], in_fds[2];
     FILE *in, *out;
     char *position;
     char *pos_end; // points to the end of the position string
     int position_size;
+    int pid;
 
     unsigned depth; // depth the engine will search
     unsigned search_time; // engime search time in ms

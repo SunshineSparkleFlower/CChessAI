@@ -9,7 +9,8 @@
 #include "board.h"
 #include "bitboard.h"
 
-static piece_t fen_to_chesspiece(char c) {
+static piece_t fen_to_chesspiece(char c)
+{
     switch (c) {
         case 'P':
             return WHITE_PAWN;
@@ -53,7 +54,8 @@ static piece_t fen_to_chesspiece(char c) {
     }
 }
 
-static char chesspiece_to_fen(piece_t c) {
+static char chesspiece_to_fen(piece_t c)
+{
     switch (c) {
         case WHITE_PAWN:
             return 'P';
@@ -97,14 +99,15 @@ static char chesspiece_to_fen(piece_t c) {
     }
 }
 
-board_t *new_board(char *_fen) {
+board_t *new_board(char *_fen)
+{
     int i, j;
     int col, row;
     board_t *board;
     char *fen_ptr, *rank, *tmp;
 
     if (_fen == NULL || *_fen == 0)
-        _fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        _fen = DEFAULT_FEN;
     char fen[strlen(_fen) + 1];
 
     strcpy(fen, _fen);
@@ -158,11 +161,13 @@ board_t *new_board(char *_fen) {
     return board;
 }
 
-void free_board(board_t *b) {
+void free_board(board_t *b)
+{
     free(b);
 }
 
-void generate_all_moves(board_t *b) {
+void generate_all_moves(board_t *b)
+{
     // already calculated moves for this round
     if (b->moves_count != -1)
         return;
@@ -171,34 +176,40 @@ void generate_all_moves(board_t *b) {
     bb_generate_all_legal_moves(b);
 }
 
-int is_check(board_t *board) {
+int is_check(board_t *board)
+{
     if (board->is_check == -1)
         bb_calculate_check(board);
 
     return board->is_check;
 }
 
-int is_stalemate(board_t *b) {
+int is_stalemate(board_t *b)
+{
     generate_all_moves(b);
     return b->moves_count == 0;
 }
 
-int is_checkmate(board_t *b) {
+int is_checkmate(board_t *b)
+{
     return is_stalemate(b) && is_check(b);
 }
 
-void swapturn(board_t *b) {
+void swapturn(board_t *b)
+{
     b->turn = -b->turn;
     b->is_check = -1;
     b->moves_count = -1;
 }
 
-static inline void del_move(board_t *b, int n) {
+static inline void del_move(board_t *b, int n)
+{
     if (--b->moves_count != -1)
         b->moves[n] = b->moves[b->moves_count];
 }
 
-int undo_move(board_t *b, int n) {
+int undo_move(board_t *b, int n)
+{
     struct move *m;
     int tx, fx, ret;
 
@@ -257,47 +268,13 @@ int undo_move(board_t *b, int n) {
 #endif
     return 1;
 }
-//pthread_mutex_t lock;
 
-/* should only be called from UCI mode. It does not verify that the move did not
- * put the player in check */
-int do_actual_move(board_t *b, struct move *m, struct uci *iface) {
-    //                    pthread_mutex_lock(&lock);
+static void handle_special_moves(board_t *b, struct move *m, int ret_value)
+{
+    int tx;
 
-    int tx, fx, ret;
-
-    // convert coordinates from bitboard coords (0->7, 1->6, ..., 7->0)
     tx = bb_col_to_AI_col(m->to.x);
-    fx = bb_col_to_AI_col(m->frm.x);
-
-#ifdef BOARD_CONSISTENCY_TEST
-    printf("%s: consistency check before move has been done\n", __func__);
-    printf("%s: move is from %d, %d to %d, %d\n", __func__, m->frm.y, fx, m->to.y, tx);
-    print_board(b->board);
-    bb_print(b->white_pieces.apieces);
-    board_consistency_check(b);
-#endif
-
-    b->is_check = -1;
-    ret = bb_do_actual_move(b, m);
-    if (ret == 0) {
-        struct bitboard *bb = b->turn == WHITE ? &b->white_pieces :
-                &b->black_pieces;
-        printf("FATAL FUCKING ERROR: %s: SOMETHING WENT WRONG\n", __FUNCTION__);
-        printf("%s: HALTING EXECUTION!!1\n", __FUNCTION__);
-        printf("position: %s\n", iface->position);
-        print_board(b->board);
-        bb_print(bb->apieces);
-        asm("int3");
-        return 0;
-    } else if (ret == 2) // attempted castling move was illegal
-        return 0;
-
-    b->backup.piece = PIECE(b->board, m->to.y, tx);
-    PIECE(b->board, m->to.y, tx) = PIECE(b->board, m->frm.y, fx);
-    PIECE(b->board, m->frm.y, fx) = P_EMPTY;
-
-    switch (ret) {
+    switch (ret_value) {
         case 3: // move was white short castling
             PIECE(b->board, 0, 5) = PIECE(b->board, 0, 7);
             PIECE(b->board, 0, 7) = P_EMPTY;
@@ -318,40 +295,74 @@ int do_actual_move(board_t *b, struct move *m, struct uci *iface) {
             b->backup.piece = PIECE(b->board, m->to.y - 1 * b->turn, tx);
             PIECE(b->board, m->to.y - 1 * b->turn, tx) = P_EMPTY;
             break;
-        default:
-            break;
     }
 
     if (b->backup.promotion) {
-        /*
-           printf("promotion! turn: %s. promotion character: %c (0x%02x)\n",
-           b->turn == WHITE ? "white" : "black", m->promotion, m->promotion);
-           getchar();
-         */
         switch (tolower(m->promotion)) {
             case 'q':
                 PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                        ? WHITE_QUEEN : BLACK_QUEEN;
+                    ? WHITE_QUEEN : BLACK_QUEEN;
                 break;
             case 'n':
                 PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                        ? WHITE_KNIGHT : BLACK_KNIGHT;
+                    ? WHITE_KNIGHT : BLACK_KNIGHT;
                 break;
             case 'b':
                 PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                        ? WHITE_BISHOP : BLACK_BISHOP;
+                    ? WHITE_BISHOP : BLACK_BISHOP;
                 break;
             case 'r':
                 PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                        ? WHITE_ROOK : BLACK_ROOK;
+                    ? WHITE_ROOK : BLACK_ROOK;
                 break;
             default:
                 // use queen as default promotion if no other option was set
                 PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                        ? WHITE_QUEEN : BLACK_QUEEN;
+                    ? WHITE_QUEEN : BLACK_QUEEN;
                 break;
         }
     }
+}
+
+/* should only be called from UCI mode. It does not verify that the move did not
+ * put the player in check */
+int do_actual_move(board_t *b, struct move *m, struct uci *iface)
+{
+    int tx, fx, ret;
+
+    // convert coordinates from bitboard coords (0->7, 1->6, ..., 7->0)
+    tx = bb_col_to_AI_col(m->to.x);
+    fx = bb_col_to_AI_col(m->frm.x);
+
+#ifdef BOARD_CONSISTENCY_TEST
+    printf("%s: consistency check before move has been done\n", __func__);
+    printf("%s: move is from %d, %d to %d, %d\n", __func__, m->frm.y, fx, m->to.y, tx);
+    print_board(b->board);
+    bb_print(b->white_pieces.apieces);
+    board_consistency_check(b);
+#endif
+
+    b->is_check = -1;
+    ret = bb_do_actual_move(b, m);
+    if (ret == 0) {
+        struct bitboard *bb = b->turn == WHITE ? &b->white_pieces :
+            &b->black_pieces;
+        printf("FATAL ERROR: %s: SOMETHING WENT WRONG\n", __func__);
+        printf("%s: HALTING EXECUTION!!1\n", __func__);
+        printf("position: %s\n", iface->position);
+        print_board(b->board);
+        bb_print(bb->apieces);
+        asm("int3");
+        return 0;
+    } else if (ret == 2) // attempted castling move was illegal
+        return 0;
+
+    b->backup.piece = PIECE(b->board, m->to.y, tx);
+    PIECE(b->board, m->to.y, tx) = PIECE(b->board, m->frm.y, fx);
+    PIECE(b->board, m->frm.y, fx) = P_EMPTY;
+
+
+    handle_special_moves(b, m, ret);
 
 #ifdef BOARD_CONSISTENCY_TEST
     printf("%s: consistency check after move has been done\n", __func__);
@@ -364,7 +375,8 @@ int do_actual_move(board_t *b, struct move *m, struct uci *iface) {
 }
 
 /* call this if you are totally sure the move is a legal one */
-int do_move(board_t *b, int n) {
+int do_move(board_t *b, int n)
+{
     struct move *m;
     int tx, fx, ret;
 
@@ -385,8 +397,8 @@ int do_move(board_t *b, int n) {
     b->is_check = -1;
     ret = bb_do_move(b, n);
     if (ret == 0) {
-        printf("FATAL FUCKING ERROR: %s: SOMETHING WENT WRONG\n", __FUNCTION__);
-        printf("%s: HALTING EXECUTION!!1\n", __FUNCTION__);
+        printf("FATAL ERROR: %s: SOMETHING WENT WRONG\n", __func__);
+        printf("%s: HALTING EXECUTION!!1\n", __func__);
         printf("b = %p, n = %d, moves_count = %d\n",
                 b, n, b->moves_count);
         asm("int3");
@@ -407,61 +419,7 @@ int do_move(board_t *b, int n) {
     PIECE(b->board, m->to.y, tx) = PIECE(b->board, m->frm.y, fx);
     PIECE(b->board, m->frm.y, fx) = P_EMPTY;
 
-    switch (ret) {
-        case 3: // move was white short castling
-            PIECE(b->board, 0, 5) = PIECE(b->board, 0, 7);
-            PIECE(b->board, 0, 7) = P_EMPTY;
-            break;
-        case 4: // move was white long castling
-            PIECE(b->board, 0, 3) = PIECE(b->board, 0, 0);
-            PIECE(b->board, 0, 0) = P_EMPTY;
-            break;
-        case 5: // move was black short castling
-            PIECE(b->board, 7, 5) = PIECE(b->board, 7, 7);
-            PIECE(b->board, 7, 7) = P_EMPTY;
-            break;
-        case 6: // move was black long castling
-            PIECE(b->board, 7, 3) = PIECE(b->board, 7, 0);
-            PIECE(b->board, 7, 0) = P_EMPTY;
-            break;
-        case 7: // en passant
-            b->backup.piece = PIECE(b->board, m->to.y - 1 * b->turn, tx);
-            PIECE(b->board, m->to.y - 1 * b->turn, tx) = P_EMPTY;
-            break;
-        default:
-            break;
-    }
-
-    if (b->backup.promotion) {
-        /*
-           printf("promotion! turn: %s. promotion character: %c (0x%02x)\n",
-           b->turn == WHITE ? "white" : "black", m->promotion, m->promotion);
-           getchar();
-         */
-        switch (tolower(m->promotion)) {
-            case 'q':
-                PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                        ? WHITE_QUEEN : BLACK_QUEEN;
-                break;
-            case 'n':
-                PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                        ? WHITE_KNIGHT : BLACK_KNIGHT;
-                break;
-            case 'b':
-                PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                        ? WHITE_BISHOP : BLACK_BISHOP;
-                break;
-            case 'r':
-                PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                        ? WHITE_ROOK : BLACK_ROOK;
-                break;
-            default:
-                // use queen as default promotion if no other option was set
-                PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                        ? WHITE_QUEEN : BLACK_QUEEN;
-                break;
-        }
-    }
+    handle_special_moves(b, m, ret);
 
 #ifdef BOARD_CONSISTENCY_TEST
     printf("%s: consistency check after move has been done\n", __func__);
@@ -476,7 +434,8 @@ int do_move(board_t *b, int n) {
  * returns -1 if there are no more legal moves to do
  * returns 0 if n > b->moves_count
  * returns 1 if a move was successfully taken */
-int move(board_t *b, int n) {
+int move(board_t *b, int n)
+{
     do {
         if (is_stalemate(b))
             return -1;
@@ -488,8 +447,8 @@ int move(board_t *b, int n) {
 }
 
 static char fen_buffer[1024];
-
-char *get_fen(board_t *board) {
+char *get_fen(board_t *board)
+{
     int row, col, cnt;
     char *ret = fen_buffer, *ptr;
 
@@ -546,7 +505,8 @@ char *get_fen(board_t *board) {
     return ret;
 }
 
-const char *piece_to_str(piece_t p) {
+const char *piece_to_str(piece_t p)
+{
     const char *ret = NULL;
     static const char *strings[] = {
         "pawn(w)",
@@ -574,7 +534,8 @@ const char *piece_to_str(piece_t p) {
     return ret;
 }
 
-void print_board(piece_t *board) {
+void print_board(piece_t *board)
+{
     int i, j;
 
     printf("           0         1         2         3"
@@ -591,22 +552,25 @@ void print_board(piece_t *board) {
     printf("\n");
 }
 
-void print_move(board_t *board, int n) {
+void print_move(board_t *board, int n)
+{
     printf("%02d: (%d, %d) -> (%d, %d)\n", n, board->moves[n].frm.y, ~board->moves[n].frm.x & 0x7,
             board->moves[n].to.y, ~board->moves[n].to.x & 0x7);
 }
 
-void print_legal_moves(board_t *board) {
+void print_legal_moves(board_t *board)
+{
     int i;
 
     printf("count: %d\n", board->moves_count);
 
     for (i = 0; i < board->moves_count; i++)
         printf("%02d: (%d, %d) -> (%d, %d)\n", i, board->moves[i].frm.y, ~board->moves[i].frm.x & 0x7,
-            board->moves[i].to.y, ~board->moves[i].to.x & 0x7);
+                board->moves[i].to.y, ~board->moves[i].to.x & 0x7);
 }
 
-static void internal_notation_to_uci(char *u, move_t *m) {
+static void internal_notation_to_uci(char *u, move_t *m)
+{
     static int lookup[] = {'h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'};
 
     u[0] = lookup[m->frm.x];
@@ -617,7 +581,8 @@ static void internal_notation_to_uci(char *u, move_t *m) {
     u[5] = 0;
 }
 
-static void uci_move_notation_to_internal(char *u, move_t *m) {
+static void uci_move_notation_to_internal(char *u, move_t *m)
+{
     u[0] = tolower(u[0]) - 'a';
     u[1] = u[1] - '1';
     u[2] = tolower(u[2]) - 'a';
@@ -631,7 +596,8 @@ static void uci_move_notation_to_internal(char *u, move_t *m) {
     m->promotion = u[4];
 }
 
-int do_uci_move(board_t *board, struct uci *iface) {
+int do_uci_move(board_t *board, struct uci *iface)
+{
     struct move m;
     int fx, tx;
     char *move, move_copy[32];
@@ -643,7 +609,7 @@ int do_uci_move(board_t *board, struct uci *iface) {
             printf("ERROR: move error in do_uci_move\n");
         else
             return ret;
-        
+
     }
 
     strncpy(move_copy, move, sizeof (move_copy));
@@ -657,7 +623,7 @@ int do_uci_move(board_t *board, struct uci *iface) {
     fx = bb_col_to_AI_col(m.frm.x);
     tx = bb_col_to_AI_col(m.to.x);
     if ((PIECE(board->board, m.frm.y, fx) == WHITE_PAWN ||
-            PIECE(board->board, m.frm.y, fx) == BLACK_PAWN) &&
+                PIECE(board->board, m.frm.y, fx) == BLACK_PAWN) &&
             PIECE(board->board, m.to.y, tx) == P_EMPTY) {
         m.en_passant = 1;
     }
@@ -674,7 +640,8 @@ int do_uci_move(board_t *board, struct uci *iface) {
     return 1;
 }
 
-void register_move_to_uci(struct move *m, struct uci *iface) {
+void register_move_to_uci(struct move *m, struct uci *iface)
+{
 
     char uci[32];
 
@@ -684,9 +651,9 @@ void register_move_to_uci(struct move *m, struct uci *iface) {
 }
 
 #ifdef BOARD_CONSISTENCY_TEST
-
 static void consistency_error(char *color, char *piece, int y, int x,
-        board_t *board, u64 bitboard) {
+        board_t *board, u64 bitboard)
+        {
 
     printf("board consistency check failed! %s %s on "
             "AI board is not set on bitboard (%d, %d)\n",
@@ -697,7 +664,8 @@ static void consistency_error(char *color, char *piece, int y, int x,
     getchar();
 }
 
-void board_consistency_check(board_t *board) {
+void board_consistency_check(board_t *board)
+{
     int i, j, num_errors;
     struct bitboard *bb, *bb2;
     char *tmp;
@@ -708,7 +676,7 @@ void board_consistency_check(board_t *board) {
     bb = &board->white_pieces;
     bb2 = &board->white_pieces;
     tmpboard = bb->pawns & bb->rooks & bb->knights & bb->bishops & bb->queens & bb->king &
-            bb2->pawns & bb2->rooks & bb2->knights & bb2->bishops & bb2->queens & bb2->king;
+        bb2->pawns & bb2->rooks & bb2->knights & bb2->bishops & bb2->queens & bb2->king;
     if (tmpboard) {
         printf("error: multiple pieces in same square!:\n");
         bb_print(tmpboard);
