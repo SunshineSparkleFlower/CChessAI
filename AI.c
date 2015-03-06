@@ -634,6 +634,8 @@ int _get_best_move(AI_instance_t *ai, board_t * board) {
 
 
         moveret = move(board, i);
+        //printf("moveret %d", moveret);
+        //print_board(&board->board[0]);
         if (i == board->moves_count) {
             //   print_board(&board->board[64]);
             //   print_board(&board->board[0]);

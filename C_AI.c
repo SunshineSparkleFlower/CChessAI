@@ -64,7 +64,7 @@ void play_chess(void *arg) {
 
     for (nr_games = 0; nr_games < games_pr_iteration; nr_games++) {
       //  printf("__________________NEW GAME_________________\n");
-        board = new_board(game->fen);
+        board = new_board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w aaaa - 0 1");
         if (board == NULL) {
             fprintf(stderr, "ERROR: BOARD = NULL!!!\n");
             exit(1);
@@ -72,7 +72,7 @@ void play_chess(void *arg) {
             //                pthread_mutex_lock(&lock);
 
         if (uci_engine[0])
-            uci_new_game(game->engine, UCI_DEFAULT_FEN);
+            uci_new_game(game->engine, "fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1");
 
         for (moves = 0; moves < max_moves; moves++) {
 
@@ -97,7 +97,7 @@ void play_chess(void *arg) {
             if (ret == 0) {
                 break;
             } else if (ret == -1) {
-                printf("AI won\n");
+                //printf("AI won\n");
                 reward(ai);
                 break;
                 
@@ -192,8 +192,7 @@ void sighandler(int sig) {
             file[64] = 0;
         }
     }
-    for (i = 0; i < nr_jobs * nr_islands; i++)
-        uci_close(games[i].engine);
+    
 
     for (i = 0; i < n; i++) {
         best = get_best_ai(ais, nr_jobs, -1);
@@ -202,7 +201,11 @@ void sighandler(int sig) {
         dump_ai(buffer, ais[best]);
         clear_score(ais[best]);
     }
-
+    printf("ai saved\n");
+    for (i = 0; i < nr_jobs * nr_islands; i++){
+        fprintf(stderr,"closing engine %d\n", i);
+        uci_close(games[i].engine);
+    }
     exit(0);
 }
 
@@ -413,7 +416,7 @@ int main(int argc, char *argv[]) {
 
             //setup the UCI engine
             if (uci_engine[0]) {
-                games[i].engine = uci_init(uci_engine, UCI_DEFAULT_FEN, BLACK);
+                games[i].engine = uci_init(uci_engine, "fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1", BLACK);
                 if (games[i].engine == NULL) {
                     printf("failed to initialize uci engine\n");
                     exit(1);
@@ -464,7 +467,7 @@ int main(int argc, char *argv[]) {
                 //printf("posting job %d\n", i);
             }
         }
-        printf("Percent mutated: %f\n", ((float) nr_mutated) / nr_jobs);
+        printf("Percent mutated: %f\n", ((float) nr_mutated) / (nr_jobs-1));
 
     }
 

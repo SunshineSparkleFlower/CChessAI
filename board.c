@@ -4,12 +4,12 @@
 #include <ctype.h>
 #include<pthread.h>
 
+#include "AI.h"
 #include "common.h"
 #include "board.h"
 #include "bitboard.h"
 
-static piece_t fen_to_chesspiece(char c)
-{
+static piece_t fen_to_chesspiece(char c) {
     switch (c) {
         case 'P':
             return WHITE_PAWN;
@@ -53,8 +53,7 @@ static piece_t fen_to_chesspiece(char c)
     }
 }
 
-static char chesspiece_to_fen(piece_t c)
-{
+static char chesspiece_to_fen(piece_t c) {
     switch (c) {
         case WHITE_PAWN:
             return 'P';
@@ -98,8 +97,7 @@ static char chesspiece_to_fen(piece_t c)
     }
 }
 
-board_t *new_board(char *_fen)
-{
+board_t *new_board(char *_fen) {
     int i, j;
     int col, row;
     board_t *board;
@@ -111,7 +109,7 @@ board_t *new_board(char *_fen)
 
     strcpy(fen, _fen);
 
-    board = calloc(1, sizeof(board_t));
+    board = calloc(1, sizeof (board_t));
     if (board == NULL)
         return NULL;
 
@@ -131,7 +129,7 @@ board_t *new_board(char *_fen)
     for (i = 0; i < 8; i++) {
         col = 0;
         for (j = 0; j < strlen(rank); j++) {
-            if (isdigit((int)rank[j])) {
+            if (isdigit((int) rank[j])) {
                 int cnt = 0;
                 for (; cnt < rank[j] - '0'; ++col, ++cnt)
                     board->board_2d[row][col] = P_EMPTY;
@@ -150,7 +148,7 @@ board_t *new_board(char *_fen)
             }
         }
     }
-    
+
     board->is_check = -1;
     board->moves_count = -1;
     board->turn = *fen_ptr == 'w' ? WHITE : BLACK;
@@ -160,13 +158,11 @@ board_t *new_board(char *_fen)
     return board;
 }
 
-void free_board(board_t *b)
-{
+void free_board(board_t *b) {
     free(b);
 }
 
-void generate_all_moves(board_t *b)
-{
+void generate_all_moves(board_t *b) {
     // already calculated moves for this round
     if (b->moves_count != -1)
         return;
@@ -175,40 +171,34 @@ void generate_all_moves(board_t *b)
     bb_generate_all_legal_moves(b);
 }
 
-int is_check(board_t *board)
-{
+int is_check(board_t *board) {
     if (board->is_check == -1)
         bb_calculate_check(board);
 
     return board->is_check;
 }
 
-int is_stalemate(board_t *b)
-{
+int is_stalemate(board_t *b) {
     generate_all_moves(b);
     return b->moves_count == 0;
 }
 
-int is_checkmate(board_t *b)
-{
+int is_checkmate(board_t *b) {
     return is_stalemate(b) && is_check(b);
 }
 
-void swapturn(board_t *b)
-{
+void swapturn(board_t *b) {
     b->turn = -b->turn;
     b->is_check = -1;
     b->moves_count = -1;
 }
 
-static inline void del_move(board_t *b, int n)
-{
+static inline void del_move(board_t *b, int n) {
     if (--b->moves_count != -1)
         b->moves[n] = b->moves[b->moves_count];
 }
 
-int undo_move(board_t *b, int n)
-{
+int undo_move(board_t *b, int n) {
     struct move *m;
     int tx, fx, ret;
 
@@ -232,7 +222,7 @@ int undo_move(board_t *b, int n)
 
     if (b->backup.promotion) {
         PIECE(b->board, m->frm.y, fx) = b->turn == WHITE
-            ? WHITE_PAWN : BLACK_PAWN;
+                ? WHITE_PAWN : BLACK_PAWN;
     }
 
     switch (ret) {
@@ -271,9 +261,8 @@ int undo_move(board_t *b, int n)
 
 /* should only be called from UCI mode. It does not verify that the move did not
  * put the player in check */
-int do_actual_move(board_t *b, struct move *m, struct uci *iface)
-{
-//                    pthread_mutex_lock(&lock);
+int do_actual_move(board_t *b, struct move *m, struct uci *iface) {
+    //                    pthread_mutex_lock(&lock);
 
     int tx, fx, ret;
 
@@ -293,7 +282,7 @@ int do_actual_move(board_t *b, struct move *m, struct uci *iface)
     ret = bb_do_actual_move(b, m);
     if (ret == 0) {
         struct bitboard *bb = b->turn == WHITE ? &b->white_pieces :
-            &b->black_pieces;
+                &b->black_pieces;
         printf("FATAL FUCKING ERROR: %s: SOMETHING WENT WRONG\n", __FUNCTION__);
         printf("%s: HALTING EXECUTION!!1\n", __FUNCTION__);
         printf("position: %s\n", iface->position);
@@ -338,28 +327,28 @@ int do_actual_move(board_t *b, struct move *m, struct uci *iface)
            printf("promotion! turn: %s. promotion character: %c (0x%02x)\n",
            b->turn == WHITE ? "white" : "black", m->promotion, m->promotion);
            getchar();
-           */
+         */
         switch (tolower(m->promotion)) {
             case 'q':
                 PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                    ? WHITE_QUEEN : BLACK_QUEEN;
+                        ? WHITE_QUEEN : BLACK_QUEEN;
                 break;
             case 'n':
                 PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                    ? WHITE_KNIGHT : BLACK_KNIGHT;
+                        ? WHITE_KNIGHT : BLACK_KNIGHT;
                 break;
             case 'b':
                 PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                    ? WHITE_BISHOP: BLACK_BISHOP;
+                        ? WHITE_BISHOP : BLACK_BISHOP;
                 break;
             case 'r':
                 PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                    ? WHITE_ROOK: BLACK_ROOK;
+                        ? WHITE_ROOK : BLACK_ROOK;
                 break;
             default:
                 // use queen as default promotion if no other option was set
                 PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                    ? WHITE_QUEEN : BLACK_QUEEN;
+                        ? WHITE_QUEEN : BLACK_QUEEN;
                 break;
         }
     }
@@ -369,14 +358,13 @@ int do_actual_move(board_t *b, struct move *m, struct uci *iface)
     printf("%s: move was from %d, %d to %d, %d\n", __func__, m->frm.y, fx, m->to.y, tx);
     board_consistency_check(b);
 #endif
-                   // pthread_mutex_unlock(&lock);
+    // pthread_mutex_unlock(&lock);
 
     return 1;
 }
 
 /* call this if you are totally sure the move is a legal one */
-int do_move(board_t *b, int n)
-{
+int do_move(board_t *b, int n) {
     struct move *m;
     int tx, fx, ret;
 
@@ -449,28 +437,28 @@ int do_move(board_t *b, int n)
            printf("promotion! turn: %s. promotion character: %c (0x%02x)\n",
            b->turn == WHITE ? "white" : "black", m->promotion, m->promotion);
            getchar();
-           */
+         */
         switch (tolower(m->promotion)) {
             case 'q':
                 PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                    ? WHITE_QUEEN : BLACK_QUEEN;
+                        ? WHITE_QUEEN : BLACK_QUEEN;
                 break;
             case 'n':
                 PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                    ? WHITE_KNIGHT : BLACK_KNIGHT;
+                        ? WHITE_KNIGHT : BLACK_KNIGHT;
                 break;
             case 'b':
                 PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                    ? WHITE_BISHOP: BLACK_BISHOP;
+                        ? WHITE_BISHOP : BLACK_BISHOP;
                 break;
             case 'r':
                 PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                    ? WHITE_ROOK: BLACK_ROOK;
+                        ? WHITE_ROOK : BLACK_ROOK;
                 break;
             default:
                 // use queen as default promotion if no other option was set
                 PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                    ? WHITE_QUEEN : BLACK_QUEEN;
+                        ? WHITE_QUEEN : BLACK_QUEEN;
                 break;
         }
     }
@@ -488,8 +476,7 @@ int do_move(board_t *b, int n)
  * returns -1 if there are no more legal moves to do
  * returns 0 if n > b->moves_count
  * returns 1 if a move was successfully taken */
-int move(board_t *b, int n)
-{
+int move(board_t *b, int n) {
     do {
         if (is_stalemate(b))
             return -1;
@@ -501,8 +488,8 @@ int move(board_t *b, int n)
 }
 
 static char fen_buffer[1024];
-char *get_fen(board_t *board)
-{
+
+char *get_fen(board_t *board) {
     int row, col, cnt;
     char *ret = fen_buffer, *ptr;
 
@@ -559,8 +546,7 @@ char *get_fen(board_t *board)
     return ret;
 }
 
-const char *piece_to_str(piece_t p)
-{
+const char *piece_to_str(piece_t p) {
     const char *ret = NULL;
     static const char *strings[] = {
         "pawn(w)",
@@ -583,13 +569,12 @@ const char *piece_to_str(piece_t p)
         ret = strings[12];
     else if (p > 1 << 5) {
         ret = strings[get_moves_index(p) + 6];
-    } else  if (p > 0)
+    } else if (p > 0)
         ret = strings[get_moves_index(p) + 0];
     return ret;
 }
 
-void print_board(piece_t *board)
-{
+void print_board(piece_t *board) {
     int i, j;
 
     printf("           0         1         2         3"
@@ -606,25 +591,22 @@ void print_board(piece_t *board)
     printf("\n");
 }
 
-void print_move(board_t *board, int n)
-{
+void print_move(board_t *board, int n) {
     printf("%02d: (%d, %d) -> (%d, %d)\n", n, board->moves[n].frm.y, ~board->moves[n].frm.x & 0x7,
             board->moves[n].to.y, ~board->moves[n].to.x & 0x7);
 }
 
-void print_legal_moves(board_t *board)
-{
+void print_legal_moves(board_t *board) {
     int i;
 
     printf("count: %d\n", board->moves_count);
 
     for (i = 0; i < board->moves_count; i++)
         printf("%02d: (%d, %d) -> (%d, %d)\n", i, board->moves[i].frm.y, ~board->moves[i].frm.x & 0x7,
-                board->moves[i].to.y, ~board->moves[i].to.x & 0x7);
+            board->moves[i].to.y, ~board->moves[i].to.x & 0x7);
 }
 
-static void internal_notation_to_uci(char *u, move_t *m)
-{
+static void internal_notation_to_uci(char *u, move_t *m) {
     static int lookup[] = {'h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'};
 
     u[0] = lookup[m->frm.x];
@@ -635,8 +617,7 @@ static void internal_notation_to_uci(char *u, move_t *m)
     u[5] = 0;
 }
 
-static void uci_move_notation_to_internal(char *u, move_t *m)
-{
+static void uci_move_notation_to_internal(char *u, move_t *m) {
     u[0] = tolower(u[0]) - 'a';
     u[1] = u[1] - '1';
     u[2] = tolower(u[2]) - 'a';
@@ -644,31 +625,39 @@ static void uci_move_notation_to_internal(char *u, move_t *m)
 
     m->frm.x = AI_col_to_bb_col(u[0]);
     m->frm.y = u[1];
-    m->to.x = AI_col_to_bb_col((int)u[2]);
+    m->to.x = AI_col_to_bb_col((int) u[2]);
     m->to.y = u[3];
 
     m->promotion = u[4];
 }
 
-int do_uci_move(board_t *board, struct uci *iface)
-{
+int do_uci_move(board_t *board, struct uci *iface) {
     struct move m;
     int fx, tx;
     char *move, move_copy[32];
-    
-    move = uci_get_next_move(iface);
-    strncpy(move_copy, move, sizeof(move_copy));
-    //print_board(board->board);
-     //   printf("got: %s\n",move);
 
-    memset(&m, 0, sizeof(m));
+    move = uci_get_next_move(iface);
+    if (!strcmp(move, "(none)")){
+        int ret = do_move_random_piece(board, iface);
+        if(ret == 1)
+            printf("ERROR: move error in do_uci_move\n");
+        else
+            return ret;
+        
+    }
+
+    strncpy(move_copy, move, sizeof (move_copy));
+    //print_board(board->board);
+    //   printf("got: %s\n",move);
+
+    memset(&m, 0, sizeof (m));
     uci_move_notation_to_internal(move_copy, &m);
     uci_register_new_move(iface, move);
 
     fx = bb_col_to_AI_col(m.frm.x);
     tx = bb_col_to_AI_col(m.to.x);
     if ((PIECE(board->board, m.frm.y, fx) == WHITE_PAWN ||
-                PIECE(board->board, m.frm.y, fx) == BLACK_PAWN) &&
+            PIECE(board->board, m.frm.y, fx) == BLACK_PAWN) &&
             PIECE(board->board, m.to.y, tx) == P_EMPTY) {
         m.en_passant = 1;
     }
@@ -681,11 +670,12 @@ int do_uci_move(board_t *board, struct uci *iface)
         return -1;
 
     swapturn(board);
+
     return 1;
 }
 
-void register_move_to_uci(struct move *m, struct uci *iface)
-{
+void register_move_to_uci(struct move *m, struct uci *iface) {
+
     char uci[32];
 
     internal_notation_to_uci(uci, m);
@@ -694,9 +684,10 @@ void register_move_to_uci(struct move *m, struct uci *iface)
 }
 
 #ifdef BOARD_CONSISTENCY_TEST
+
 static void consistency_error(char *color, char *piece, int y, int x,
-        board_t *board, u64 bitboard)
-{
+        board_t *board, u64 bitboard) {
+
     printf("board consistency check failed! %s %s on "
             "AI board is not set on bitboard (%d, %d)\n",
             color, piece, y, x);
@@ -706,8 +697,7 @@ static void consistency_error(char *color, char *piece, int y, int x,
     getchar();
 }
 
-void board_consistency_check(board_t *board)
-{
+void board_consistency_check(board_t *board) {
     int i, j, num_errors;
     struct bitboard *bb, *bb2;
     char *tmp;
@@ -718,7 +708,7 @@ void board_consistency_check(board_t *board)
     bb = &board->white_pieces;
     bb2 = &board->white_pieces;
     tmpboard = bb->pawns & bb->rooks & bb->knights & bb->bishops & bb->queens & bb->king &
-        bb2->pawns & bb2->rooks & bb2->knights & bb2->bishops & bb2->queens & bb2->king;
+            bb2->pawns & bb2->rooks & bb2->knights & bb2->bishops & bb2->queens & bb2->king;
     if (tmpboard) {
         printf("error: multiple pieces in same square!:\n");
         bb_print(tmpboard);

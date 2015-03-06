@@ -49,6 +49,10 @@ struct uci *uci_init(char *path, char *fen, int color) {
         if (!strcmp(buffer, "uciok\n"))
             break;
     }
+    fprintf(ret->in, "setoption name Skill Level value %d\n", 0);
+        fprintf(ret->in, "setoption name Contempt Factor value %d\n", 100);
+
+    //fprintf(ret->in, "setoption name UCI_Chess960 value True\n");
 
     fprintf(ret->in, "isready\n");
     if (fgets(buffer, sizeof buffer, ret->out) == NULL) {
@@ -113,7 +117,7 @@ char *uci_get_next_move(struct uci *iface) {
 
     while (fgets(iface->__next_move, sizeof (iface->__next_move), iface->out)) {
 #ifdef UCI_DEBUG
-        printf("got: %s", __next_move);
+        printf("got: %s", iface->__next_move);
 #endif
         if ((tmp = strstr(iface->__next_move, "bestmove ")))
             break;
@@ -160,7 +164,7 @@ void uci_start_search(struct uci *iface) {
     int tmp;
     char buffer[256];
     sprintf(buffer, "go depth %u\n", 1);
-    //sprintf(buffer, "Skill Level %u\n", 0);
+   // sprintf(buffer, "setoption name Skill Level value %d\n", 0);
 
 #ifdef UCI_DEBUG
     printf("%s", buffer);
