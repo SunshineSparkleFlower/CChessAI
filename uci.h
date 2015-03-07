@@ -1,8 +1,5 @@
-
 #ifndef __UCI_H
 #define __UCI_H
-
-
 
 struct uci {
     int out_fds[2], in_fds[2];

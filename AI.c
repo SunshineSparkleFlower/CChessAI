@@ -720,7 +720,6 @@ int _get_best_move(AI_instance_t *ai, board_t * board)
 }
 
 //perform a best move return 0 if stalemate, -1 if check mate 1 of success
-
 int do_best_move(AI_instance_t *ai, board_t * board, struct uci *uci_iface)
 {
     int best_move;
@@ -750,7 +749,6 @@ int do_best_move(AI_instance_t *ai, board_t * board, struct uci *uci_iface)
 }
 
 //perform a random move return 0 if stalemate, -1 if check mate 1 of success
-
 int do_random_move(board_t *board, struct uci *uci_iface)
 {
     int rndmove;
@@ -827,7 +825,6 @@ int do_move_random_piece(board_t *board, struct uci *uci_iface)
 }
 
 //perform a nonrandom move return 0 if stalemate, -1 if check mate 1 of success
-
 int do_nonrandom_move(board_t *board, struct uci *uci_iface)
 {
     int rndmove;
@@ -1007,7 +1004,6 @@ void create_random_connections(AI_instance_t *a1, int nr_connections, int port, 
 }
 
 //check for constant ports and reset them
-
 void reset_constant_ports(AI_instance_t *a1, AI_instance_t * a2)
 {
     int j;
@@ -1029,9 +1025,7 @@ void reset_constant_ports(AI_instance_t *a1, AI_instance_t * a2)
     }
 }
 
-
 //delete all connections for a port and create new ones
-
 void randomize_ports(AI_instance_t *a1)
 {
     int i;
@@ -1047,7 +1041,6 @@ void randomize_ports(AI_instance_t *a1)
 }
 
 //find ports that are used by other ports
-
 void find_ports_in_use(AI_instance_t *a1)
 {
     //find ports that are actually in use
@@ -1082,7 +1075,6 @@ void find_ports_in_use(AI_instance_t *a1)
 }
 
 //move a port in ai with its connections, this should have no effect on AI output
-
 void move_port(AI_instance_t *ai, int from, int to)
 {
     // printf("from %d to %d\n", from, to);
@@ -1135,7 +1127,6 @@ void defrag(AI_instance_t *ai)
 }
 
 //brain in a a1 is replaced with brain from a2 plus a mutation
-
 int mutate(AI_instance_t *a1, AI_instance_t * a2, int print, int print_stats)
 {
     int i;

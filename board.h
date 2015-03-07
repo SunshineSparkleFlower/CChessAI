@@ -3,8 +3,6 @@
 
 #include <stdint.h>
 
-
-
 typedef uint16_t piece_t;
 
 typedef struct coord {
@@ -37,8 +35,6 @@ struct bitboard {
     u64 king;
 };
 
-
-
 typedef struct board {
     piece_t _board[8 * 8 * 2];
     piece_t *board_2d[8];
@@ -64,7 +60,6 @@ typedef struct board {
 } board_t;
 
 #include "uci.h"
-
 
 #define DEFAULT_FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 

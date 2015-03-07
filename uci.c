@@ -49,13 +49,13 @@ struct uci *uci_init(char *path, char *fen, int color)
         if (!strcmp(buffer, "uciok\n"))
             break;
     }
-    // fprintf(ret->in, "setoption name Skill Level value %d\n", 0);
-    //  fprintf(ret->in, "setoption name Contempt Factor value %d\n", 100);
+    //fprintf(ret->in, "setoption name Skill Level value %d\n", 0);
+    //fprintf(ret->in, "setoption name Contempt Factor value %d\n", 100);
     //fprintf(ret->in, "setoption name Ponder value %d\n", 0);
     //fprintf(ret->in, "setoption name UCI_Chess960 value True\n");
 
-    fprintf(ret->in, "isready\n");
     fprintf(ret->in, "ucinewgame\n");
+    fprintf(ret->in, "isready\n");
 
     if (fgets(buffer, sizeof buffer, ret->out) == NULL) {
         printf("failed to read from engine\n");
@@ -80,10 +80,8 @@ struct uci *uci_init(char *path, char *fen, int color)
 
     uci_new_game(ret, fen);
 
-    ret->depth = 1;
+    ret->depth = 2;
     ret->search_time = 10;
-
-
 
     return ret;
 }
@@ -111,14 +109,12 @@ void uci_close(struct uci *iface)
     waitpid(iface->pid, NULL, 0);
     free(iface);
 }
-// returns the next move in a statically allocated string buffer
 
+// returns the next move
 char *uci_get_next_move(struct uci *iface)
 {
-
     char *tmp;
     //fprintf(iface->in, "stop\n");
-    //printf("stop\n");
 
     while (fgets(iface->__next_move, sizeof (iface->__next_move), iface->out)) {
 #ifdef UCI_DEBUG
@@ -138,7 +134,6 @@ char *uci_get_next_move(struct uci *iface)
 
 void uci_register_new_move(struct uci *iface, char *move)
 {
-
     if ((iface->pos_end - iface->position + strlen(move) + 1) >
             iface->position_size) {
         iface->position_size *= 2;
@@ -164,21 +159,19 @@ void uci_register_new_move(struct uci *iface, char *move)
 
 void uci_start_search(struct uci *iface, board_t *board)
 {
-
     int tmp;
     char buffer[256];
     char fen[1024];
 
     get_fen(board, fen);
-    fprintf(iface->in, "position fen %s - 0 1\n", fen);
-    sprintf(buffer, "go depth %d\n", 2);
+    fprintf(iface->in, "position fen %s\n", fen);
+    sprintf(buffer, "go depth %d\n", iface->depth);
 
 #ifdef UCI_DEBUG
     printf("%s", buffer);
 #endif
 
     tmp = fprintf(iface->in, "%s", buffer);
-    //tmp = fwrite(buffer, 1, strlen(buffer), iface->in);
     if (tmp != strlen(buffer)) {
         printf("failed to write buffer to engine\n");
         perror("fwrite");

@@ -66,12 +66,11 @@ void play_chess(void *arg)
 
     for (nr_games = 0; nr_games < games_pr_iteration; nr_games++) {
         //  printf("__________________NEW GAME_________________\n");
-        board = new_board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w aaaa - 0 1");
+        board = new_board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1");
         if (board == NULL) {
             fprintf(stderr, "ERROR: BOARD = NULL!!!\n");
             exit(1);
         }
-        //                pthread_mutex_lock(&lock);
 
         if (uci_engine[0])
             uci_new_game(game->engine, "fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1");
@@ -124,7 +123,6 @@ void play_chess(void *arg)
 
     }
     // printf("done game_id: %d\n", game->game_id);
-
 }
 
 int get_best_ai(AI_instance_t **ais, int n, int lim)
@@ -142,7 +140,6 @@ int get_best_ai(AI_instance_t **ais, int n, int lim)
 }
 
 //used to catch SIGINT and interrupt the training to write the AI to file 
-
 void sighandler(int sig)
 {
     char buffer[512], file[128];
@@ -286,10 +283,7 @@ void parse_arguments(int argc, char **argv)
     }
 }
 
-
-
 //prints the brain in a graph format, tmp == 1 means the brain is written to brain.dot
-
 int print_brain(AI_instance_t *a1, int tmp)
 {
     int i, j;
@@ -400,6 +394,7 @@ int main(int argc, char *argv[])
     jobs = malloc(nr_islands * nr_jobs * sizeof (struct job));
     games = malloc(nr_islands * nr_jobs * sizeof (struct game_struct));
 
+    // initialize jobs to the threadpool
     for (i = 0, k = 0; k < nr_jobs; k++) {
         for (j = 0; j < nr_islands; j++, i++) {
             if (ai_file) {
@@ -408,7 +403,7 @@ int main(int argc, char *argv[])
 
                 ais[i] = ais_2d[j][k];
             } else {
-                ais[i] = ai_new(nr_ports); // mutation rate = 5000
+                ais[i] = ai_new(nr_ports);
                 ais_2d[j][k] = ais[i];
             }
             if (ais_2d[j][k] == NULL) {
@@ -433,9 +428,9 @@ int main(int argc, char *argv[])
             jobs[i].task = play_chess;
         }
     }
-    for (i = 0; i < nr_islands * nr_jobs; i++) {
+    // post jobs to the threadpool
+    for (i = 0; i < nr_islands * nr_jobs; i++)
         put_new_job(jobs + i);
-    }
 
     iteration = 0;
     while (iteration < max_iterations) {
@@ -463,7 +458,6 @@ int main(int argc, char *argv[])
                 }
                 if (j == best) {
                     //                  printf("posting job %d\n", i);
-
                     continue;
                 }
                 if (get_score(ais_2d[k][j]) < get_score(ais_2d[k][best])) {
@@ -478,6 +472,7 @@ int main(int argc, char *argv[])
     }
     while (get_jobs_left() > 0 || get_jobs_in_progess() > 0)
         usleep(1000 * 1); // sleep 1 ms
+
     printf("jobs done\n");
     shutdown_threadpool(1);
 

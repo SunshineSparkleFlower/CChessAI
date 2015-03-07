@@ -740,8 +740,7 @@ int bb_undo_move(board_t *board, int index)
     return ret;
 }
 
-/* checks if current player is in check.
-*/
+/* checks if current player is in check. */
 int bb_calculate_check(board_t *board)
 {
     u64 attacks;

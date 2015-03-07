@@ -446,8 +446,6 @@ int move(board_t *b, int n)
     return 1;
 }
 
-//static char fen_buffer[1024];
-
 char *get_fen(board_t *board, char* fen)
 {
     int row, col, cnt;
@@ -477,31 +475,33 @@ char *get_fen(board_t *board, char* fen)
 
     *(ptr - 1) = ' ';
     *ptr++ = board->turn == WHITE ? 'w' : 'b';
-    //*ptr++ = '';
-    *ptr = 0;
+    *ptr++ = ' ';
+    *ptr = '-';
 
+    char castling[5];
+    memset(castling, 0, sizeof(castling));
+    // set white castling options
     if (!board->white_pieces.king_has_moved) {
         if (!board->white_pieces.short_rook_moved)
-            *ptr++ = 'K';
+            strcat(castling, "K");
         if (!board->white_pieces.long_rook_moved)
-            *ptr++ = 'Q';
-        *ptr = ' ';
+            strcat(castling, "Q");
     }
 
+    // set black castling options
     if (!board->black_pieces.king_has_moved) {
         if (!board->black_pieces.short_rook_moved)
-            *ptr++ = 'k';
+            strcat(castling, "k");
         if (!board->black_pieces.long_rook_moved)
-            *ptr++ = 'q';
-        *ptr = ' ';
+            strcat(castling, "q");
     }
+    strcpy(ptr, castling);
 
-    if (*ptr == 0)
-        strcat(ptr, "- -");
-    else {
-        ptr[1] = '-';
-        ptr[2] = 0;
-    }
+    // TODO en passant
+    if (castling[0] == 0)
+        strcat(ptr, "- - 0 1");
+    else
+        strcat(ptr, " - 0 1");
 
     return ret;
 }
@@ -549,8 +549,7 @@ void print_board(piece_t *board)
         printf("    %d\n", i);
     }
     printf("           a         b         c         d"
-            "         e         f         g         h\n");
-    printf("\n");
+            "         e         f         g         h\n\n");
 }
 
 void print_move(board_t *board, int n)
@@ -567,7 +566,7 @@ void print_legal_moves(board_t *board)
 
     for (i = 0; i < board->moves_count; i++)
         printf("%02d: (%d, %d) -> (%d, %d)\n", i, board->moves[i].frm.y, ~board->moves[i].frm.x & 0x7,
-            board->moves[i].to.y, ~board->moves[i].to.x & 0x7);
+                board->moves[i].to.y, ~board->moves[i].to.x & 0x7);
 }
 
 static void internal_notation_to_uci(char *u, move_t *m)
@@ -604,9 +603,7 @@ int do_uci_move(board_t *board, struct uci *iface)
     char *mv, move_copy[32];
     uci_start_search(iface, board);
 
-    //printf("started searching\n");
     mv = uci_get_next_move(iface);
-    //    printf("got a move\n");
 
     if (!strcmp(mv, "(none)")) {
         int ret = do_move_random_piece(board, iface);
@@ -614,13 +611,9 @@ int do_uci_move(board_t *board, struct uci *iface)
             printf("ERROR: move error in do_uci_move\n");
         else
             return ret;
-
     }
 
-
     strncpy(move_copy, mv, sizeof (move_copy));
-    //print_board(board->board);
-    // printf("got: %s\n", mv);
 
     memset(&m, 0, sizeof (m));
     uci_move_notation_to_internal(move_copy, &m);
@@ -629,7 +622,7 @@ int do_uci_move(board_t *board, struct uci *iface)
     fx = bb_col_to_AI_col(m.frm.x);
     tx = bb_col_to_AI_col(m.to.x);
     if ((PIECE(board->board, m.frm.y, fx) == WHITE_PAWN ||
-            PIECE(board->board, m.frm.y, fx) == BLACK_PAWN) &&
+                PIECE(board->board, m.frm.y, fx) == BLACK_PAWN) &&
             PIECE(board->board, m.to.y, tx) == P_EMPTY) {
         m.en_passant = 1;
     }
@@ -648,7 +641,6 @@ int do_uci_move(board_t *board, struct uci *iface)
 
 void register_move_to_uci(struct move *m, struct uci *iface, board_t *board)
 {
-
     char uci[32];
 
     internal_notation_to_uci(uci, m);
@@ -656,7 +648,6 @@ void register_move_to_uci(struct move *m, struct uci *iface, board_t *board)
 }
 
 #ifdef BOARD_CONSISTENCY_TEST
-
 static void consistency_error(char *color, char *piece, int y, int x,
         board_t *board, u64 bitboard)
 {
@@ -682,7 +673,7 @@ void board_consistency_check(board_t *board)
     bb = &board->white_pieces;
     bb2 = &board->white_pieces;
     tmpboard = bb->pawns & bb->rooks & bb->knights & bb->bishops & bb->queens & bb->king &
-            bb2->pawns & bb2->rooks & bb2->knights & bb2->bishops & bb2->queens & bb2->king;
+        bb2->pawns & bb2->rooks & bb2->knights & bb2->bishops & bb2->queens & bb2->king;
     if (tmpboard) {
         printf("error: multiple pieces in same square!:\n");
         bb_print(tmpboard);
