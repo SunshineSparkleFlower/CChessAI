@@ -1,5 +1,8 @@
+
 #ifndef __UCI_H
 #define __UCI_H
+
+
 
 struct uci {
     int out_fds[2], in_fds[2];
@@ -14,6 +17,7 @@ struct uci {
     char __next_move[1024];
 };
 
+
 #define UCI_DEFAULT_FEN "startpos"
 
 extern struct uci *uci_init(char *path, char *fen, int white);
@@ -21,6 +25,6 @@ extern void uci_new_game(struct uci *iface, char *fen);
 extern void uci_close(struct uci *iface);
 extern char *uci_get_next_move(struct uci *iface);
 extern void uci_register_new_move(struct uci *iface, char *move);
-extern void uci_start_search(struct uci *iface);
+extern void uci_start_search(struct uci *iface, board_t * board);
 
 #endif

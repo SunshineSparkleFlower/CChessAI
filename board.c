@@ -301,24 +301,24 @@ static void handle_special_moves(board_t *b, struct move *m, int ret_value)
         switch (tolower(m->promotion)) {
             case 'q':
                 PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                    ? WHITE_QUEEN : BLACK_QUEEN;
+                        ? WHITE_QUEEN : BLACK_QUEEN;
                 break;
             case 'n':
                 PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                    ? WHITE_KNIGHT : BLACK_KNIGHT;
+                        ? WHITE_KNIGHT : BLACK_KNIGHT;
                 break;
             case 'b':
                 PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                    ? WHITE_BISHOP : BLACK_BISHOP;
+                        ? WHITE_BISHOP : BLACK_BISHOP;
                 break;
             case 'r':
                 PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                    ? WHITE_ROOK : BLACK_ROOK;
+                        ? WHITE_ROOK : BLACK_ROOK;
                 break;
             default:
                 // use queen as default promotion if no other option was set
                 PIECE(b->board, m->to.y, tx) = b->turn == WHITE
-                    ? WHITE_QUEEN : BLACK_QUEEN;
+                        ? WHITE_QUEEN : BLACK_QUEEN;
                 break;
         }
     }
@@ -346,7 +346,7 @@ int do_actual_move(board_t *b, struct move *m, struct uci *iface)
     ret = bb_do_actual_move(b, m);
     if (ret == 0) {
         struct bitboard *bb = b->turn == WHITE ? &b->white_pieces :
-            &b->black_pieces;
+                &b->black_pieces;
         printf("FATAL ERROR: %s: SOMETHING WENT WRONG\n", __func__);
         printf("%s: HALTING EXECUTION!!1\n", __func__);
         printf("position: %s\n", iface->position);
@@ -446,11 +446,12 @@ int move(board_t *b, int n)
     return 1;
 }
 
-static char fen_buffer[1024];
-char *get_fen(board_t *board)
+//static char fen_buffer[1024];
+
+char *get_fen(board_t *board, char* fen)
 {
     int row, col, cnt;
-    char *ret = fen_buffer, *ptr;
+    char *ret = fen, *ptr;
 
     ptr = ret;
 
@@ -476,7 +477,7 @@ char *get_fen(board_t *board)
 
     *(ptr - 1) = ' ';
     *ptr++ = board->turn == WHITE ? 'w' : 'b';
-    *ptr++ = ' ';
+    //*ptr++ = '';
     *ptr = 0;
 
     if (!board->white_pieces.king_has_moved) {
@@ -566,7 +567,7 @@ void print_legal_moves(board_t *board)
 
     for (i = 0; i < board->moves_count; i++)
         printf("%02d: (%d, %d) -> (%d, %d)\n", i, board->moves[i].frm.y, ~board->moves[i].frm.x & 0x7,
-                board->moves[i].to.y, ~board->moves[i].to.x & 0x7);
+            board->moves[i].to.y, ~board->moves[i].to.x & 0x7);
 }
 
 static void internal_notation_to_uci(char *u, move_t *m)
@@ -600,30 +601,35 @@ int do_uci_move(board_t *board, struct uci *iface)
 {
     struct move m;
     int fx, tx;
-    char *move, move_copy[32];
+    char *mv, move_copy[32];
+    uci_start_search(iface, board);
 
-    move = uci_get_next_move(iface);
-    if (!strcmp(move, "(none)")){
+    //printf("started searching\n");
+    mv = uci_get_next_move(iface);
+    //    printf("got a move\n");
+
+    if (!strcmp(mv, "(none)")) {
         int ret = do_move_random_piece(board, iface);
-        if(ret == 1)
+        if (ret == 1)
             printf("ERROR: move error in do_uci_move\n");
         else
             return ret;
 
     }
 
-    strncpy(move_copy, move, sizeof (move_copy));
+
+    strncpy(move_copy, mv, sizeof (move_copy));
     //print_board(board->board);
-    //   printf("got: %s\n",move);
+    // printf("got: %s\n", mv);
 
     memset(&m, 0, sizeof (m));
     uci_move_notation_to_internal(move_copy, &m);
-    uci_register_new_move(iface, move);
+    //uci_register_new_move(iface, mv);
 
     fx = bb_col_to_AI_col(m.frm.x);
     tx = bb_col_to_AI_col(m.to.x);
     if ((PIECE(board->board, m.frm.y, fx) == WHITE_PAWN ||
-                PIECE(board->board, m.frm.y, fx) == BLACK_PAWN) &&
+            PIECE(board->board, m.frm.y, fx) == BLACK_PAWN) &&
             PIECE(board->board, m.to.y, tx) == P_EMPTY) {
         m.en_passant = 1;
     }
@@ -640,20 +646,20 @@ int do_uci_move(board_t *board, struct uci *iface)
     return 1;
 }
 
-void register_move_to_uci(struct move *m, struct uci *iface)
+void register_move_to_uci(struct move *m, struct uci *iface, board_t *board)
 {
 
     char uci[32];
 
     internal_notation_to_uci(uci, m);
-    uci_register_new_move(iface, uci);
-    uci_start_search(iface);
+    //uci_register_new_move(iface, uci);
 }
 
 #ifdef BOARD_CONSISTENCY_TEST
+
 static void consistency_error(char *color, char *piece, int y, int x,
         board_t *board, u64 bitboard)
-        {
+{
 
     printf("board consistency check failed! %s %s on "
             "AI board is not set on bitboard (%d, %d)\n",
@@ -676,7 +682,7 @@ void board_consistency_check(board_t *board)
     bb = &board->white_pieces;
     bb2 = &board->white_pieces;
     tmpboard = bb->pawns & bb->rooks & bb->knights & bb->bishops & bb->queens & bb->king &
-        bb2->pawns & bb2->rooks & bb2->knights & bb2->bishops & bb2->queens & bb2->king;
+            bb2->pawns & bb2->rooks & bb2->knights & bb2->bishops & bb2->queens & bb2->king;
     if (tmpboard) {
         printf("error: multiple pieces in same square!:\n");
         bb_print(tmpboard);

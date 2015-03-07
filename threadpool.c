@@ -60,6 +60,7 @@ void put_new_job(struct job *j)
 
 int get_jobs_left(void)
 {
+    
     return num_free_jobs;
 }
 

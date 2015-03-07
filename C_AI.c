@@ -43,7 +43,8 @@ AI_instance_t ***ais_2d;
 char uci_engine[256] = "";
 int nr_islands = 1;
 
-void print_ai_stats(int tid, AI_instance_t *ai, int ite, int rndwins) {
+void print_ai_stats(int tid, AI_instance_t *ai, int ite, int rndwins)
+{
     printf("thread %d: iteration %d\n", tid, ite);
     printf("thread %d: aiw nr wins: %d\n", tid, ai->nr_wins);
     printf("thread %d: random wins: %d\n", tid, rndwins);
@@ -53,14 +54,15 @@ void print_ai_stats(int tid, AI_instance_t *ai, int ite, int rndwins) {
 }
 pthread_mutex_t lock;
 
-void play_chess(void *arg) {
+void play_chess(void *arg)
+{
     struct game_struct *game = (struct game_struct *) arg;
     int nr_games, moves, ret = -1;
     AI_instance_t *ai;
     board_t *board;
 
     ai = game->ais[game->game_id];
-    //printf("game_id: %d\n", game->game_id);
+    // printf("game_id: %d\n", game->game_id);
 
     for (nr_games = 0; nr_games < games_pr_iteration; nr_games++) {
         //  printf("__________________NEW GAME_________________\n");
@@ -75,9 +77,10 @@ void play_chess(void *arg) {
             uci_new_game(game->engine, "fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1");
 
         for (moves = 0; moves < max_moves; moves++) {
-
+            //printf("AI move %d\n", game->game_id);
             ret = do_best_move(ai, board, game->engine);
-            //printf("AI move done\n");
+            //ret = do_random_move(board, game->engine);
+            //printf("AI move done %d\n", game->game_id);
             if (ret == 0) {
                 break;
             } else if (ret == -1) {
@@ -87,13 +90,15 @@ void play_chess(void *arg) {
                 break;
             }
 
-            // print_board(board->board);
-            if (uci_engine[0])
-                ret = do_uci_move(board, game->engine);
-            else
-                ret = do_move_random_piece(board, game->engine);
-            //printf("engine move done\n");
-            //ret = do_random_move(board);
+
+            if (uci_engine[0]) {
+                if (!random_int_r(0, 2)) {
+                    ret = do_random_move(board, game->engine);
+                } else {
+                    ret = do_uci_move(board, game->engine);
+                }
+            }
+
             if (ret == 0) {
                 break;
             } else if (ret == -1) {
@@ -106,16 +111,9 @@ void play_chess(void *arg) {
                print_board(board->board);
                getchar();
              */
-            //("unlocking\n");
 
         }
-        /*
-           print_board(board->board);
-           char *fen = get_fen(board);
-           printf("ret = %d moves = %d. max_moves = %d. fen: %s\n", ret, moves, max_moves, fen);
-           getchar();
-         */
-        //pthread_mutex_unlock(&lock);
+
 
         //nobody won, either because of stalemate or max number of moves made
         if (ret == 0 || moves == max_moves) {
@@ -125,11 +123,12 @@ void play_chess(void *arg) {
         free_board(board);
 
     }
-    //   printf("done game_id: %d\n", game->game_id);
+    // printf("done game_id: %d\n", game->game_id);
 
 }
 
-int get_best_ai(AI_instance_t **ais, int n, int lim) {
+int get_best_ai(AI_instance_t **ais, int n, int lim)
+{
     int i, best = lim ? 0 : 1;
     float best_val = -1000000.0;
     for (i = 0; i < n; i++) {
@@ -144,7 +143,8 @@ int get_best_ai(AI_instance_t **ais, int n, int lim) {
 
 //used to catch SIGINT and interrupt the training to write the AI to file 
 
-void sighandler(int sig) {
+void sighandler(int sig)
+{
     char buffer[512], file[128];
     int n = 1, i, best;
     struct timeval tv;
@@ -204,14 +204,15 @@ void sighandler(int sig) {
 
     printf("shutting down threadpool\n");
     shutdown_threadpool(1);
-    for (i = 0; i < nr_jobs * nr_islands; i++){
-        fprintf(stderr,"closing engine %d\n", i);
+    for (i = 0; i < nr_jobs * nr_islands; i++) {
+        fprintf(stderr, "closing engine %d\n", i);
         uci_close(games[i].engine);
     }
     exit(0);
 }
 
-void usage(char **argv, struct option *options) {
+void usage(char **argv, struct option *options)
+{
     int i;
     printf("USAGE: %s <options>\n", argv[0]);
     printf("Available options:\n");
@@ -220,7 +221,8 @@ void usage(char **argv, struct option *options) {
             options[i].has_arg == required_argument ? "<argument>" : "");
 }
 
-void parse_arguments(int argc, char **argv) {
+void parse_arguments(int argc, char **argv)
+{
     int c;
     int option_index = 0;
     static struct option long_options[] = {
@@ -288,7 +290,8 @@ void parse_arguments(int argc, char **argv) {
 
 //prints the brain in a graph format, tmp == 1 means the brain is written to brain.dot
 
-int print_brain(AI_instance_t *a1, int tmp) {
+int print_brain(AI_instance_t *a1, int tmp)
+{
     int i, j;
 
     char filename[0x100];
@@ -380,7 +383,8 @@ int print_brain(AI_instance_t *a1, int tmp) {
     return 1;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     int j;
     int k;
     parse_arguments(argc, argv);
@@ -476,7 +480,7 @@ int main(int argc, char *argv[]) {
         usleep(1000 * 1); // sleep 1 ms
     printf("jobs done\n");
     shutdown_threadpool(1);
-    
+
     best = get_best_ai(ais, nr_jobs, -1);
 
     for (i = 0; i < nr_jobs * nr_islands; i++)

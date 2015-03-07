@@ -11,7 +11,8 @@
 
 /* if fen is NULL, standard position is assumed.
  * white is 1 if engine is white */
-struct uci *uci_init(char *path, char *fen, int color) {
+struct uci *uci_init(char *path, char *fen, int color)
+{
     struct uci *ret;
     char buffer[2048];
 
@@ -27,7 +28,7 @@ struct uci *uci_init(char *path, char *fen, int color) {
     }
     ret->out = fdopen(ret->out_fds[0], "r");
     ret->in = fdopen(ret->in_fds[1], "w");
-    
+
     setvbuf(ret->out, NULL, _IOLBF, 0);
     setvbuf(ret->in, NULL, _IOLBF, 0);
 
@@ -48,12 +49,14 @@ struct uci *uci_init(char *path, char *fen, int color) {
         if (!strcmp(buffer, "uciok\n"))
             break;
     }
-    fprintf(ret->in, "setoption name Skill Level value %d\n", 0);
-        fprintf(ret->in, "setoption name Contempt Factor value %d\n", 100);
-
+    // fprintf(ret->in, "setoption name Skill Level value %d\n", 0);
+    //  fprintf(ret->in, "setoption name Contempt Factor value %d\n", 100);
+    //fprintf(ret->in, "setoption name Ponder value %d\n", 0);
     //fprintf(ret->in, "setoption name UCI_Chess960 value True\n");
 
     fprintf(ret->in, "isready\n");
+    fprintf(ret->in, "ucinewgame\n");
+
     if (fgets(buffer, sizeof buffer, ret->out) == NULL) {
         printf("failed to read from engine\n");
         perror("fgets");
@@ -80,23 +83,24 @@ struct uci *uci_init(char *path, char *fen, int color) {
     ret->depth = 1;
     ret->search_time = 10;
 
-    if (color == WHITE)
-        uci_start_search(ret);
+
 
     return ret;
 }
 
-void uci_new_game(struct uci *iface, char *fen) {
+void uci_new_game(struct uci *iface, char *fen)
+{
 
     if (fen == NULL)
         fen = "startpos";
 
-    sprintf(iface->position, "position %s moves \n", fen);
+    //sprintf(iface->position, "position %s moves \n", fen);
     iface->pos_end = iface->position + strlen(iface->position) - 1;
 
 }
 
-void uci_close(struct uci *iface) {
+void uci_close(struct uci *iface)
+{
     fprintf(iface->in, "stop\n");
     fprintf(iface->in, "quit\n");
     close(iface->in_fds[0]);
@@ -109,7 +113,8 @@ void uci_close(struct uci *iface) {
 }
 // returns the next move in a statically allocated string buffer
 
-char *uci_get_next_move(struct uci *iface) {
+char *uci_get_next_move(struct uci *iface)
+{
 
     char *tmp;
     //fprintf(iface->in, "stop\n");
@@ -131,7 +136,8 @@ char *uci_get_next_move(struct uci *iface) {
     return tmp;
 }
 
-void uci_register_new_move(struct uci *iface, char *move) {
+void uci_register_new_move(struct uci *iface, char *move)
+{
 
     if ((iface->pos_end - iface->position + strlen(move) + 1) >
             iface->position_size) {
@@ -154,17 +160,18 @@ void uci_register_new_move(struct uci *iface, char *move) {
 #ifdef UCI_DEBUG
     printf("%s", iface->position);
 #endif
-
-    fprintf(iface->in, "%s", iface->position);
-
 }
 
-void uci_start_search(struct uci *iface) {
+void uci_start_search(struct uci *iface, board_t *board)
+{
 
     int tmp;
     char buffer[256];
-    sprintf(buffer, "go depth %u\n", 1);
-   // sprintf(buffer, "setoption name Skill Level value %d\n", 0);
+    char fen[1024];
+
+    get_fen(board, fen);
+    fprintf(iface->in, "position fen %s - 0 1\n", fen);
+    sprintf(buffer, "go depth %d\n", 2);
 
 #ifdef UCI_DEBUG
     printf("%s", buffer);

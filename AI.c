@@ -14,7 +14,8 @@
 #define MAX_VAL 100
 static unsigned char ai_mem_magic[] = "\x01\x02\x03\x04\x05\x06";
 
-AI_instance_t *ai_new(int nr_ports) {
+AI_instance_t *ai_new(int nr_ports)
+{
     int j;
     AI_instance_t *ret;
 
@@ -33,7 +34,7 @@ AI_instance_t *ai_new(int nr_ports) {
     ret->brain = (int **) malloc_2d(ret->nr_synapsis / (sizeof (int) * 8),
             ret->nr_ports, sizeof (int));
 
-    
+
     ret->invert = (int*) malloc(ret->nr_ports * sizeof (int));
     bzero(ret->invert, ret->nr_ports * sizeof (int));
 
@@ -80,7 +81,8 @@ AI_instance_t *ai_new(int nr_ports) {
     return ret;
 }
 
-int dump_ai(char *file, AI_instance_t * ai) {
+int dump_ai(char *file, AI_instance_t * ai)
+{
     FILE *out;
     long brain_size = (ai->nr_synapsis / (sizeof (int) * 8)) *
             ai->nr_ports * sizeof (int);
@@ -104,7 +106,8 @@ int dump_ai(char *file, AI_instance_t * ai) {
     return 1;
 }
 
-AI_instance_t * load_ai(char *file) {
+AI_instance_t * load_ai(char *file)
+{
     int tmp;
     FILE *in;
     AI_instance_t *ret;
@@ -197,12 +200,14 @@ AI_instance_t * load_ai(char *file) {
     return ret;
 }
 
-void ai_free(AI_instance_t * ai) {
+void ai_free(AI_instance_t * ai)
+{
     free(ai->brain);
     free(ai);
 }
 
-int nor(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * brain_a, int *brain_b) {
+int nor(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * brain_a, int *brain_b)
+{
     __m128i ad, bd, cd;
 
     int i;
@@ -246,7 +251,8 @@ int nor(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * brai
     return 1;
 }
 
-int nor256(int *a, int *b, int nr_ports, piece_t *board, int board_size) {
+int nor256(int *a, int *b, int nr_ports, piece_t *board, int board_size)
+{
     __m256i ad, bd, and_res, board_d;
 
 
@@ -291,7 +297,8 @@ int nor256(int *a, int *b, int nr_ports, piece_t *board, int board_size) {
 
 }
 
-int nand(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * brain_a, int *brain_b) {
+int nand(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * brain_a, int *brain_b)
+{
     __m128i ad, bd, cd;
 
     int i;
@@ -335,7 +342,8 @@ int nand(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * bra
 
 }
 
-int nand256(int *a, int *b, int nr_ports, piece_t *board, int board_size) {
+int nand256(int *a, int *b, int nr_ports, piece_t *board, int board_size)
+{
     __m256i ad, bd, and_res, board_d;
 
 
@@ -379,7 +387,8 @@ int nand256(int *a, int *b, int nr_ports, piece_t *board, int board_size) {
 
 }
 
-int and(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * brain_a, int *brain_b) {
+int and(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * brain_a, int *brain_b)
+{
     __m128i ad, bd, cd;
     //printf("in nand\n");
     //_dump(a,128/8);
@@ -433,7 +442,8 @@ int and(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * brai
 
 }
 
-int and256(int *a, int *b, int nr_ports, piece_t *board, int board_size) {
+int and256(int *a, int *b, int nr_ports, piece_t *board, int board_size)
+{
     __m256i ad, bd, and_res, board_d;
 
 
@@ -477,7 +487,8 @@ int and256(int *a, int *b, int nr_ports, piece_t *board, int board_size) {
 
 }
 
-int or(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * brain_a, int *brain_b) {
+int or(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * brain_a, int *brain_b)
+{
     __m128i ad, bd, cd;
 
     int i;
@@ -519,7 +530,8 @@ int or(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * brain
     return 0;
 }
 
-int or256(int *a, int *b, int nr_ports, piece_t *board, int board_size) {
+int or256(int *a, int *b, int nr_ports, piece_t *board, int board_size)
+{
 
     __m256i ad, bd, and_res, board_d;
 
@@ -563,7 +575,8 @@ int or256(int *a, int *b, int nr_ports, piece_t *board, int board_size) {
 
 }
 
-int nand_validation(int *a, int *b, int size, int *board, int board_size) {
+int nand_validation(int *a, int *b, int size, int *board, int board_size)
+{
 
     int i;
     for (i = 0; i < size; i++) {
@@ -580,29 +593,30 @@ int nand_validation(int *a, int *b, int size, int *board, int board_size) {
     return 1;
 }
 
-int eval_curcuit(piece_t *board, AI_instance_t *ai) {
+int eval_curcuit(piece_t *board, AI_instance_t *ai)
+{
     int i;
     int V[(ai->nr_ports) / 32];
     bzero(V, sizeof (V));
 
     for (i = ai->low_port; i <= ai->high_port; i++) {
-       // if (ai->output_tag[i] || TestBit(ai->used_port, i)) {
+        // if (ai->output_tag[i] || TestBit(ai->used_port, i)) {
 
-            //printf("port: %d", i);
-            if (ai->port_type[i] == 1) {
-                if (nand256(V, ai->brain[i], ai->nr_ports, board, ai->board_size))
-                    SetBit(V, i);
-            } else if (ai->port_type[i] == 3) {
-                if (or256(V, ai->brain[i], ai->nr_ports, board, ai->board_size))
-                    SetBit(V, i);
-            } else if (ai->port_type[i] == 2) {
-                if (nor256(V, ai->brain[i], ai->nr_ports, board, ai->board_size))
-                    SetBit(V, i);
-            } else if (ai->port_type[i] == 4) {
-                if (and256(V, ai->brain[i], ai->nr_ports, board, ai->board_size))
-                    SetBit(V, i);
-            } else
-                fprintf(stderr, "ERROR: port type error(%d)", ai->port_type[i]);
+        //printf("port: %d", i);
+        if (ai->port_type[i] == 1) {
+            if (nand256(V, ai->brain[i], ai->nr_ports, board, ai->board_size))
+                SetBit(V, i);
+        } else if (ai->port_type[i] == 3) {
+            if (or256(V, ai->brain[i], ai->nr_ports, board, ai->board_size))
+                SetBit(V, i);
+        } else if (ai->port_type[i] == 2) {
+            if (nor256(V, ai->brain[i], ai->nr_ports, board, ai->board_size))
+                SetBit(V, i);
+        } else if (ai->port_type[i] == 4) {
+            if (and256(V, ai->brain[i], ai->nr_ports, board, ai->board_size))
+                SetBit(V, i);
+        } else
+            fprintf(stderr, "ERROR: port type error(%d)", ai->port_type[i]);
         //}
     }
 
@@ -621,7 +635,8 @@ int eval_curcuit(piece_t *board, AI_instance_t *ai) {
 
 }
 
-int _get_best_move(AI_instance_t *ai, board_t * board) {
+int _get_best_move(AI_instance_t *ai, board_t * board)
+{
     int i, j, count, moveret;
     float cumdist[board->moves_count], fcount, x;
     int scores[board->moves_count];
@@ -706,7 +721,8 @@ int _get_best_move(AI_instance_t *ai, board_t * board) {
 
 //perform a best move return 0 if stalemate, -1 if check mate 1 of success
 
-int do_best_move(AI_instance_t *ai, board_t * board, struct uci *uci_iface) {
+int do_best_move(AI_instance_t *ai, board_t * board, struct uci *uci_iface)
+{
     int best_move;
 
     generate_all_moves(board);
@@ -724,17 +740,19 @@ int do_best_move(AI_instance_t *ai, board_t * board, struct uci *uci_iface) {
     if (!ret)
         fprintf(stderr, "ret %d\n", ret);
 
-    if (uci_iface)
-        register_move_to_uci(&board->moves[best_move], uci_iface);
 
+    if (uci_iface)
+        register_move_to_uci(&board->moves[best_move], uci_iface, board);
     swapturn(board);
+
 
     return 1;
 }
 
 //perform a random move return 0 if stalemate, -1 if check mate 1 of success
 
-int do_random_move(board_t *board, struct uci *uci_iface) {
+int do_random_move(board_t *board, struct uci *uci_iface)
+{
     int rndmove;
 
     do {
@@ -749,11 +767,12 @@ int do_random_move(board_t *board, struct uci *uci_iface) {
         rndmove = random_int_r(0, board->moves_count - 1);
 
     } while (do_move(board, rndmove) != 1);
-
-    if (uci_iface)
-        register_move_to_uci(&board->moves[rndmove], uci_iface);
-
     swapturn(board);
+
+    if (uci_iface) {
+        //printf("register move in random move \n");
+        register_move_to_uci(&board->moves[rndmove], uci_iface, board);
+    }
 
     return 1;
 }
@@ -762,9 +781,10 @@ int do_random_move(board_t *board, struct uci *uci_iface) {
  * piece_type must be one of the values defined in enum moves_index. if EMPTY is
  * passed, a random piece is choosed */
 int do_move_piece(board_t *board, enum moves_index piece_type,
-        struct uci *uci_iface) {
+        struct uci *uci_iface)
+{
     int rnd, i, ret = 0;
-    static void (*move_gen_callbacks[6])(board_t *board) = {
+    static void (*move_gen_callbacks[6])(board_t * board) = {
         generate_pawn_moves_only,
         generate_rook_moves_only,
         generate_knight_moves_only,
@@ -801,13 +821,15 @@ int do_move_piece(board_t *board, enum moves_index piece_type,
     return -2; // user passed invalid value in piece_type
 }
 
-int do_move_random_piece(board_t *board, struct uci *uci_iface) {
+int do_move_random_piece(board_t *board, struct uci *uci_iface)
+{
     return do_move_piece(board, EMPTY, uci_iface);
 }
 
 //perform a nonrandom move return 0 if stalemate, -1 if check mate 1 of success
 
-int do_nonrandom_move(board_t *board, struct uci *uci_iface) {
+int do_nonrandom_move(board_t *board, struct uci *uci_iface)
+{
     int rndmove;
 
     do {
@@ -823,14 +845,15 @@ int do_nonrandom_move(board_t *board, struct uci *uci_iface) {
     } while (!do_move(board, rndmove));
 
     if (uci_iface)
-        register_move_to_uci(&board->moves[rndmove], uci_iface);
+        register_move_to_uci(&board->moves[rndmove], uci_iface, board);
 
     swapturn(board);
 
     return 1;
 }
 
-void punish(AI_instance_t * ai) {
+void punish(AI_instance_t * ai)
+{
     ai->nr_losses++;
     ai->nr_games_played++;
     int j;
@@ -843,17 +866,20 @@ void punish(AI_instance_t * ai) {
     bzero(&ai->state_separation[0][0], 2 * ai->nr_ports * sizeof (int));
 }
 
-void small_punish(AI_instance_t * ai) {
+void small_punish(AI_instance_t * ai)
+{
 
     ai->nr_games_played++;
 }
 
-void small_reward(AI_instance_t *ai, int reward) {
+void small_reward(AI_instance_t *ai, int reward)
+{
 
     ai->positive_reward += reward;
 }
 
-void reward(AI_instance_t * ai) {
+void reward(AI_instance_t * ai)
+{
     ai->nr_wins += 1;
     ai->nr_games_played++;
     int j;
@@ -867,7 +893,8 @@ void reward(AI_instance_t * ai) {
 
 }
 
-void draw(AI_instance_t *ai, board_t * board) {
+void draw(AI_instance_t *ai, board_t * board)
+{
     //small_reward(ai, score_board(board));
     int j;
 
@@ -882,7 +909,8 @@ void draw(AI_instance_t *ai, board_t * board) {
 
 }
 
-void copy_ai(AI_instance_t *from_ai, AI_instance_t * to_ai) {
+void copy_ai(AI_instance_t *from_ai, AI_instance_t * to_ai)
+{
     //copy a2 over to a1
 
     memcpy(&to_ai->brain[0][0], &from_ai->brain[0][0], to_ai->nr_ports * to_ai->nr_synapsis / 8);
@@ -906,7 +934,8 @@ void copy_ai(AI_instance_t *from_ai, AI_instance_t * to_ai) {
 
 }
 
-void mutate_mutation_rates(AI_instance_t *ai) {
+void mutate_mutation_rates(AI_instance_t *ai)
+{
 
     int max_val = 100;
     int min_val = 0;
@@ -958,7 +987,8 @@ void mutate_mutation_rates(AI_instance_t *ai) {
 
 }
 
-void create_random_connections(AI_instance_t *a1, int nr_connections, int port, int pc) {
+void create_random_connections(AI_instance_t *a1, int nr_connections, int port, int pc)
+{
     int i;
     if (pc || random_int_r(0, 1)) {
         for (i = 0; i < nr_connections && a1->low_port < port; i++) {
@@ -976,8 +1006,10 @@ void create_random_connections(AI_instance_t *a1, int nr_connections, int port, 
 
 }
 
-    //check for constant ports and reset them
-void reset_constant_ports(AI_instance_t *a1, AI_instance_t * a2) {
+//check for constant ports and reset them
+
+void reset_constant_ports(AI_instance_t *a1, AI_instance_t * a2)
+{
     int j;
     for (j = a1->low_port; j <= a1->high_port; j++) {
         //ports that doesn't change in 1000 games is reset 
@@ -999,7 +1031,9 @@ void reset_constant_ports(AI_instance_t *a1, AI_instance_t * a2) {
 
 
 //delete all connections for a port and create new ones
-void randomize_ports(AI_instance_t *a1) {
+
+void randomize_ports(AI_instance_t *a1)
+{
     int i;
     //completely randomize a port
     for (i = 0; i < 1; i++) {
@@ -1013,7 +1047,9 @@ void randomize_ports(AI_instance_t *a1) {
 }
 
 //find ports that are used by other ports
-void find_ports_in_use(AI_instance_t *a1) {
+
+void find_ports_in_use(AI_instance_t *a1)
+{
     //find ports that are actually in use
     int i, j;
     int max_depth = 7;
@@ -1046,7 +1082,9 @@ void find_ports_in_use(AI_instance_t *a1) {
 }
 
 //move a port in ai with its connections, this should have no effect on AI output
-void move_port(AI_instance_t *ai, int from, int to) {
+
+void move_port(AI_instance_t *ai, int from, int to)
+{
     // printf("from %d to %d\n", from, to);
     memcpy(&ai->brain[to][0], &ai->brain[from][0], ai->nr_synapsis / 8);
     ai->port_type[to] = ai->port_type[from];
@@ -1066,14 +1104,15 @@ void move_port(AI_instance_t *ai, int from, int to) {
     }
 }
 
-void defrag(AI_instance_t *ai) {
+void defrag(AI_instance_t *ai)
+{
     int i;
     int j;
     for (i = ai->low_port; i <= ai->high_port;) {
-       
+
         //is the port in use?
         if (!TestBit(ai->used_port, i) && !ai->output_tag[i]) {
-            
+
             //if there are more ports in the lower half of brain than the upper half
             if (ai->nr_ports / 2 - ai->low_port >= ai->high_port - ai->nr_ports / 2) {
                 for (j = i - 1; j >= ai->low_port; j--) {
@@ -1096,7 +1135,9 @@ void defrag(AI_instance_t *ai) {
 }
 
 //brain in a a1 is replaced with brain from a2 plus a mutation
-int mutate(AI_instance_t *a1, AI_instance_t * a2, int print, int print_stats) {
+
+int mutate(AI_instance_t *a1, AI_instance_t * a2, int print, int print_stats)
+{
     int i;
     int max_val = 100;
     int min_val = 0;
@@ -1104,7 +1145,7 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print, int print_stats) {
     mutate_mutation_rates(a1);
     a1->low_port -= 1;
     a1->low_port = keep_in_range(a1->low_port, 0, a1->nr_ports - 1);
-    create_random_connections(a1, 2,  a1->low_port, 0);
+    create_random_connections(a1, 2, a1->low_port, 0);
 
     //chance to add a new port with random connections
     if (!random_int_r(0, 10)) {
@@ -1133,12 +1174,11 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print, int print_stats) {
 
     //reset_low_entropy_ports(a1, a2);
     if (random_int_r(min_val, max_val) > 50)
-
         randomize_ports(a1);
 
 
     //remove random connections
-    for (i = 0; i < 1000; i++) {
+    for (i = 0; i < 5; i++) {
         int r_port = random_int_r(a1->low_port, a1->high_port);
         int r_synaps = 0;
         r_synaps = random_int_r(0, a1->nr_synapsis - 1);
@@ -1154,9 +1194,9 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print, int print_stats) {
     }
 
     find_ports_in_use(a1);
-    
+
     defrag(a1);
-   
+
 
     //reset the new AI
     bzero(&a1->separation_count[0], a1->nr_ports * sizeof (int));
@@ -1165,19 +1205,20 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print, int print_stats) {
     bzero(&a1->state_separation[0][0], 2 * a1->nr_ports * sizeof (int));
     if (print_stats)
         fprintf(stderr, "score %f, %d w, %d games from score %f, %d w, %d games, one_rate: %d, zero_rate: %d, p_type_rate: %d, unused_rate: %d, o_rate: %d, r_o_rate: %d, separation_threshold: %d, state_separation_threshold: %d, separation_rate: %d, state_separation_rate: %d, exponent: %d, low_port: %d, high_port: %d\n",
-                get_score(a1), a1->nr_wins, a1->nr_games_played, get_score(a2), a2->nr_wins, a2->nr_games_played, a2->one_rate, a2->zero_rate, a2->port_type_rate, a2->unused_rate, a2->output_rate, a2->r_output_rate, a2->separation_threshold, a2->state_separation_threshold, a2->separation_rate, a2->state_separation_rate, a2->output_exponent, a2->low_port, a2->high_port);
+            get_score(a1), a1->nr_wins, a1->nr_games_played, get_score(a2), a2->nr_wins, a2->nr_games_played, a2->one_rate, a2->zero_rate, a2->port_type_rate, a2->unused_rate, a2->output_rate, a2->r_output_rate, a2->separation_threshold, a2->state_separation_threshold, a2->separation_rate, a2->state_separation_rate, a2->output_exponent, a2->low_port, a2->high_port);
     clear_score(a1);
 
     return 1;
 }
 
-
-float get_score(AI_instance_t * ai) {
+float get_score(AI_instance_t * ai)
+{
 
     return ((float) (ai->nr_wins)) / ((float) ai->nr_games_played + 1); // + ai->positive_reward/((float)ai->nr_games_played+1);
     //return ((float)(ai->nr_wins))/((float)ai->nr_losses+1);
 }
 
-void clear_score(AI_instance_t * ai) {
+void clear_score(AI_instance_t * ai)
+{
     ai->nr_losses = ai->nr_wins = ai->nr_games_played = ai->positive_reward = 0;
 }

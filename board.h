@@ -2,7 +2,8 @@
 #define __BOARD_H
 
 #include <stdint.h>
-#include "uci.h"
+
+
 
 typedef uint16_t piece_t;
 
@@ -36,6 +37,8 @@ struct bitboard {
     u64 king;
 };
 
+
+
 typedef struct board {
     piece_t _board[8 * 8 * 2];
     piece_t *board_2d[8];
@@ -60,6 +63,9 @@ typedef struct board {
     int is_check;
 } board_t;
 
+#include "uci.h"
+
+
 #define DEFAULT_FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 extern board_t *new_board(char *_fen);
@@ -73,13 +79,13 @@ extern int undo_move(board_t *b, int n);
 extern int move(board_t *b, int n);
 extern int do_move(board_t *b, int n);
 extern int do_actual_move(board_t *b, struct move *m, struct uci *iface);
-extern char *get_fen(board_t *board);
+extern char *get_fen(board_t *board, char* fen);
 extern void print_board(piece_t *board);
 extern void print_move(board_t *board, int n);
 extern void print_legal_moves(board_t *board);
 extern const char *piece_to_str(piece_t p);
 extern int do_uci_move(board_t *board, struct uci *iface);
-extern void register_move_to_uci(struct move *m, struct uci *iface);
+extern void register_move_to_uci(struct move *m, struct uci *iface, board_t *board);
 extern void board_consistency_check(board_t *board);
 
 extern void init_magicmoves(void);
