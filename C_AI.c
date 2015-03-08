@@ -89,6 +89,7 @@ void play_chess(void *arg)
                 break;
             }
 
+            //printf("engine move %d\n", game->game_id);
 
             if (uci_engine[0]) {
                 if (!random_int_r(0, 2)) {
@@ -97,6 +98,7 @@ void play_chess(void *arg)
                     ret = do_uci_move(board, game->engine);
                 }
             }
+            //printf("engine move done %d\n", game->game_id);
 
             if (ret == 0) {
                 break;

@@ -53,18 +53,16 @@ AI_instance_t *ai_new(int nr_ports)
     ret->activation_count = (int**) malloc_2d(2, ret->nr_ports, sizeof (int));
     ret->separation = (int**) malloc_2d(2, ret->nr_ports, sizeof (int));
     ret->separation_count = (int*) malloc(ret->nr_ports * sizeof (int));
-
     ret->state_separation = (int**) malloc_2d(2, ret->nr_ports, sizeof (int));
     ret->state_separation_count = (int*) malloc(ret->nr_ports * sizeof (int));
-
     ret->used_port = malloc(sizeof (int) * ret->nr_ports / 32);
     bzero(ret->used_port, sizeof (int) * ret->nr_ports / 32);
 
+    
+    // initialize internal variables
     ret->move_nr = 0;
     ret->nr_wins = ret->nr_losses = ret->nr_games_played = 0;
     ret->generation = 0;
-
-
     ret->zero_rate = 10;
     ret->one_rate = 1;
     ret->port_type_rate = 2;
@@ -81,6 +79,7 @@ AI_instance_t *ai_new(int nr_ports)
     return ret;
 }
 
+//write AI to file
 int dump_ai(char *file, AI_instance_t * ai)
 {
     FILE *out;
@@ -106,6 +105,7 @@ int dump_ai(char *file, AI_instance_t * ai)
     return 1;
 }
 
+//load AI from file
 AI_instance_t * load_ai(char *file)
 {
     int tmp;
@@ -390,17 +390,7 @@ int nand256(int *a, int *b, int nr_ports, piece_t *board, int board_size)
 int and(int *a, int *b, int nr_ports, piece_t *board, int board_size, int * brain_a, int *brain_b)
 {
     __m128i ad, bd, cd;
-    //printf("in nand\n");
-    //_dump(a,128/8);
-    //_dump(b,128/8);
 
-    //printf("\n");
-    //   ad = _mm_loadu_si128((__m128i *)a);
-    //   bd = _mm_loadu_si128((__m128i *)b);
-    //   if(!_mm_test_all_zeros(ad, bd)){
-    //    printf("here\n");
-    //        return 0;
-    //    }
 
     int i;
     for (i = 0; i < (nr_ports) / 32; i += 4) {
@@ -651,10 +641,7 @@ int _get_best_move(AI_instance_t *ai, board_t * board)
         moveret = move(board, i);
         //printf("moveret %d", moveret);
         //print_board(&board->board[0]);
-        if (i == board->moves_count) {
-            //   print_board(&board->board[64]);
-            //   print_board(&board->board[0]);
-        }
+ 
 
         /* move returns 1 on success */
         if (moveret == 1) {
@@ -1040,10 +1027,9 @@ void randomize_ports(AI_instance_t *a1)
     }
 }
 
-//find ports that are used by other ports
+//find ports that are used by by output ports
 void find_ports_in_use(AI_instance_t *a1)
 {
-    //find ports that are actually in use
     int i, j;
     int max_depth = 7;
     __m128i ad, bd;
@@ -1133,7 +1119,8 @@ int mutate(AI_instance_t *a1, AI_instance_t * a2, int print, int print_stats)
     int max_val = 100;
     int min_val = 0;
     copy_ai(a2, a1);
-    mutate_mutation_rates(a1);
+    
+    //mutate_mutation_rates(a1);
     a1->low_port -= 1;
     a1->low_port = keep_in_range(a1->low_port, 0, a1->nr_ports - 1);
     create_random_connections(a1, 2, a1->low_port, 0);

@@ -7,11 +7,14 @@
 #include <math.h>
 #include <time.h>
 #include <unistd.h>
+#include <getopt.h>
 
 #include "common.h"
 #include "AI.h"
 #include "board.h"
 #include "bitboard.h"
+
+#define MAX_WIDTH 70
 
 unsigned long now(void)
 {
@@ -21,7 +24,7 @@ unsigned long now(void)
 
     clock_gettime(CLOCK_REALTIME, &spec);
 
-    s  = spec.tv_sec;
+    s = spec.tv_sec;
     ms = round(spec.tv_nsec / 1.0e6); // convert nanoseconds to milliseconds
 
     return s * 1000 + ms;
@@ -68,8 +71,11 @@ void uci_test(void)
                 break;
             } else if (ret == -1) {
                 // checkmate
+                char fen[1024];
+
                 printf("checkmate! uci won in %d moves\n", j);
-                printf("fen: %s\n", get_fen(board));
+                get_fen(board, fen);
+                printf("fen: %s\n", fen);
                 break;
             }
 
@@ -83,8 +89,10 @@ void uci_test(void)
                 // stalemate
                 break;
             } else if (ret == -1) {
-                printf("checkmate! uci lost in %d moves\n", j);
-                printf("fen: %s\n", get_fen(board));
+                char fen[1024];
+
+                get_fen(board, fen);
+                printf("fen: %s\n", fen);
                 // checkmate
                 break;
             }
@@ -150,10 +158,11 @@ void inspect_moves(void)
     moves_test("rnbqkbnr/pppp1ppp/8/8/8/8/PPPPpPPP/RNBQK2R w KQkq - 0 1", 1, 40);
 }
 
-void random_test(void)
+int random_test(void)
 {
+    int success = 1;
     int vals[11], ret;
-    unsigned a = 9999999, i ;
+    unsigned a = 1000000, i;
 
     memset(vals, 0, sizeof vals);
 
@@ -165,18 +174,95 @@ void random_test(void)
         }
         vals[ret]++;
     }
+    int largest_val = vals[0];
+    for (i = 0; i < 10; i++) {
+        int val = abs(vals[i] - a / 10);
+        if (val > largest_val) {
+            largest_val = val;
+        }
+    }
+    char buffer [250];
+    sprintf(buffer, "Largest deviation in random distribution: %f", largest_val / (float) a);
+    printf("%-*s  %s\n", MAX_WIDTH, buffer, largest_val / (float) a < 0.1 ? "OK" : "ERROR");
+    success &= (largest_val / (float) a < 0.1);
+    
+    int error = 0;
+    for (i = 0; i < 100000; i++) {
+        if (random_int_r(-150, 150) > 150 || random_int_r(-150, 150)<-150)
+            error = 1;
+    }
+    sprintf(buffer, "Random range test ");
+    printf("%-*s  %s\n", MAX_WIDTH, buffer, !error ? "OK" : "ERROR");
+    success &= !(error);
 
-    for (i = 0; i < 11; i++)
-        printf("%d: %d\n", i, vals[i]);
+    return success;
+}
+
+int board_move_test()
+{
+    char buffer [250];
+
+    board_t *board = new_board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w aaaa - 0 1");
+    generate_all_moves(board);
+    sprintf(buffer, "Move count initial board test (count: %d)", board->moves_count);
+    int error = board->moves_count != 20;
+    printf("%-*s  %s\n", MAX_WIDTH, buffer, !error ? "OK" : "ERROR");
+    return !error;
+}
+
+void usage(char **argv, struct option *options)
+{
+    int i;
+    printf("USAGE: %s <options>\n", argv[0]);
+    printf("Available options:\n");
+    for (i = 0; options[i].name; i++)
+        printf("    -%c, --%s %s\n", options[i].val, options[i].name,
+            options[i].has_arg == required_argument ? "<argument>" : "");
+}
+
+void parse_arguments(int argc, char **argv)
+{
+    int c;
+    int option_index = 0;
+    static struct option long_options[] = {
+        {"random", no_argument, NULL, 'r'},
+        {"board", no_argument, NULL, 'b'},
+        {NULL, 0, NULL, 0},
+    };
+    int success = 1;
+    while ((c = getopt_long(argc, argv, "brh", long_options,
+            &option_index)) != -1)
+        switch (c) {
+            case 'r':
+                printf("===============TESTING RANDOM FUNCTIONS===============\n\n");
+                success &= random_test();
+                break;
+            case 'b':
+                printf("================TESTING BOARD FUNCTIONS================\n\n");
+                success &= board_move_test();
+                break;
+            case 'h':
+            default:
+                usage(argv, long_options);
+                exit(0);
+        }
+    if (success) {
+        printf("\nALL TESTS SUCCEDED\n");
+    } else
+        printf("\n ERROR: SOME TESTS FAILED\n");
+
+
 }
 
 int main(int argc, char *argv[])
 {
+
     init_magicmoves();
+    parse_arguments(argc, argv);
 
     //random_test();
     //moves_consistency_test();
-    inspect_moves();
+    //inspect_moves();
     //uci_test();
 
     _shutdown();

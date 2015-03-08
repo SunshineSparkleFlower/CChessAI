@@ -112,7 +112,6 @@ static void *loiter(void *arg)
             break;
         ++i;
 
-        report_start();
         job->task(job->data);
         report_done();
 

@@ -115,14 +115,17 @@ char *uci_get_next_move(struct uci *iface)
 {
     char *tmp;
     //fprintf(iface->in, "stop\n");
-
+    printf("getting next move\n");
     while (fgets(iface->__next_move, sizeof (iface->__next_move), iface->out)) {
 #ifdef UCI_DEBUG
         printf("got: %s", iface->__next_move);
 #endif
+                printf("got: %s", iface->__next_move);
+
         if ((tmp = strstr(iface->__next_move, "bestmove ")))
             break;
     }
+    printf("done getting next move\n");
     if (tmp == NULL)
         return NULL; // why would this ever happen?
 
