@@ -1,4 +1,3 @@
-#define _POSIX_C_SOURCE 200809L
 #include <inttypes.h>
 #include <stdio.h>
 #include <pthread.h>
@@ -149,12 +148,15 @@ int move_gen_bench(int argc, char **argv)
     uint64_t num_moves;
     int nr_games, threads, max_moves;
 
+    printf("%s <num games pr. thread (default 2000)> <max moves (default 100)> "
+            "<num threads (default 8)>\n", argv[0]);
+
     init_magicmoves();
 
     start = now();
-    nr_games = argc > 1 ? atoi(argv[1]) : 200;
+    nr_games = argc > 1 ? atoi(argv[1]) : 2000;
     max_moves = argc > 2 ? atoi(argv[2]) : 100; 
-    threads = argc > 3 ? atoi(argv[3]) : 1;
+    threads = argc > 3 ? atoi(argv[3]) : 8;
     num_moves = spawn_n_games(threads, nr_games, max_moves, move_gen);
     end = now();
 
@@ -168,7 +170,6 @@ int move_gen_bench(int argc, char **argv)
 
 int main(int argc, char *argv[])
 {
-    init_magicmoves();
 
     move_gen_bench(argc, argv);
 
