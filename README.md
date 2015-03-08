@@ -6,6 +6,7 @@ ___________
 
 ### USAGE: ./fast <options>
 Valid options
+
     -t, --threads <argument>
     -j, --jobs <argument>
     -f, --file <argument>
